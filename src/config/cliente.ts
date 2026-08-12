@@ -39,6 +39,11 @@ export const clienteConfig = {
     limiteFiadoDuroActivo: false,
     moneda: "ARS",
     ivaDiscriminado: false,
+    // Usado por la calculadora de precio de venta en el alta de
+    // productos (costo + % ganancia + IVA opcional), no por el ticket
+    // (que sigue sin discriminar IVA — ver `ivaDiscriminado`). Mismo
+    // valor que `IVA_RATE` en miadmin/core/config.py.
+    ivaPorcentaje: 21,
   },
 } as const;
 
