@@ -84,15 +84,22 @@ allowed_cidrs_v6 = ["::/0"]
 # [db.ssl_enforcement]
 # enabled = true
 
+# Desactivado: bug conocido de Supabase CLI donde la imagen Docker trae
+# /app/package.json vacío y el contenedor no arranca (ERR_INVALID_PACKAGE_CONFIG).
+# Ver https://github.com/supabase/cli/issues/2661. Reactivar cuando se
+# necesite (pantalla al cliente / Realtime) y probar si ya está resuelto.
 [realtime]
-enabled = true
+enabled = false
 # Bind realtime via either IPv4 or IPv6. (default: IPv4)
 # ip_version = "IPv6"
 # The maximum length in bytes of HTTP request headers. (default: 4096)
 # max_header_length = 4096
 
+# Desactivado por el mismo bug que Realtime (ver arriba) — afecta a varios
+# servicios Node del stack de Supabase local. Reactivar para usar la UI de
+# Studio cuando el bug esté resuelto upstream.
 [studio]
-enabled = true
+enabled = false
 # Port to use for Supabase Studio.
 port = 54323
 # External URL of the API server that frontend connects to.
@@ -112,8 +119,10 @@ port = 54324
 # admin_email = "admin@email.com"
 # sender_name = "Admin"
 
+# Desactivado por el mismo bug que Realtime (ver arriba). Reactivar cuando
+# se necesite almacenamiento de archivos (ej. fotos de producto).
 [storage]
-enabled = true
+enabled = false
 # The maximum file size allowed (e.g. "5MB", "500KB").
 file_size_limit = "50MiB"
 
