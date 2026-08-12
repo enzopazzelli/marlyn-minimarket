@@ -1,0 +1,33 @@
+/*
+ * Único archivo con valores de color literales de todo el sistema.
+ * Regla dura (prompt-base sección 4.1): ni un #hex, ni un rgba(), ni una
+ * clase de color de librería fuera de acá. Si un componente necesita un
+ * color que no existe como token, se agrega el token, no el literal.
+ *
+ * Los tokens se nombran por rol, nunca por color, para que personalizar
+ * un cliente sea redefinir estas variables y no tocar componentes.
+ */
+
+:root {
+  /* --- Estructura --- */
+  --marco: #0f1e1b; /* barra lateral, bloques oscuros, total */
+  --marco-suave: #1b2e2a; /* superficies dentro del marco oscuro */
+  --fondo: #f1efe9; /* área de trabajo */
+  --superficie: #ffffff; /* tarjetas, tablas, campos */
+  --linea: #dbd7ce; /* bordes y separadores */
+  --texto: #0f1e1b;
+  --texto-suave: #6e7c78; /* rótulos, datos secundarios */
+
+  /* --- Marca (lo que se cambia por cliente) --- */
+  --acento: #ffd11a; /* SOLO totales, pantalla al cliente y CTA principal */
+  --acento-texto: #0f1e1b; /* texto legible arriba de --acento */
+
+  /* --- Semánticos (NO se cambian por cliente: significan algo) --- */
+  --ok: #1f7a5c; /* confirmar, al día, stock sano */
+  --ok-fondo: #e4f0ea;
+  --alerta: #c8452f; /* faltantes, deuda, cerrar caja, errores */
+  --alerta-fondo: #fceeea;
+
+  /* --- Forma --- */
+  --r: 10px; /* radio base, único en todo el sistema */
+}

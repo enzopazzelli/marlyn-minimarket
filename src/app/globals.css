@@ -1,26 +1,54 @@
 @import "tailwindcss";
+@import "../estilos/tema.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
+/*
+ * Registra los tokens de estilos/tema.css como utilidades de Tailwind
+ * (bg-marco, text-acento, bg-ok-fondo, etc.) para no reinventar clases.
+ * El único lugar donde puede haber un color literal sigue siendo
+ * estilos/tema.css — acá solo se referencia por nombre de rol.
+ */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  --color-marco: var(--marco);
+  --color-marco-suave: var(--marco-suave);
+  --color-fondo: var(--fondo);
+  --color-superficie: var(--superficie);
+  --color-linea: var(--linea);
+  --color-texto: var(--texto);
+  --color-texto-suave: var(--texto-suave);
+  --color-acento: var(--acento);
+  --color-acento-texto: var(--acento-texto);
+  --color-ok: var(--ok);
+  --color-ok-fondo: var(--ok-fondo);
+  --color-alerta: var(--alerta);
+  --color-alerta-fondo: var(--alerta-fondo);
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --radius-base: var(--r);
+
+  --font-display: var(--font-display);
+  --font-sans: var(--font-texto);
+  --font-mono: var(--font-numero);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--fondo);
+  color: var(--texto);
+  font-family: var(--font-texto);
+}
+
+/* Todo número comparable en vertical (precios, stock, saldos, horas)
+   va con esta clase: cifras de ancho fijo para que las columnas de una
+   tabla alineen dígito con dígito, y porque un precio en mono se lee
+   como un ticket, el formato que el comerciante ya conoce. */
+.numero {
+  font-family: var(--font-numero);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

@@ -1,0 +1,98 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { clienteConfig } from "@/config/cliente";
+
+type ItemNav = { href: string; etiqueta: string };
+
+// Agrupado por frecuencia de uso, no por jerarquía técnica (prompt-base
+// sección 4.3): lo que se toca cada hora primero, lo que se toca cada
+// tanto después. Apagar un módulo en config/cliente.ts oculta su link
+// acá solo, sin tocar rutas ni componentes.
+const grupoDiaADia: ItemNav[] = [
+  ...(clienteConfig.modulos.ventas ? [{ href: "/ventas", etiqueta: "Ventas" }] : []),
+  ...(clienteConfig.modulos.caja ? [{ href: "/caja", etiqueta: "Caja" }] : []),
+];
+
+const grupoAdministracion: ItemNav[] = [
+  ...(clienteConfig.modulos.stock ? [{ href: "/stock", etiqueta: "Stock" }] : []),
+  ...(clienteConfig.modulos.clientes ? [{ href: "/clientes", etiqueta: "Clientes" }] : []),
+];
+
+const grupoComplementos: ItemNav[] = [
+  ...(clienteConfig.complementos.pantallaCliente
+    ? [{ href: "/pantalla-cliente", etiqueta: "Pantalla al cliente" }]
+    : []),
+];
+
+export function BarraLateral() {
+  const pathname = usePathname();
+
+  return (
+    <aside className="flex w-full shrink-0 flex-row overflow-x-auto bg-marco text-white md:w-[212px] md:flex-col md:overflow-x-visible">
+      <div className="flex shrink-0 items-center border-white/10 px-4 py-3 md:block md:border-b md:py-5">
+        <p className="whitespace-nowrap font-[family-name:var(--font-display)] text-base leading-tight md:text-lg">
+          {clienteConfig.comercio.nombre}
+        </p>
+      </div>
+
+      <nav className="flex flex-row gap-1 px-2 py-2 md:flex-1 md:flex-col md:gap-6 md:overflow-y-auto md:py-4">
+        <GrupoNav titulo="Día a día" items={grupoDiaADia} pathname={pathname} />
+        <GrupoNav titulo="Administración" items={grupoAdministracion} pathname={pathname} />
+        <GrupoNav
+          titulo="Complementos"
+          items={grupoComplementos}
+          pathname={pathname}
+          distintivo
+        />
+      </nav>
+    </aside>
+  );
+}
+
+function GrupoNav({
+  titulo,
+  items,
+  pathname,
+  distintivo = false,
+}: {
+  titulo: string;
+  items: ItemNav[];
+  pathname: string | null;
+  distintivo?: boolean;
+}) {
+  if (items.length === 0) return null;
+
+  return (
+    <div className="flex shrink-0 flex-row items-center gap-1 md:block md:px-2">
+      <p className="hidden shrink-0 px-2 font-[family-name:var(--font-numero)] text-[11px] uppercase tracking-wider text-white/50 md:mb-2 md:block">
+        {titulo}
+      </p>
+      <ul className="flex flex-row gap-1 md:flex-col">
+        {items.map((item) => {
+          const activo = pathname === item.href;
+          return (
+            <li key={item.href}>
+              <Link
+                href={item.href}
+                className={`flex items-center gap-2 whitespace-nowrap rounded-[var(--radius-base)] px-3 py-2 text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-acento ${
+                  activo
+                    ? "bg-white/10 text-white"
+                    : "text-white/70 hover:bg-white/5 hover:text-white"
+                }`}
+              >
+                {item.etiqueta}
+                {distintivo && (
+                  <span className="rounded-full bg-acento px-1.5 py-0.5 font-[family-name:var(--font-numero)] text-[10px] text-acento-texto">
+                    +
+                  </span>
+                )}
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
