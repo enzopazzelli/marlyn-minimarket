@@ -52,11 +52,18 @@ todavía. El alta incluye una calculadora de precio (costo → % de
 ganancia/IVA → precio de venta, y a la inversa si el precio se carga a
 mano), portada del mismo mecanismo de `miadmin` (`producto_dialog.py` +
 `pricing_service.py`) — ver `src/modulos/stock/consultas/precios.ts`.
-Queda para un próximo cambio: editar un producto ya cargado, "ingresar
-mercadería" (sumar stock a uno existente, como muestra
-`demo-sistema-despensa.html`) y una pantalla propia de administración de
-rubros. `Modal` e `Insignia` (`src/componentes/`) nacieron acá y están
-pensados para reusarse en Caja y Clientes.
+`Modal` e `Insignia` (`src/componentes/`) nacieron acá y están pensados
+para reusarse en Caja y Clientes.
+
+**M1 Stock queda completo para esta entrega**: cada fila de la tabla
+tiene "Editar" (todos los datos del producto salvo el stock — precio,
+rubro, código de barras, unidad, stock mínimo) e "Ingresar" (sumar stock
+a uno existente con motivo, vía la función `registrar_ingreso_stock`,
+que además dejó un movimiento en `movimientos_stock` con
+`tipo = 'ingreso'` para no perder el historial — el stock cargado nunca
+se pisa con un update directo). El botón "Rubros" en la barra superior
+abre alta/renombre/borrado de rubros, con el borrado bloqueado si hay
+productos usando ese rubro.
 
 **Supuesto sin confirmar con el cliente**: el checkbox "Incluye IVA" de
 la calculadora arranca tildado y usa 21% (`config/cliente.ts`,

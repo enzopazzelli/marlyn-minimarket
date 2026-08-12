@@ -72,3 +72,20 @@ describe("RLS de productos y categorías (M1 Stock)", () => {
     expect(data).toBeNull();
   });
 });
+
+describe("registrar_ingreso_stock (M1 Stock)", () => {
+  // A diferencia de las tablas, Postgres otorga EXECUTE a PUBLIC por
+  // default en funciones nuevas: acá el rol anon sí llega a ejecutar el
+  // cuerpo de la función, pero el chequeo interno de auth_activo() la
+  // frena antes de tocar ninguna tabla (mismo patrón que
+  // registrar_venta/anular_venta).
+  it("sin sesión no se puede ingresar mercadería", async () => {
+    const { error } = await clienteAnonimo.rpc("registrar_ingreso_stock", {
+      p_producto_id: productoId,
+      p_cantidad: 1,
+    });
+
+    expect(error).not.toBeNull();
+    expect(error?.message).toMatch(/sesión activa/);
+  });
+});

@@ -9,7 +9,17 @@ import { Campo } from "@/componentes/Campo";
 import { Modal } from "@/componentes/Modal";
 import { validarProducto, type ErroresProducto } from "../consultas/validacion";
 import { calcularGananciaDesdePrecioVenta, calcularPrecioVentaDesdeGanancia } from "../consultas/precios";
-import type { Categoria } from "../tipos";
+import type { Categoria, Producto } from "../tipos";
+
+// Mismo mecanismo que FormularioNuevoProducto.tsx (costo/%/IVA/venta
+// retroalimentándose, alta de rubro al vuelo) pero editando en vez de
+// insertar. Se duplica en vez de compartir un hook, misma decisión que
+// tomó miadmin con producto_dialog.py / producto_edit_dialog.py: son
+// archivos separados con la misma lógica repetida, no una base común.
+//
+// A diferencia del alta, acá NO hay campo de stock inicial: el stock ya
+// cargado solo cambia por movimientos con motivo (ver
+// FormularioIngresoMercaderia.tsx), nunca por una edición directa.
 
 const RUBRO_NUEVO = "__nuevo__";
 const IVA_PORCENTAJE = clienteConfig.reglasNegocio.ivaPorcentaje;
@@ -17,57 +27,51 @@ const IVA_PORCENTAJE = clienteConfig.reglasNegocio.ivaPorcentaje;
 const clasesSelect =
   "rounded-[var(--radius-base)] border border-linea bg-superficie px-3 py-2 text-texto outline-none focus-visible:border-acento focus-visible:ring-2 focus-visible:ring-acento/40";
 
-// La flechita del input numérico incrementa de a "step": pesos enteros
-// para precios (nadie carga centavos a mano en el mostrador) y de a 1
-// para stock en unidades sueltas, pero en fracciones prácticas (100g/100ml)
-// cuando el producto se pesa o se mide.
 function pasoDeStock(unidad: "unidad" | "kg" | "litro") {
   return unidad === "unidad" ? "1" : "0.1";
 }
 
-function estadoInicial() {
+function estadoDesdeProducto(producto: Producto) {
   return {
-    nombre: "",
-    rubroSeleccionado: "",
+    nombre: producto.nombre,
+    rubroSeleccionado: producto.categoriaId ?? "",
     nombreRubroNuevo: "",
-    codigoBarras: "",
-    precioCosto: "0",
-    incluyeIva: true,
-    porcentajeGanancia: "",
-    precioVenta: "",
-    stockActual: "0",
-    stockMinimo: "0",
-    unidad: "unidad" as "unidad" | "kg" | "litro",
+    codigoBarras: producto.codigoBarras ?? "",
+    precioCosto: String(producto.precioCosto),
+    incluyeIva: producto.incluyeIva,
+    porcentajeGanancia: producto.porcentajeGanancia === null ? "" : String(producto.porcentajeGanancia),
+    precioVenta: String(producto.precioVenta),
+    stockMinimo: String(producto.stockMinimo),
+    unidad: producto.unidad,
   };
 }
 
-export function FormularioNuevoProducto({
+export function FormularioEditarProducto({
+  producto,
   categoriasIniciales,
 }: {
+  producto: Producto;
   categoriasIniciales: Categoria[];
 }) {
   const router = useRouter();
   // "Adjusting state when a prop changes" (react.dev): setState durante
-  // el render, no en un efecto. useState(categoriasIniciales) por sí
-  // solo únicamente toma el valor inicial; si el rubro se
-  // crea/renombra/borra desde PanelRubros (otro componente), un
-  // router.refresh() trae un `categoriasIniciales` nuevo por props, y
-  // sin este chequeo el <select> de acá seguiría mostrando la lista
-  // vieja hasta que este formulario cree un rubro por su cuenta.
+  // el render, no en un efecto — ver el mismo comentario en
+  // FormularioNuevoProducto.tsx.
   const [categoriasVistas, setCategoriasVistas] = useState(categoriasIniciales);
   const [categorias, setCategorias] = useState(categoriasIniciales);
   if (categoriasIniciales !== categoriasVistas) {
     setCategoriasVistas(categoriasIniciales);
     setCategorias(categoriasIniciales);
   }
+
   const [abierto, setAbierto] = useState(false);
   const [guardando, setGuardando] = useState(false);
-  const [campos, setCampos] = useState(estadoInicial());
+  const [campos, setCampos] = useState(estadoDesdeProducto(producto));
   const [errores, setErrores] = useState<ErroresProducto>({});
   const [errorGeneral, setErrorGeneral] = useState<string | null>(null);
 
   function abrir() {
-    setCampos(estadoInicial());
+    setCampos(estadoDesdeProducto(producto));
     setErrores({});
     setErrorGeneral(null);
     setAbierto(true);
@@ -77,14 +81,6 @@ export function FormularioNuevoProducto({
     setAbierto(false);
   }
 
-  // Costo, % de ganancia, IVA y precio de venta se mantienen
-  // consistentes entre sí: tocar costo o precio de venta recalcula el %
-  // de ganancia; tocar el % o el check de IVA recalcula el precio de
-  // venta. Mismo mecanismo que producto_dialog.py en miadmin, sumando
-  // el IVA como un factor más de la cuenta (pricing_service.py ahí).
-  // A diferencia de Qt, un <input> controlado de React no dispara su
-  // propio onChange cuando el valor cambia por props/estado, así que acá
-  // no hace falta el flag anti-reentrancia que tiene la versión de Qt.
   function alCambiarCosto(valorTexto: string) {
     const ganancia = calcularGananciaDesdePrecioVenta(
       Number(valorTexto),
@@ -141,7 +137,10 @@ export function FormularioNuevoProducto({
       nombre: campos.nombre,
       precioCosto: Number(campos.precioCosto),
       precioVenta: Number(campos.precioVenta),
-      stockActual: Number(campos.stockActual),
+      // validarProducto pide stockActual, pero acá no se edita: se
+      // manda el valor actual del producto solo para pasar el chequeo,
+      // no viaja en el update.
+      stockActual: producto.stockActual,
       stockMinimo: Number(campos.stockMinimo),
     };
 
@@ -180,18 +179,20 @@ export function FormularioNuevoProducto({
         categoriaId = campos.rubroSeleccionado;
       }
 
-      const { error: errorProducto } = await supabase.from("productos").insert({
-        nombre: datos.nombre.trim(),
-        categoria_id: categoriaId,
-        codigo_barras: campos.codigoBarras.trim() || null,
-        precio_costo: datos.precioCosto,
-        precio_venta: datos.precioVenta,
-        incluye_iva: campos.incluyeIva,
-        porcentaje_ganancia: campos.porcentajeGanancia === "" ? null : Number(campos.porcentajeGanancia),
-        stock_actual: datos.stockActual,
-        stock_minimo: datos.stockMinimo,
-        unidad: campos.unidad,
-      });
+      const { error: errorProducto } = await supabase
+        .from("productos")
+        .update({
+          nombre: datos.nombre.trim(),
+          categoria_id: categoriaId,
+          codigo_barras: campos.codigoBarras.trim() || null,
+          precio_costo: datos.precioCosto,
+          precio_venta: datos.precioVenta,
+          incluye_iva: campos.incluyeIva,
+          porcentaje_ganancia: campos.porcentajeGanancia === "" ? null : Number(campos.porcentajeGanancia),
+          stock_minimo: datos.stockMinimo,
+          unidad: campos.unidad,
+        })
+        .eq("id", producto.id);
 
       if (errorProducto) {
         if (errorProducto.code === "23505") {
@@ -211,27 +212,30 @@ export function FormularioNuevoProducto({
 
   return (
     <>
-      <Boton onClick={abrir}>+ Nuevo producto</Boton>
+      <button
+        type="button"
+        onClick={abrir}
+        className="text-xs font-medium text-texto-suave underline decoration-dotted underline-offset-2 hover:text-texto"
+      >
+        Editar
+      </button>
 
-      <Modal titulo="Nuevo producto" abierto={abierto} onCerrar={cerrar}>
-        {/* noValidate: la validación nativa del navegador (min, required)
-            bloquea el submit con su propio tooltip antes de que corra
-            validarProducto(), que es la que da el mensaje en criollo. */}
+      <Modal titulo={`Editar ${producto.nombre}`} abierto={abierto} onCerrar={cerrar}>
         <form onSubmit={alGuardar} noValidate className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
             <Campo
               etiqueta="Nombre"
-              id="nombre"
+              id={`nombre-${producto.id}`}
               value={campos.nombre}
               onChange={(evento) => setCampos({ ...campos, nombre: evento.target.value })}
             />
             {errores.nombre && <p className="text-sm text-alerta">{errores.nombre}</p>}
           </div>
 
-          <label htmlFor="rubro" className="flex flex-col gap-1.5 text-sm">
+          <label htmlFor={`rubro-${producto.id}`} className="flex flex-col gap-1.5 text-sm">
             <span className="text-texto-suave">Rubro</span>
             <select
-              id="rubro"
+              id={`rubro-${producto.id}`}
               className={clasesSelect}
               value={campos.rubroSeleccionado}
               onChange={(evento) => setCampos({ ...campos, rubroSeleccionado: evento.target.value })}
@@ -249,7 +253,7 @@ export function FormularioNuevoProducto({
           {campos.rubroSeleccionado === RUBRO_NUEVO && (
             <Campo
               etiqueta="Nombre del rubro nuevo"
-              id="nombreRubroNuevo"
+              id={`nombreRubroNuevo-${producto.id}`}
               value={campos.nombreRubroNuevo}
               onChange={(evento) => setCampos({ ...campos, nombreRubroNuevo: evento.target.value })}
             />
@@ -257,16 +261,16 @@ export function FormularioNuevoProducto({
 
           <Campo
             etiqueta="Código de barras (opcional)"
-            id="codigoBarras"
+            id={`codigoBarras-${producto.id}`}
             value={campos.codigoBarras}
             onChange={(evento) => setCampos({ ...campos, codigoBarras: evento.target.value })}
             className="font-[family-name:var(--font-numero)]"
           />
 
-          <label htmlFor="unidad" className="flex flex-col gap-1.5 text-sm">
+          <label htmlFor={`unidad-${producto.id}`} className="flex flex-col gap-1.5 text-sm">
             <span className="text-texto-suave">Unidad</span>
             <select
-              id="unidad"
+              id={`unidad-${producto.id}`}
               className={clasesSelect}
               value={campos.unidad}
               onChange={(evento) =>
@@ -282,7 +286,7 @@ export function FormularioNuevoProducto({
           <div className="flex flex-col gap-1.5">
             <Campo
               etiqueta="Precio de costo"
-              id="precioCosto"
+              id={`precioCosto-${producto.id}`}
               type="number"
               min={0}
               step="1"
@@ -293,10 +297,10 @@ export function FormularioNuevoProducto({
             {errores.precioCosto && <p className="text-sm text-alerta">{errores.precioCosto}</p>}
           </div>
 
-          <label htmlFor="incluyeIva" className="flex items-center gap-2 text-sm text-texto">
+          <label htmlFor={`incluyeIva-${producto.id}`} className="flex items-center gap-2 text-sm text-texto">
             <input
               type="checkbox"
-              id="incluyeIva"
+              id={`incluyeIva-${producto.id}`}
               checked={campos.incluyeIva}
               onChange={(evento) => alCambiarIva(evento.target.checked)}
               className="h-4 w-4 accent-acento"
@@ -304,12 +308,10 @@ export function FormularioNuevoProducto({
             Incluye IVA ({IVA_PORCENTAJE}%)
           </label>
 
-          {/* % de ganancia y precio de venta se retroalimentan: tocar uno
-              actualiza el otro (ver alCambiarGanancia/alCambiarVentaManual). */}
           <div className="grid grid-cols-2 gap-3">
             <Campo
               etiqueta="% de ganancia"
-              id="porcentajeGanancia"
+              id={`porcentajeGanancia-${producto.id}`}
               type="number"
               step="1"
               placeholder="Ej: 30"
@@ -320,7 +322,7 @@ export function FormularioNuevoProducto({
             <div className="flex flex-col gap-1.5">
               <Campo
                 etiqueta="Precio de venta"
-                id="precioVenta"
+                id={`precioVenta-${producto.id}`}
                 type="number"
                 min={0}
                 step="1"
@@ -332,33 +334,18 @@ export function FormularioNuevoProducto({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1.5">
-              <Campo
-                etiqueta="Stock inicial"
-                id="stockActual"
-                type="number"
-                min={0}
-                step={pasoDeStock(campos.unidad)}
-                value={campos.stockActual}
-                onChange={(evento) => setCampos({ ...campos, stockActual: evento.target.value })}
-                className="font-[family-name:var(--font-numero)]"
-              />
-              {errores.stockActual && <p className="text-sm text-alerta">{errores.stockActual}</p>}
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Campo
-                etiqueta="Stock mínimo"
-                id="stockMinimo"
-                type="number"
-                min={0}
-                step={pasoDeStock(campos.unidad)}
-                value={campos.stockMinimo}
-                onChange={(evento) => setCampos({ ...campos, stockMinimo: evento.target.value })}
-                className="font-[family-name:var(--font-numero)]"
-              />
-              {errores.stockMinimo && <p className="text-sm text-alerta">{errores.stockMinimo}</p>}
-            </div>
+          <div className="flex flex-col gap-1.5">
+            <Campo
+              etiqueta="Stock mínimo"
+              id={`stockMinimo-${producto.id}`}
+              type="number"
+              min={0}
+              step={pasoDeStock(campos.unidad)}
+              value={campos.stockMinimo}
+              onChange={(evento) => setCampos({ ...campos, stockMinimo: evento.target.value })}
+              className="font-[family-name:var(--font-numero)]"
+            />
+            {errores.stockMinimo && <p className="text-sm text-alerta">{errores.stockMinimo}</p>}
           </div>
 
           {errorGeneral && (
@@ -372,7 +359,7 @@ export function FormularioNuevoProducto({
               Cancelar
             </Boton>
             <Boton type="submit" variante="confirmar" disabled={guardando}>
-              {guardando ? "Guardando…" : "Guardar producto"}
+              {guardando ? "Guardando…" : "Guardar cambios"}
             </Boton>
           </div>
         </form>

@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { Insignia } from "@/componentes/Insignia";
+import { FormularioEditarProducto } from "./FormularioEditarProducto";
+import { FormularioIngresoMercaderia } from "./FormularioIngresoMercaderia";
 import type { Categoria, Producto } from "../tipos";
 
 const platita = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" });
@@ -96,11 +98,11 @@ export function ListaProductos({
           <table className="w-full border-collapse">
             <thead>
               <tr>
-                {["Código", "Producto", "Rubro", "Precio", "Stock", "Estado"].map((columna) => (
+                {["Código", "Producto", "Rubro", "Precio", "Stock", "Estado", "Acciones"].map((columna) => (
                   <th
                     key={columna}
                     className={`border-b border-linea px-2.5 py-1.5 font-[family-name:var(--font-numero)] text-[10px] font-medium uppercase tracking-wider text-texto-suave ${
-                      columna === "Precio" || columna === "Stock" || columna === "Estado"
+                      columna === "Precio" || columna === "Stock" || columna === "Estado" || columna === "Acciones"
                         ? "text-right"
                         : "text-left"
                     }`}
@@ -128,6 +130,12 @@ export function ListaProductos({
                     <td className="numero px-2.5 py-1.5 text-right text-xs">{producto.stockActual}</td>
                     <td className="px-2.5 py-1.5 text-right">
                       <Insignia variante={reponer ? "alerta" : "ok"}>{reponer ? "reponer" : "ok"}</Insignia>
+                    </td>
+                    <td className="px-2.5 py-1.5">
+                      <div className="flex items-center justify-end gap-3">
+                        <FormularioIngresoMercaderia producto={producto} />
+                        <FormularioEditarProducto producto={producto} categoriasIniciales={categorias} />
+                      </div>
                     </td>
                   </tr>
                 );

@@ -4,6 +4,7 @@ import { crearClienteServidor } from "@/lib/supabase/servidor";
 import { listarCategorias, listarProductos } from "@/modulos/stock/consultas/productos";
 import { FormularioNuevoProducto } from "@/modulos/stock/componentes/FormularioNuevoProducto";
 import { ListaProductos } from "@/modulos/stock/componentes/ListaProductos";
+import { PanelRubros } from "@/modulos/stock/componentes/PanelRubros";
 
 export default async function PaginaStock() {
   const supabase = await crearClienteServidor();
@@ -15,7 +16,10 @@ export default async function PaginaStock() {
   return (
     <>
       <BarraSuperior titulo="Stock">
-        <FormularioNuevoProducto categoriasIniciales={categorias} />
+        <div className="flex items-center gap-2">
+          <PanelRubros categoriasIniciales={categorias} />
+          <FormularioNuevoProducto categoriasIniciales={categorias} />
+        </div>
       </BarraSuperior>
       <main className="flex-1 p-4 md:p-6">
         {productos.length === 0 ? (
