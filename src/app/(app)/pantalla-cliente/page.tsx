@@ -1,15 +1,26 @@
 import { BarraSuperior } from "@/componentes/BarraSuperior";
-import { EstadoVacio } from "@/componentes/EstadoVacio";
+import { crearClienteServidor } from "@/lib/supabase/servidor";
+import { PanelEmparejamiento } from "@/modulos/pantalla/componentes/PanelEmparejamiento";
 
-export default function PaginaPantallaCliente() {
+export default async function PaginaPantallaCliente() {
+  const supabase = await crearClienteServidor();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { data: perfil } = user
+    ? await supabase.from("perfiles").select("token_pantalla").eq("id", user.id).single()
+    : { data: null };
+
   return (
     <>
       <BarraSuperior titulo="Pantalla al cliente" />
       <main className="flex-1 p-4 md:p-6">
-        <EstadoVacio
-          titulo="Todavía no emparejaste ninguna pantalla"
-          descripcion="Acá vas a generar el código para abrir la vista de solo lectura en la TV del mostrador, sin compartir tu sesión de operador."
-        />
+        {perfil ? (
+          <PanelEmparejamiento token={perfil.token_pantalla} />
+        ) : (
+          <p className="text-sm text-texto-suave">No se pudo cargar tu perfil. Probá de nuevo.</p>
+        )}
       </main>
     </>
   );

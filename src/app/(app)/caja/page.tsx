@@ -58,6 +58,13 @@ async function TurnoAbierto({
             Desde las {horaFormateador.format(new Date(turno.abiertoEn))}
           </p>
         </div>
+        <div className="flex-1">
+          <p className="text-sm text-texto-suave">Debería haber</p>
+          <p className="numero text-2xl font-semibold text-texto">{platita.format(montoCalculado)}</p>
+          <p className="mt-1 text-xs text-texto-suave">
+            Apertura + efectivo cobrado + movimientos — esto es el cajón, no &ldquo;Ventas&rdquo; de Reportes
+          </p>
+        </div>
         <FormularioCerrarCaja turnoId={turno.id} montoCalculado={montoCalculado} />
       </div>
 

@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 import { crearClienteNavegador } from "@/lib/supabase/cliente";
 import { Boton } from "@/componentes/Boton";
 import { Campo } from "@/componentes/Campo";
 import { Modal } from "@/componentes/Modal";
+import { CANAL_EVENTO_CARRITO, nombreCanalPantalla } from "@/modulos/pantalla/tipos";
 import {
   calcularTotalCarrito,
   calcularVuelto,
@@ -81,10 +83,12 @@ export function PanelVentas({
   productos,
   clientes,
   turnoCajaId,
+  tokenPantalla,
 }: {
   productos: Producto[];
   clientes: Cliente[];
   turnoCajaId: string;
+  tokenPantalla: string;
 }) {
   const router = useRouter();
   // "Adjusting state when a prop changes" (react.dev) — mismo patrón que
@@ -142,6 +146,39 @@ export function PanelVentas({
   }
 
   const total = useMemo(() => calcularTotalCarrito(carritoActivo.items), [carritoActivo.items]);
+
+  // Pantalla al cliente: la pestaña activa se emite por Realtime
+  // Broadcast (sin tabla, el carrito en curso ya es puramente
+  // client-side) — un canal por dueño (tokenPantalla, fijo), abierto
+  // mientras este panel esté montado.
+  const canalPantallaRef = useRef<RealtimeChannel | null>(null);
+  const [canalPantallaListo, setCanalPantallaListo] = useState(false);
+
+  useEffect(() => {
+    if (!tokenPantalla) return;
+    const supabase = crearClienteNavegador();
+    const canal = supabase.channel(nombreCanalPantalla(tokenPantalla));
+    canal.subscribe((estado) => setCanalPantallaListo(estado === "SUBSCRIBED"));
+    canalPantallaRef.current = canal;
+
+    return () => {
+      supabase.removeChannel(canal);
+      canalPantallaRef.current = null;
+      setCanalPantallaListo(false);
+    };
+  }, [tokenPantalla]);
+
+  useEffect(() => {
+    if (!canalPantallaListo || !canalPantallaRef.current) return;
+    canalPantallaRef.current.send({
+      type: "broadcast",
+      event: CANAL_EVENTO_CARRITO,
+      payload: { items: carritoActivo.items, total },
+    });
+    // Se manda con cada cambio del carrito activo: agregar/sacar
+    // productos y cambiar de pestaña caen acá solos, porque
+    // carritoActivo ya deriva de cuál pestaña está seleccionada.
+  }, [canalPantallaListo, carritoActivo.items, total]);
 
   function agregarProducto(producto: Producto) {
     setError(null);

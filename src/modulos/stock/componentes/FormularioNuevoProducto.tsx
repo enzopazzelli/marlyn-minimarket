@@ -59,7 +59,7 @@ export function FormularioNuevoProducto({
   // router.refresh() trae un `categoriasIniciales` nuevo por props, y
   // sin este chequeo el <select> de acá seguiría mostrando la lista
   // vieja hasta que este formulario cree un rubro por su cuenta. Mismo
-  // criterio para proveedores/PanelProveedores.
+  // criterio para proveedores, ahora editados/borrados desde /proveedores.
   const [categoriasVistas, setCategoriasVistas] = useState(categoriasIniciales);
   const [categorias, setCategorias] = useState(categoriasIniciales);
   if (categoriasIniciales !== categoriasVistas) {

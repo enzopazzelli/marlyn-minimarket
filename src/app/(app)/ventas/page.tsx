@@ -23,8 +23,8 @@ export default async function PaginaVentas() {
         <ChipCaja abierta={!!turno} />
       </BarraSuperior>
       <main className="flex-1 p-4 md:p-6">
-        {turno ? (
-          <PanelVentasConectado supabase={supabase} turnoCajaId={turno.id} />
+        {turno && user ? (
+          <PanelVentasConectado supabase={supabase} turnoCajaId={turno.id} usuarioId={user.id} />
         ) : (
           <div className="max-w-sm rounded-[var(--radius-base)] border border-dashed border-linea bg-superficie px-6 py-10 text-center">
             <p className="font-[family-name:var(--font-display)] text-base text-texto">
@@ -46,19 +46,27 @@ export default async function PaginaVentas() {
 async function PanelVentasConectado({
   supabase,
   turnoCajaId,
+  usuarioId,
 }: {
   supabase: Awaited<ReturnType<typeof crearClienteServidor>>;
   turnoCajaId: string;
+  usuarioId: string;
 }) {
-  const [productos, clientes, ventas] = await Promise.all([
+  const [productos, clientes, ventas, perfil] = await Promise.all([
     listarProductos(supabase),
     listarClientes(supabase),
     listarVentasDelTurno(supabase, turnoCajaId),
+    supabase.from("perfiles").select("token_pantalla").eq("id", usuarioId).single(),
   ]);
 
   return (
     <div className="flex flex-col gap-4">
-      <PanelVentas productos={productos} clientes={clientes} turnoCajaId={turnoCajaId} />
+      <PanelVentas
+        productos={productos}
+        clientes={clientes}
+        turnoCajaId={turnoCajaId}
+        tokenPantalla={perfil.data?.token_pantalla ?? ""}
+      />
       <ListaVentasDelTurno ventas={ventas} />
     </div>
   );

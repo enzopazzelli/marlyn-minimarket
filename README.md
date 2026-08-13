@@ -50,9 +50,8 @@ recargo manual por atraso, `/caja` abre y cierra turno con arqueo,
 del pedido, y `/reportes` es el dashboard del día (KPIs, ventas por
 hora, medios de pago, top productos, alertas de stock) con export a
 Excel, con retiros/ingresos manuales además de lo que ya deja cada
-venta. Detalle de las cinco más abajo. Sigue pendiente la pantalla al
-cliente en vivo (con su propio "PENDIENTE" en
-`src/app/pantalla/[token]/page.tsx`).
+venta, y la pantalla al cliente ya conecta en vivo con la venta en
+curso por Supabase Realtime. Detalle de las cinco más abajo.
 
 **Stock ya tiene su primera pantalla real**: `/stock` lista los
 productos cargados (código, rubro, precio, stock, alerta de mínimo), con
@@ -72,12 +71,17 @@ a uno existente con motivo, vía la función `registrar_ingreso_stock`,
 que además dejó un movimiento en `movimientos_stock` con
 `tipo = 'ingreso'` para no perder el historial — el stock cargado nunca
 se pisa con un update directo). El botón "Rubros" en la barra superior
-abre alta/renombre/borrado de rubros; "Proveedores" es lo mismo, sobre
-la tabla `proveedores` (nueva) — ambos paneles son instancias de
-`PanelListaSimple` (`src/componentes/`), el mismo componente genérico.
-Decisión tomada con el cliente sobre `BACKUP.xlsx` (ver más abajo):
-"Familia" del Excel es conceptualmente lo mismo que "Rubro" acá, no una
-tabla aparte; "Género" no se suma.
+abre alta/renombre/borrado de rubros — `PanelListaSimple.tsx`
+(`src/componentes/`), componente genérico. El de "Proveedores" que
+vivía acá al lado se sacó: quedó redundante en cuanto `/proveedores`
+tuvo edición completa (el alta rápida al vuelo desde el `<select>` del
+producto, con "+ Nuevo proveedor…", sigue igual — eso no dependía del
+panel). "Exportar Excel" baja el catálogo activo a un `.xlsx` (código,
+producto, rubro, proveedor, costo, precio, stock — `BotonExportarStock.tsx`,
+mismo criterio que el export de `/reportes`). Decisión tomada con el
+cliente sobre `BACKUP.xlsx` (ver más abajo): "Familia" del Excel es
+conceptualmente lo mismo que "Rubro" acá, no una tabla aparte; "Género"
+no se suma.
 
 **Borrar ya no se bloquea, se acomoda.** Pedido explícito de Enzo tras
 usar el import de catálogo: borrar un rubro o un proveedor con
@@ -111,7 +115,12 @@ ahora también lo cierra. Para poder arquear, `registrar_venta()` inserta
 en `movimientos_caja` la parte en efectivo de cada pago (monto menos
 vuelto) al confirmar una venta — antes no lo hacía y no había forma de
 saber cuánto efectivo debía haber en el cajón. Con turno abierto,
-`/caja` muestra "Ventas de este turno" (mismo listado que `/ventas`,
+`/caja` muestra "Apertura" al lado de "Debería haber" — el mismo
+`montoCalculado` de `calcularEfectivoEsperado()` que antes solo se veía
+adentro del modal de cierre, ahora visible todo el tiempo (con una
+aclaración de que es el efectivo del cajón, no el KPI "Ventas" de
+`/reportes` — son números distintos, pedido explícito de Enzo para no
+confundirlos), "Ventas de este turno" (mismo listado que `/ventas`,
 ver más abajo) y el botón "Cerrar caja"
 (`FormularioCerrarCaja.tsx`): un modal con el monto calculado
 (apertura + neto de `movimientos_caja`) y un campo editable para el
@@ -253,9 +262,27 @@ tablas quedan creadas con RLS habilitado, y las funciones
 todavía probarlas con datos reales (una venta de punta a punta) una vez
 que existan las pantallas.
 
-`/pantalla/[token]` (complemento "pantalla al cliente") es por ahora una
-vista estática de espera: falta el emparejamiento por token y la
-suscripción a Supabase Realtime que lo conecta con la venta en curso.
+**Pantalla al cliente, en vivo.** `/pantalla-cliente` (dentro de la app,
+con sesión) muestra un link fijo para emparejar la TV del mostrador —
+`token_pantalla` vive en `perfiles` (una columna nueva, `uuid default
+gen_random_uuid()`), no en el turno, así que se configura una vez y
+sigue funcionando aunque se abra y cierre la caja todos los días.
+`/pantalla/[token]` (fuera de `(app)`, sin sesión — por diseño, la TV
+nunca inicia sesión) resuelve el token con `resolver_pantalla()`, una
+función pública (`grant execute ... to anon`, la primera de este
+proyecto pensada para que la llame un visitante sin login) que solo
+expone a qué dueño pertenece un token, nada de datos del negocio. El
+carrito en sí viaja por **Supabase Realtime Broadcast** — un canal
+`pantalla:<token>` — en vez de una tabla: la venta en curso ya es
+puramente client-side (`sessionStorage`) hasta que `registrar_venta()`
+la confirma, así que transmitirla por un canal efímero encaja mejor
+que modelarla en Postgres. `PanelVentas.tsx` emite `{items, total}` de
+la pestaña activa cada vez que cambia (agregar/sacar productos, cambiar
+de "Venta 1" a "Venta 2" — la pantalla sigue lo que el cajero tiene
+seleccionado, pedido explícito para cuando hay varias ventas en curso
+a la vez); `PantallaEnVivo.tsx` escucha y pinta la lista de productos +
+el total grande en `--acento`, el token que `tema.css` ya tenía
+reservado para esto desde el día 1.
 
 ## Supuestos tomados (a confirmar con el cliente)
 
