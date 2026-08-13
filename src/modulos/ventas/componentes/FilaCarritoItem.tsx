@@ -43,12 +43,29 @@ export function FilaCarritoItem({
   // en PanelVentas.tsx). Al desmontarse esta fila (cambiar de pestaña
   // de venta, o sacar el producto) este estado se pierde solo.
   const [texto, setTexto] = useState(String(Math.round(item.cantidad * factor)));
+  // Por peso también se puede cargar directo el monto ("$2.000 de
+  // jamón" es más natural para un cajero que calcular los gramos a
+  // mano) — los dos campos quedan relacionados: cambiar uno recalcula
+  // el otro contra el mismo precio por kg/L.
+  const [textoMonto, setTextoMonto] = useState(String(Math.round(item.cantidad * item.precioUnitario)));
 
   function alCambiarTexto(valor: string) {
     setTexto(valor);
     const numero = Number(valor);
     if (valor.trim() !== "" && Number.isFinite(numero) && numero >= 0) {
-      onCambiarCantidadExacta(esPeso ? redondearAGramos(numero / factor) : numero);
+      const cantidad = esPeso ? redondearAGramos(numero / factor) : numero;
+      onCambiarCantidadExacta(cantidad);
+      if (esPeso) setTextoMonto(String(Math.round(cantidad * item.precioUnitario)));
+    }
+  }
+
+  function alCambiarMonto(valor: string) {
+    setTextoMonto(valor);
+    const monto = Number(valor);
+    if (valor.trim() !== "" && Number.isFinite(monto) && monto >= 0 && item.precioUnitario > 0) {
+      const cantidad = redondearAGramos(monto / item.precioUnitario);
+      onCambiarCantidadExacta(cantidad);
+      setTexto(String(Math.round(cantidad * factor)));
     }
   }
 
@@ -95,6 +112,19 @@ export function FilaCarritoItem({
           >
             Quitar
           </button>
+          <span className="numero text-xs text-texto-suave">$</span>
+          <input
+            type="number"
+            inputMode="numeric"
+            min={0}
+            step="1"
+            aria-label={`Monto de ${item.nombre}`}
+            value={textoMonto}
+            onChange={(evento) => alCambiarMonto(evento.target.value)}
+            onFocus={(evento) => evento.currentTarget.select()}
+            className="numero w-20 rounded border border-linea px-2 py-1 text-right text-sm outline-none focus-visible:border-acento"
+          />
+          <span className="text-xs text-texto-suave">o</span>
           <input
             type="number"
             inputMode="numeric"

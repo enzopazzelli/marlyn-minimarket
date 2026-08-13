@@ -172,11 +172,15 @@ lo contrario: a veces el fiado se decide en el momento, no antes.
 pero el carrito lo ignoraba — cada click sumaba 1 entero, sin forma de
 cargar "0.350 kg" de queso. `FilaCarritoItem.tsx` separa las dos
 mecánicas: productos por unidad siguen con los botones −/+ de siempre;
-productos por kg/litro muestran un campo numérico editable (con el
-número real, no enteros) más un botón "Quitar" explícito, porque una
-cantidad fraccionaria no tiene un "−" natural que llegue a 0. No hizo
-falta tocar la base: `ventas_items.cantidad` ya era numérico, era pura
-falta de UI.
+productos por kg/litro muestran un botón "Quitar" explícito (una
+cantidad fraccionaria no tiene un "−" natural que llegue a 0) más dos
+campos numéricos relacionados — gramos/mililitros (un cajero rara vez
+tipea un decimal como "0.350" a mano) **y** el monto en pesos ("$2.000
+de jamón" es tan común como pedir por peso). Cambiar cualquiera de los
+dos recalcula el otro contra el mismo precio por kg/L; `cantidad` sigue
+guardándose en kg/litro como siempre, la conversión es solo de esta
+capa. No hizo falta tocar la base: `ventas_items.cantidad` ya era
+numérico, era pura falta de UI.
 **Seguimiento de ventas del turno**: las ventas confirmadas no se veían
 en ningún lado después de cerrar el comprobante — `listarVentasDelTurno`
 (`src/modulos/ventas/consultas/ventas.ts`) trae las ventas del turno
