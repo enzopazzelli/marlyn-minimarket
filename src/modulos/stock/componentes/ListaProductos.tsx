@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { Insignia } from "@/componentes/Insignia";
 import { FormularioEditarProducto } from "./FormularioEditarProducto";
 import { FormularioIngresoMercaderia } from "./FormularioIngresoMercaderia";
-import type { Categoria, Producto } from "../tipos";
+import type { Categoria, Producto, Proveedor } from "../tipos";
 
 const platita = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" });
 
@@ -16,12 +16,15 @@ type FiltroEstado = "todos" | "ok" | "reponer";
 export function ListaProductos({
   productos,
   categorias,
+  proveedores,
 }: {
   productos: Producto[];
   categorias: Categoria[];
+  proveedores: Proveedor[];
 }) {
   const [busqueda, setBusqueda] = useState("");
   const [rubroId, setRubroId] = useState("");
+  const [proveedorId, setProveedorId] = useState("");
   const [estado, setEstado] = useState<FiltroEstado>("todos");
 
   const nombrePorCategoria = useMemo(
@@ -46,13 +49,14 @@ export function ListaProductos({
         rubro.toLowerCase().includes(termino);
 
       const coincideRubro = !rubroId || producto.categoriaId === rubroId;
+      const coincideProveedor = !proveedorId || producto.proveedorId === proveedorId;
 
       const reponer = producto.stockActual <= producto.stockMinimo;
       const coincideEstado = estado === "todos" || (estado === "reponer" ? reponer : !reponer);
 
-      return coincideBusqueda && coincideRubro && coincideEstado;
+      return coincideBusqueda && coincideRubro && coincideProveedor && coincideEstado;
     });
-  }, [productos, busqueda, rubroId, estado, nombrePorCategoria]);
+  }, [productos, busqueda, rubroId, proveedorId, estado, nombrePorCategoria]);
 
   return (
     <div className="flex flex-col gap-3">
@@ -72,6 +76,18 @@ export function ListaProductos({
           {categorias.map((categoria) => (
             <option key={categoria.id} value={categoria.id}>
               {categoria.nombre}
+            </option>
+          ))}
+        </select>
+        <select
+          className={clasesFiltro}
+          value={proveedorId}
+          onChange={(evento) => setProveedorId(evento.target.value)}
+        >
+          <option value="">Todos los proveedores</option>
+          {proveedores.map((proveedor) => (
+            <option key={proveedor.id} value={proveedor.id}>
+              {proveedor.nombre}
             </option>
           ))}
         </select>
@@ -134,7 +150,11 @@ export function ListaProductos({
                     <td className="px-2.5 py-1.5">
                       <div className="flex items-center justify-end gap-3">
                         <FormularioIngresoMercaderia producto={producto} />
-                        <FormularioEditarProducto producto={producto} categoriasIniciales={categorias} />
+                        <FormularioEditarProducto
+                          producto={producto}
+                          categoriasIniciales={categorias}
+                          proveedoresIniciales={proveedores}
+                        />
                       </div>
                     </td>
                   </tr>

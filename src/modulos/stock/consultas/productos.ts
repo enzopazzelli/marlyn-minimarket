@@ -1,10 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Categoria, Producto } from "../tipos";
+import type { Categoria, Producto, Proveedor } from "../tipos";
 
 type FilaProducto = {
   id: string;
   nombre: string;
   categoria_id: string | null;
+  proveedor_id: string | null;
   codigo_barras: string | null;
   precio_costo: number | string;
   precio_venta: number | string;
@@ -23,7 +24,7 @@ export async function listarProductos(supabase: SupabaseClient): Promise<Product
   const { data, error } = await supabase
     .from("productos")
     .select(
-      "id, nombre, categoria_id, codigo_barras, precio_costo, precio_venta, incluye_iva, porcentaje_ganancia, stock_actual, stock_minimo, unidad, activo",
+      "id, nombre, categoria_id, proveedor_id, codigo_barras, precio_costo, precio_venta, incluye_iva, porcentaje_ganancia, stock_actual, stock_minimo, unidad, activo",
     )
     .order("creado_en", { ascending: false });
 
@@ -33,6 +34,7 @@ export async function listarProductos(supabase: SupabaseClient): Promise<Product
     id: fila.id,
     nombre: fila.nombre,
     categoriaId: fila.categoria_id,
+    proveedorId: fila.proveedor_id,
     codigoBarras: fila.codigo_barras,
     precioCosto: Number(fila.precio_costo),
     precioVenta: Number(fila.precio_venta),
@@ -54,4 +56,15 @@ export async function listarCategorias(supabase: SupabaseClient): Promise<Catego
   if (error) throw error;
 
   return (data ?? []) as Categoria[];
+}
+
+export async function listarProveedores(supabase: SupabaseClient): Promise<Proveedor[]> {
+  const { data, error } = await supabase
+    .from("proveedores")
+    .select("id, nombre")
+    .order("nombre", { ascending: true });
+
+  if (error) throw error;
+
+  return (data ?? []) as Proveedor[];
 }

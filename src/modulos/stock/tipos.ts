@@ -3,10 +3,15 @@ export type Categoria = {
   nombre: string;
 };
 
+// Misma forma que Categoria (id + nombre) — proveedores es una tabla
+// plana igual que categorias, no una jerarquía.
+export type Proveedor = Categoria;
+
 export type Producto = {
   id: string;
   nombre: string;
   categoriaId: string | null;
+  proveedorId: string | null;
   codigoBarras: string | null;
   precioCosto: number;
   precioVenta: number;

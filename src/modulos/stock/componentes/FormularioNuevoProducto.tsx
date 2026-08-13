@@ -9,9 +9,10 @@ import { Campo } from "@/componentes/Campo";
 import { Modal } from "@/componentes/Modal";
 import { validarProducto, type ErroresProducto } from "../consultas/validacion";
 import { calcularGananciaDesdePrecioVenta, calcularPrecioVentaDesdeGanancia } from "../consultas/precios";
-import type { Categoria } from "../tipos";
+import type { Categoria, Proveedor } from "../tipos";
 
 const RUBRO_NUEVO = "__nuevo__";
+const PROVEEDOR_NUEVO = "__nuevo__";
 const IVA_PORCENTAJE = clienteConfig.reglasNegocio.ivaPorcentaje;
 
 const clasesSelect =
@@ -30,6 +31,8 @@ function estadoInicial() {
     nombre: "",
     rubroSeleccionado: "",
     nombreRubroNuevo: "",
+    proveedorSeleccionado: "",
+    nombreProveedorNuevo: "",
     codigoBarras: "",
     precioCosto: "0",
     incluyeIva: true,
@@ -43,8 +46,10 @@ function estadoInicial() {
 
 export function FormularioNuevoProducto({
   categoriasIniciales,
+  proveedoresIniciales,
 }: {
   categoriasIniciales: Categoria[];
+  proveedoresIniciales: Proveedor[];
 }) {
   const router = useRouter();
   // "Adjusting state when a prop changes" (react.dev): setState durante
@@ -53,12 +58,19 @@ export function FormularioNuevoProducto({
   // crea/renombra/borra desde PanelRubros (otro componente), un
   // router.refresh() trae un `categoriasIniciales` nuevo por props, y
   // sin este chequeo el <select> de acá seguiría mostrando la lista
-  // vieja hasta que este formulario cree un rubro por su cuenta.
+  // vieja hasta que este formulario cree un rubro por su cuenta. Mismo
+  // criterio para proveedores/PanelProveedores.
   const [categoriasVistas, setCategoriasVistas] = useState(categoriasIniciales);
   const [categorias, setCategorias] = useState(categoriasIniciales);
   if (categoriasIniciales !== categoriasVistas) {
     setCategoriasVistas(categoriasIniciales);
     setCategorias(categoriasIniciales);
+  }
+  const [proveedoresVistos, setProveedoresVistos] = useState(proveedoresIniciales);
+  const [proveedores, setProveedores] = useState(proveedoresIniciales);
+  if (proveedoresIniciales !== proveedoresVistos) {
+    setProveedoresVistos(proveedoresIniciales);
+    setProveedores(proveedoresIniciales);
   }
   const [abierto, setAbierto] = useState(false);
   const [guardando, setGuardando] = useState(false);
@@ -154,6 +166,11 @@ export function FormularioNuevoProducto({
       return;
     }
 
+    if (campos.proveedorSeleccionado === PROVEEDOR_NUEVO && !campos.nombreProveedorNuevo.trim()) {
+      setErrorGeneral("Escribí el nombre del proveedor");
+      return;
+    }
+
     setGuardando(true);
     const supabase = crearClienteNavegador();
 
@@ -180,9 +197,32 @@ export function FormularioNuevoProducto({
         categoriaId = campos.rubroSeleccionado;
       }
 
+      let proveedorId: string | null = null;
+
+      if (campos.proveedorSeleccionado === PROVEEDOR_NUEVO) {
+        const { data: nuevoProveedor, error: errorProveedor } = await supabase
+          .from("proveedores")
+          .insert({ nombre: campos.nombreProveedorNuevo.trim() })
+          .select("id, nombre")
+          .single();
+
+        if (errorProveedor || !nuevoProveedor) {
+          setErrorGeneral("No se pudo crear el proveedor. Probá de nuevo.");
+          return;
+        }
+
+        proveedorId = nuevoProveedor.id;
+        setProveedores((anteriores) =>
+          [...anteriores, nuevoProveedor as Proveedor].sort((a, b) => a.nombre.localeCompare(b.nombre)),
+        );
+      } else if (campos.proveedorSeleccionado) {
+        proveedorId = campos.proveedorSeleccionado;
+      }
+
       const { error: errorProducto } = await supabase.from("productos").insert({
         nombre: datos.nombre.trim(),
         categoria_id: categoriaId,
+        proveedor_id: proveedorId,
         codigo_barras: campos.codigoBarras.trim() || null,
         precio_costo: datos.precioCosto,
         precio_venta: datos.precioVenta,
@@ -252,6 +292,33 @@ export function FormularioNuevoProducto({
               id="nombreRubroNuevo"
               value={campos.nombreRubroNuevo}
               onChange={(evento) => setCampos({ ...campos, nombreRubroNuevo: evento.target.value })}
+            />
+          )}
+
+          <label htmlFor="proveedor" className="flex flex-col gap-1.5 text-sm">
+            <span className="text-texto-suave">Proveedor</span>
+            <select
+              id="proveedor"
+              className={clasesSelect}
+              value={campos.proveedorSeleccionado}
+              onChange={(evento) => setCampos({ ...campos, proveedorSeleccionado: evento.target.value })}
+            >
+              <option value="">Sin proveedor</option>
+              {proveedores.map((proveedor) => (
+                <option key={proveedor.id} value={proveedor.id}>
+                  {proveedor.nombre}
+                </option>
+              ))}
+              <option value={PROVEEDOR_NUEVO}>+ Nuevo proveedor…</option>
+            </select>
+          </label>
+
+          {campos.proveedorSeleccionado === PROVEEDOR_NUEVO && (
+            <Campo
+              etiqueta="Nombre del proveedor nuevo"
+              id="nombreProveedorNuevo"
+              value={campos.nombreProveedorNuevo}
+              onChange={(evento) => setCampos({ ...campos, nombreProveedorNuevo: evento.target.value })}
             />
           )}
 

@@ -63,7 +63,21 @@ que además dejó un movimiento en `movimientos_stock` con
 `tipo = 'ingreso'` para no perder el historial — el stock cargado nunca
 se pisa con un update directo). El botón "Rubros" en la barra superior
 abre alta/renombre/borrado de rubros, con el borrado bloqueado si hay
-productos usando ese rubro.
+productos usando ese rubro. "Proveedores" es lo mismo, sobre la tabla
+`proveedores` (nueva) — ambos paneles son instancias de
+`PanelListaSimple` (`src/componentes/`), el mismo componente genérico.
+Decisión tomada con el cliente sobre `BACKUP.xlsx` (ver más abajo):
+"Familia" del Excel es conceptualmente lo mismo que "Rubro" acá, no una
+tabla aparte; "Género" no se suma.
+
+**Proveedores va a crecer a un módulo propio** (pedido 2026-08-12, no
+construido todavía): ficha por proveedor (contacto, teléfono, etc. —
+falta definir qué campos exactos), ver sus productos al entrar, y un
+botón "Generar pedido" que arma una lista de productos elegidos como
+texto/documento para mandarle al proveedor. Esto es, en la práctica,
+el contenido de **M6 Compras**, hoy `compras: false` en
+`config/cliente.ts` ("Fase 2, fuera del alcance de esta entrega") — al
+cotizar/planificar ese módulo, este pedido ya es parte de su alcance.
 
 **Supuesto sin confirmar con el cliente**: el checkbox "Incluye IVA" de
 la calculadora arranca tildado y usa 21% (`config/cliente.ts`,
@@ -115,3 +129,43 @@ suscripción a Supabase Realtime que lo conecta con la venta en curso.
 - Confirmar si hay cajonera electrónica de verdad (el cliente dijo
   "creo que sí") — no bloquea nada de esta entrega, pero condiciona el
   complemento de impresión en la segunda etapa.
+- `codigo_barras` es `unique` en `productos` (sección siguiente):
+  ¿bloqueamos la importación de una fila sin código real, o el import
+  simplemente la deja sin código (`null`)? Ver el detalle abajo.
+- `Familia` (511 valores distintos en `BACKUP.xlsx`, con duplicados por
+  mayúscula/minúscula tipo `"Varios"`/`"VARIOS"`) se decidió mapear
+  directo a `rubro` en vez de sumar una tabla nueva — falta confirmar
+  con el cliente si esos ~511 valores se importan tal cual (quedarían
+  ~511 rubros) o se agrupan/normalizan antes.
+
+## Excel: import de catálogo y export de reportes (pendiente, sin construir)
+
+Pedido del cliente, con `BACKUP.xlsx` (raíz del repo, no versionado) como
+dato real de referencia: un export de ~2991 productos de su sistema
+anterior. Columnas: `Descripcion`, `Proveedor`, `Codigo de barra`,
+`Familia`, `Costo`, `Codigo` (interno, correlativo del sistema viejo).
+Alcance pedido: import de catálogo (altas masivas a `productos`) y
+export de reportes de Ventas y Caja — probablemente con ExcelJS
+(mencionado como stack en `guia-openspec-gestion-comercial.md`, sección
+4). El import en sí no está implementado todavía; lo que sí ya se
+resolvió, de cara a ese import futuro:
+
+- **`Proveedor` ya tiene tabla propia** (`proveedores`, igual de simple
+  que `categorias`) y su panel de administración/select en los
+  formularios de producto.
+- **`Familia` se decidió tratar como sinónimo de `Rubro`**, no como una
+  clasificación aparte (ver "Preguntas todavía abiertas" arriba para lo
+  que falta confirmar sobre eso). No se agregó "Género".
+
+Sigue pendiente para cuando se construya el import en sí:
+
+- **El 43% de las filas (1290 de 2991) repite código de barras**, pero
+  caso por caso: la inmensa mayoría son placeholders del sistema
+  anterior (`"0"` sola en 1048 filas, más `"11111111"`, `"4444444444"`,
+  etc.), no colisiones reales — son productos pesados/sueltos o
+  cargados sin escanear. La migración de Stock ya tiene
+  `codigo_barras` como `unique`, lo cual es correcto para códigos
+  reales pero **rechazaría de plano un import directo de este archivo**
+  tal cual. El import va a necesitar tratar esos placeholders como "sin
+  código" (`null`, que sí admite múltiples filas bajo `unique`) en vez
+  de copiarlos literalmente. Hay 6 filas más sin `Familia` cargada.

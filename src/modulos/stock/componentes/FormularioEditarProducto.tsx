@@ -9,7 +9,7 @@ import { Campo } from "@/componentes/Campo";
 import { Modal } from "@/componentes/Modal";
 import { validarProducto, type ErroresProducto } from "../consultas/validacion";
 import { calcularGananciaDesdePrecioVenta, calcularPrecioVentaDesdeGanancia } from "../consultas/precios";
-import type { Categoria, Producto } from "../tipos";
+import type { Categoria, Producto, Proveedor } from "../tipos";
 
 // Mismo mecanismo que FormularioNuevoProducto.tsx (costo/%/IVA/venta
 // retroalimentándose, alta de rubro al vuelo) pero editando en vez de
@@ -22,6 +22,7 @@ import type { Categoria, Producto } from "../tipos";
 // FormularioIngresoMercaderia.tsx), nunca por una edición directa.
 
 const RUBRO_NUEVO = "__nuevo__";
+const PROVEEDOR_NUEVO = "__nuevo__";
 const IVA_PORCENTAJE = clienteConfig.reglasNegocio.ivaPorcentaje;
 
 const clasesSelect =
@@ -36,6 +37,8 @@ function estadoDesdeProducto(producto: Producto) {
     nombre: producto.nombre,
     rubroSeleccionado: producto.categoriaId ?? "",
     nombreRubroNuevo: "",
+    proveedorSeleccionado: producto.proveedorId ?? "",
+    nombreProveedorNuevo: "",
     codigoBarras: producto.codigoBarras ?? "",
     precioCosto: String(producto.precioCosto),
     incluyeIva: producto.incluyeIva,
@@ -49,9 +52,11 @@ function estadoDesdeProducto(producto: Producto) {
 export function FormularioEditarProducto({
   producto,
   categoriasIniciales,
+  proveedoresIniciales,
 }: {
   producto: Producto;
   categoriasIniciales: Categoria[];
+  proveedoresIniciales: Proveedor[];
 }) {
   const router = useRouter();
   // "Adjusting state when a prop changes" (react.dev): setState durante
@@ -62,6 +67,12 @@ export function FormularioEditarProducto({
   if (categoriasIniciales !== categoriasVistas) {
     setCategoriasVistas(categoriasIniciales);
     setCategorias(categoriasIniciales);
+  }
+  const [proveedoresVistos, setProveedoresVistos] = useState(proveedoresIniciales);
+  const [proveedores, setProveedores] = useState(proveedoresIniciales);
+  if (proveedoresIniciales !== proveedoresVistos) {
+    setProveedoresVistos(proveedoresIniciales);
+    setProveedores(proveedoresIniciales);
   }
 
   const [abierto, setAbierto] = useState(false);
@@ -153,6 +164,11 @@ export function FormularioEditarProducto({
       return;
     }
 
+    if (campos.proveedorSeleccionado === PROVEEDOR_NUEVO && !campos.nombreProveedorNuevo.trim()) {
+      setErrorGeneral("Escribí el nombre del proveedor");
+      return;
+    }
+
     setGuardando(true);
     const supabase = crearClienteNavegador();
 
@@ -179,11 +195,34 @@ export function FormularioEditarProducto({
         categoriaId = campos.rubroSeleccionado;
       }
 
+      let proveedorId: string | null = null;
+
+      if (campos.proveedorSeleccionado === PROVEEDOR_NUEVO) {
+        const { data: nuevoProveedor, error: errorProveedor } = await supabase
+          .from("proveedores")
+          .insert({ nombre: campos.nombreProveedorNuevo.trim() })
+          .select("id, nombre")
+          .single();
+
+        if (errorProveedor || !nuevoProveedor) {
+          setErrorGeneral("No se pudo crear el proveedor. Probá de nuevo.");
+          return;
+        }
+
+        proveedorId = nuevoProveedor.id;
+        setProveedores((anteriores) =>
+          [...anteriores, nuevoProveedor as Proveedor].sort((a, b) => a.nombre.localeCompare(b.nombre)),
+        );
+      } else if (campos.proveedorSeleccionado) {
+        proveedorId = campos.proveedorSeleccionado;
+      }
+
       const { error: errorProducto } = await supabase
         .from("productos")
         .update({
           nombre: datos.nombre.trim(),
           categoria_id: categoriaId,
+          proveedor_id: proveedorId,
           codigo_barras: campos.codigoBarras.trim() || null,
           precio_costo: datos.precioCosto,
           precio_venta: datos.precioVenta,
@@ -256,6 +295,33 @@ export function FormularioEditarProducto({
               id={`nombreRubroNuevo-${producto.id}`}
               value={campos.nombreRubroNuevo}
               onChange={(evento) => setCampos({ ...campos, nombreRubroNuevo: evento.target.value })}
+            />
+          )}
+
+          <label htmlFor={`proveedor-${producto.id}`} className="flex flex-col gap-1.5 text-sm">
+            <span className="text-texto-suave">Proveedor</span>
+            <select
+              id={`proveedor-${producto.id}`}
+              className={clasesSelect}
+              value={campos.proveedorSeleccionado}
+              onChange={(evento) => setCampos({ ...campos, proveedorSeleccionado: evento.target.value })}
+            >
+              <option value="">Sin proveedor</option>
+              {proveedores.map((proveedor) => (
+                <option key={proveedor.id} value={proveedor.id}>
+                  {proveedor.nombre}
+                </option>
+              ))}
+              <option value={PROVEEDOR_NUEVO}>+ Nuevo proveedor…</option>
+            </select>
+          </label>
+
+          {campos.proveedorSeleccionado === PROVEEDOR_NUEVO && (
+            <Campo
+              etiqueta="Nombre del proveedor nuevo"
+              id={`nombreProveedorNuevo-${producto.id}`}
+              value={campos.nombreProveedorNuevo}
+              onChange={(evento) => setCampos({ ...campos, nombreProveedorNuevo: evento.target.value })}
             />
           )}
 

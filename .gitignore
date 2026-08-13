@@ -37,6 +37,11 @@ yarn-error.log*
 # vercel
 .vercel
 
+# datos reales del cliente (catálogo, backups) — nunca al repo
+BACKUP.xlsx
+*.xlsx
+!**/ejemplo*.xlsx
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

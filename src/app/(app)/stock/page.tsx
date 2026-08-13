@@ -1,16 +1,18 @@
 import { BarraSuperior } from "@/componentes/BarraSuperior";
 import { EstadoVacio } from "@/componentes/EstadoVacio";
 import { crearClienteServidor } from "@/lib/supabase/servidor";
-import { listarCategorias, listarProductos } from "@/modulos/stock/consultas/productos";
+import { listarCategorias, listarProductos, listarProveedores } from "@/modulos/stock/consultas/productos";
 import { FormularioNuevoProducto } from "@/modulos/stock/componentes/FormularioNuevoProducto";
 import { ListaProductos } from "@/modulos/stock/componentes/ListaProductos";
 import { PanelRubros } from "@/modulos/stock/componentes/PanelRubros";
+import { PanelProveedores } from "@/modulos/stock/componentes/PanelProveedores";
 
 export default async function PaginaStock() {
   const supabase = await crearClienteServidor();
-  const [productos, categorias] = await Promise.all([
+  const [productos, categorias, proveedores] = await Promise.all([
     listarProductos(supabase),
     listarCategorias(supabase),
+    listarProveedores(supabase),
   ]);
 
   return (
@@ -18,7 +20,8 @@ export default async function PaginaStock() {
       <BarraSuperior titulo="Stock">
         <div className="flex items-center gap-2">
           <PanelRubros categoriasIniciales={categorias} />
-          <FormularioNuevoProducto categoriasIniciales={categorias} />
+          <PanelProveedores proveedoresIniciales={proveedores} />
+          <FormularioNuevoProducto categoriasIniciales={categorias} proveedoresIniciales={proveedores} />
         </div>
       </BarraSuperior>
       <main className="flex-1 p-4 md:p-6">
@@ -28,7 +31,7 @@ export default async function PaginaStock() {
             descripcion="Ingresá mercadería con su precio, código de barras y stock mínimo para empezar a vender."
           />
         ) : (
-          <ListaProductos productos={productos} categorias={categorias} />
+          <ListaProductos productos={productos} categorias={categorias} proveedores={proveedores} />
         )}
       </main>
     </>
