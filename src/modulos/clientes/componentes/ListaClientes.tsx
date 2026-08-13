@@ -10,7 +10,13 @@ const platita = new Intl.NumberFormat("es-AR", { style: "currency", currency: "A
 const clasesFiltro =
   "rounded-[var(--radius-base)] border border-linea bg-superficie px-3 py-1.5 text-sm text-texto outline-none focus-visible:border-acento focus-visible:ring-2 focus-visible:ring-acento/40";
 
-export function ListaClientes({ clientes }: { clientes: Cliente[] }) {
+export function ListaClientes({
+  clientes,
+  turnoCajaId,
+}: {
+  clientes: Cliente[];
+  turnoCajaId: string | null;
+}) {
   const [busqueda, setBusqueda] = useState("");
 
   const totalFiado = useMemo(
@@ -84,7 +90,7 @@ export function ListaClientes({ clientes }: { clientes: Cliente[] }) {
                   </td>
                   <td className="px-2.5 py-1.5">
                     <div className="flex items-center justify-end gap-3">
-                      <PanelCuentaCorriente cliente={cliente} />
+                      <PanelCuentaCorriente cliente={cliente} turnoCajaId={turnoCajaId} />
                       <FormularioEditarCliente cliente={cliente} />
                     </div>
                   </td>

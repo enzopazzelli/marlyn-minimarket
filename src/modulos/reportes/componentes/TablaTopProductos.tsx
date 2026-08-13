@@ -21,6 +21,7 @@ export function TablaTopProductos({ productos }: { productos: ResumenDia["topPro
               <div className="relative flex items-center justify-between gap-3 px-3 py-2 text-sm">
                 <span className="text-texto">
                   <span className="numero text-texto-suave">{indice + 1}.</span> {producto.nombre}
+                  {producto.eliminado && <span className="text-texto-suave"> [Eliminado]</span>}
                 </span>
                 <span className="numero shrink-0 text-texto-suave">
                   {producto.cantidad} u · {platita.format(producto.subtotal)}

@@ -30,6 +30,7 @@ export type ItemVentaFiada = {
   nombre: string;
   cantidad: number;
   precioUnitario: number;
+  eliminado: boolean;
 };
 
 export type MovimientoCuentaCorrienteDetallado = MovimientoCuentaCorriente & {
@@ -50,7 +51,7 @@ type FilaMovimiento = {
     ventas_items: {
       cantidad: number | string;
       precio_unitario: number | string;
-      productos: { nombre: string } | null;
+      productos: { nombre: string; activo: boolean } | null;
     }[];
   } | null;
 };
@@ -65,7 +66,7 @@ export async function listarMovimientosCuentaCorriente(
   const { data, error } = await supabase
     .from("movimientos_cuenta_corriente")
     .select(
-      "id, cliente_id, venta_id, tipo, monto, nota, creado_en, ventas(numero, ventas_items(cantidad, precio_unitario, productos(nombre)))",
+      "id, cliente_id, venta_id, tipo, monto, nota, creado_en, ventas(numero, ventas_items(cantidad, precio_unitario, productos(nombre, activo)))",
     )
     .eq("cliente_id", clienteId)
     .order("creado_en", { ascending: false });
@@ -85,6 +86,7 @@ export async function listarMovimientosCuentaCorriente(
       nombre: item.productos?.nombre ?? "Producto eliminado",
       cantidad: Number(item.cantidad),
       precioUnitario: Number(item.precio_unitario),
+      eliminado: item.productos === null || !item.productos.activo,
     })),
   }));
 }

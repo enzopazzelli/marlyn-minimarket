@@ -6,21 +6,24 @@ import { crearClienteNavegador } from "@/lib/supabase/cliente";
 import type { Producto } from "@/modulos/stock/tipos";
 import { calcularResumenDelDia, hoyISO } from "../consultas/calculos";
 import { obtenerVentasDelDia } from "../consultas/reportes";
-import type { ResumenDia } from "../tipos";
+import type { ResumenDia, VentaReporte } from "../tipos";
 import { BotonExportarExcel } from "./BotonExportarExcel";
 import { FilaKpis } from "./FilaKpis";
 import { GraficoMedioPago } from "./GraficoMedioPago";
 import { GraficoVentasPorHora } from "./GraficoVentasPorHora";
 import { PanelAlertasStock } from "./PanelAlertasStock";
+import { TablaDetalleVentas } from "./TablaDetalleVentas";
 import { TablaTopProductos } from "./TablaTopProductos";
 
 export function PanelReportes({
   fechaInicial,
   resumenInicial,
+  ventasIniciales,
   productos,
 }: {
   fechaInicial: string;
   resumenInicial: ResumenDia;
+  ventasIniciales: VentaReporte[];
   productos: Producto[];
 }) {
   // "Adjusting state when a prop changes" (mismo patrón que
@@ -30,10 +33,12 @@ export function PanelReportes({
   const [fechaInicialVista, setFechaInicialVista] = useState(fechaInicial);
   const [fecha, setFecha] = useState(fechaInicial);
   const [resumen, setResumen] = useState(resumenInicial);
+  const [ventas, setVentas] = useState(ventasIniciales);
   if (fechaInicial !== fechaInicialVista) {
     setFechaInicialVista(fechaInicial);
     setFecha(fechaInicial);
     setResumen(resumenInicial);
+    setVentas(ventasIniciales);
   }
 
   const [cargando, setCargando] = useState(false);
@@ -46,8 +51,9 @@ export function PanelReportes({
     setError(null);
     try {
       const supabase = crearClienteNavegador();
-      const ventas = await obtenerVentasDelDia(supabase, nuevaFecha);
-      setResumen(calcularResumenDelDia(ventas));
+      const ventasNuevas = await obtenerVentasDelDia(supabase, nuevaFecha);
+      setVentas(ventasNuevas);
+      setResumen(calcularResumenDelDia(ventasNuevas));
     } catch {
       setError("No se pudo cargar ese día. Probá de nuevo.");
     } finally {
@@ -66,7 +72,7 @@ export function PanelReportes({
           max={hoyISO()}
           onChange={(evento) => cambiarFecha(evento.target.value)}
         />
-        <BotonExportarExcel fecha={fecha} resumen={resumen} />
+        <BotonExportarExcel fecha={fecha} resumen={resumen} ventas={ventas} />
       </div>
 
       {error && (
@@ -85,6 +91,8 @@ export function PanelReportes({
           <TablaTopProductos productos={resumen.topProductos} />
           <PanelAlertasStock productos={productos} />
         </div>
+
+        <TablaDetalleVentas ventas={ventas} />
       </div>
     </div>
   );

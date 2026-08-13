@@ -18,7 +18,12 @@ export default async function PaginaReportes() {
     <>
       <BarraSuperior titulo="Reportes" />
       <main className="flex-1 p-4 md:p-6">
-        <PanelReportes fechaInicial={fecha} resumenInicial={calcularResumenDelDia(ventas)} productos={productos} />
+        <PanelReportes
+          fechaInicial={fecha}
+          resumenInicial={calcularResumenDelDia(ventas)}
+          ventasIniciales={ventas}
+          productos={productos}
+        />
       </main>
     </>
   );

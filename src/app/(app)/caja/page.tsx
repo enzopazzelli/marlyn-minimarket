@@ -1,9 +1,10 @@
 import { BarraSuperior } from "@/componentes/BarraSuperior";
 import { ChipCaja } from "@/componentes/ChipCaja";
 import { crearClienteServidor } from "@/lib/supabase/servidor";
-import { buscarTurnoAbierto, calcularEfectivoEsperado } from "@/modulos/caja/consultas/caja";
+import { buscarTurnoAbierto, calcularEfectivoEsperado, listarMovimientosCaja } from "@/modulos/caja/consultas/caja";
 import { FormularioAbrirCaja } from "@/modulos/caja/componentes/FormularioAbrirCaja";
 import { FormularioCerrarCaja } from "@/modulos/caja/componentes/FormularioCerrarCaja";
+import { ListaMovimientosCaja } from "@/modulos/caja/componentes/ListaMovimientosCaja";
 import { listarVentasDelTurno } from "@/modulos/ventas/consultas/ventas";
 import { ListaVentasDelTurno } from "@/modulos/ventas/componentes/ListaVentasDelTurno";
 
@@ -40,9 +41,10 @@ async function TurnoAbierto({
   supabase: Awaited<ReturnType<typeof crearClienteServidor>>;
   turno: NonNullable<Awaited<ReturnType<typeof buscarTurnoAbierto>>>;
 }) {
-  const [montoCalculado, ventas] = await Promise.all([
+  const [montoCalculado, ventas, movimientos] = await Promise.all([
     calcularEfectivoEsperado(supabase, turno.id, turno.montoApertura),
     listarVentasDelTurno(supabase, turno.id),
+    listarMovimientosCaja(supabase, turno.id),
   ]);
 
   return (
@@ -59,6 +61,8 @@ async function TurnoAbierto({
       </div>
 
       <ListaVentasDelTurno ventas={ventas} />
+
+      <ListaMovimientosCaja movimientos={movimientos} />
 
       <p className="text-xs text-texto-suave">
         Retiros/ingresos manuales de caja quedan para un próximo cambio.

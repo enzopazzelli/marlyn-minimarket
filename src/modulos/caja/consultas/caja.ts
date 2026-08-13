@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { TurnoCaja } from "../tipos";
+import type { MovimientoCaja, TurnoCaja } from "../tipos";
 
 type FilaTurno = {
   id: string;
@@ -63,4 +63,35 @@ export async function calcularEfectivoEsperado(
   }, 0);
 
   return montoApertura + neto;
+}
+
+type FilaMovimientoCaja = {
+  id: string;
+  turno_id: string;
+  tipo: MovimientoCaja["tipo"];
+  monto: number | string;
+  motivo: string;
+  creado_en: string;
+};
+
+// El detalle de calcularEfectivoEsperado, para poder verlo: cada venta
+// en efectivo ("Venta #N") y, desde esta migración, cada pago de cuenta
+// corriente cobrado en efectivo ("Pago cta. cte. — Nombre").
+export async function listarMovimientosCaja(supabase: SupabaseClient, turnoId: string): Promise<MovimientoCaja[]> {
+  const { data, error } = await supabase
+    .from("movimientos_caja")
+    .select("id, turno_id, tipo, monto, motivo, creado_en")
+    .eq("turno_id", turnoId)
+    .order("creado_en", { ascending: false });
+
+  if (error) throw error;
+
+  return ((data ?? []) as FilaMovimientoCaja[]).map((fila) => ({
+    id: fila.id,
+    turnoId: fila.turno_id,
+    tipo: fila.tipo,
+    monto: Number(fila.monto),
+    motivo: fila.motivo,
+    creadoEn: fila.creado_en,
+  }));
 }

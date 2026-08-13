@@ -22,8 +22,8 @@ const fuenteNumero = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Mini Market Merlyn",
-  description: "Sistema de gestión — Mini Market Merlyn",
+  title: "Mini Market Marlyn",
+  description: "Sistema de gestión — Mini Market Marlyn",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

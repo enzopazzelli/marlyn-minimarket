@@ -1,10 +1,10 @@
-// Configuración propia de Mini Market Merlyn. Apagar un módulo acá debe
+// Configuración propia de Mini Market Marlyn. Apagar un módulo acá debe
 // ocultar su navegación, sus rutas y sus permisos, sin borrar código.
 // Ver prompt-base-sistemas-gestion.md, sección 2, "Reglas de modularidad".
 
 export const clienteConfig = {
   comercio: {
-    nombre: "Mini Market Merlyn",
+    nombre: "Mini Market Marlyn",
     rubro: "Minimarket / despensa",
   },
 

@@ -3,6 +3,7 @@ import { EstadoVacio } from "@/componentes/EstadoVacio";
 import { crearClienteServidor } from "@/lib/supabase/servidor";
 import { listarCategorias, listarProductos } from "@/modulos/stock/consultas/productos";
 import { listarProveedores } from "@/modulos/proveedores/consultas/proveedores";
+import { FormularioImportarExcel } from "@/modulos/stock/componentes/FormularioImportarExcel";
 import { FormularioNuevoProducto } from "@/modulos/stock/componentes/FormularioNuevoProducto";
 import { ListaProductos } from "@/modulos/stock/componentes/ListaProductos";
 import { PanelRubros } from "@/modulos/stock/componentes/PanelRubros";
@@ -22,6 +23,7 @@ export default async function PaginaStock() {
         <div className="flex items-center gap-2">
           <PanelRubros categoriasIniciales={categorias} />
           <PanelProveedores proveedoresIniciales={proveedores} />
+          <FormularioImportarExcel categorias={categorias} proveedores={proveedores} productos={productos} />
           <FormularioNuevoProducto categoriasIniciales={categorias} proveedoresIniciales={proveedores} />
         </div>
       </BarraSuperior>

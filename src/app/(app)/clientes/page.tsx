@@ -1,13 +1,20 @@
 import { BarraSuperior } from "@/componentes/BarraSuperior";
 import { EstadoVacio } from "@/componentes/EstadoVacio";
 import { crearClienteServidor } from "@/lib/supabase/servidor";
+import { buscarTurnoAbierto } from "@/modulos/caja/consultas/caja";
 import { listarClientes } from "@/modulos/clientes/consultas/clientes";
 import { FormularioNuevoCliente } from "@/modulos/clientes/componentes/FormularioNuevoCliente";
 import { ListaClientes } from "@/modulos/clientes/componentes/ListaClientes";
 
 export default async function PaginaClientes() {
   const supabase = await crearClienteServidor();
-  const clientes = await listarClientes(supabase);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const [clientes, turno] = await Promise.all([
+    listarClientes(supabase),
+    user ? buscarTurnoAbierto(supabase, user.id) : Promise.resolve(null),
+  ]);
 
   return (
     <>
@@ -21,7 +28,7 @@ export default async function PaginaClientes() {
             descripcion="Sumá una ficha para poder vender fiado y llevarle la cuenta corriente."
           />
         ) : (
-          <ListaClientes clientes={clientes} />
+          <ListaClientes clientes={clientes} turnoCajaId={turno?.id ?? null} />
         )}
       </main>
     </>

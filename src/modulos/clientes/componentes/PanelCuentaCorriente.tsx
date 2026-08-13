@@ -21,7 +21,13 @@ const etiquetaTipo: Record<MovimientoCuentaCorrienteDetallado["tipo"], string> =
   recargo: "Recargo",
 };
 
-export function PanelCuentaCorriente({ cliente }: { cliente: Cliente }) {
+export function PanelCuentaCorriente({
+  cliente,
+  turnoCajaId,
+}: {
+  cliente: Cliente;
+  turnoCajaId: string | null;
+}) {
   const router = useRouter();
   // Saldo llevado en estado local, no leído directo de `cliente` en
   // cada render: aplicar recargo y registrar pago son dos acciones que
@@ -43,6 +49,7 @@ export function PanelCuentaCorriente({ cliente }: { cliente: Cliente }) {
   const [cargando, setCargando] = useState(false);
   const [porcentajeRecargo, setPorcentajeRecargo] = useState("0");
   const [montoPago, setMontoPago] = useState("");
+  const [medioPago, setMedioPago] = useState<"efectivo" | "transferencia">("efectivo");
   const [ocupado, setOcupado] = useState<"recargo" | "pago" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -63,6 +70,7 @@ export function PanelCuentaCorriente({ cliente }: { cliente: Cliente }) {
     setSaldoActual(cliente.saldoCuentaCorriente);
     setPorcentajeRecargo("0");
     setMontoPago(cliente.saldoCuentaCorriente > 0 ? String(cliente.saldoCuentaCorriente) : "");
+    setMedioPago("efectivo");
     setError(null);
     setAbierto(true);
     cargarMovimientos();
@@ -123,6 +131,10 @@ export function PanelCuentaCorriente({ cliente }: { cliente: Cliente }) {
       setError("El pago no puede ser mayor a lo que debe");
       return;
     }
+    if (medioPago === "efectivo" && !turnoCajaId) {
+      setError("Necesitás la caja abierta para cobrar en efectivo");
+      return;
+    }
 
     setOcupado("pago");
     const supabase = crearClienteNavegador();
@@ -130,6 +142,8 @@ export function PanelCuentaCorriente({ cliente }: { cliente: Cliente }) {
       p_cliente_id: cliente.id,
       p_tipo: "pago",
       p_monto: monto,
+      p_medio: medioPago,
+      p_turno_caja_id: medioPago === "efectivo" ? turnoCajaId : null,
     });
     setOcupado(null);
 
@@ -195,7 +209,8 @@ export function PanelCuentaCorriente({ cliente }: { cliente: Cliente }) {
                       <ul className="mt-1 pl-4 text-xs text-texto-suave">
                         {movimiento.items.map((item, indice) => (
                           <li key={indice}>
-                            {item.cantidad} × {item.nombre} — {platita.format(item.precioUnitario)}
+                            {item.cantidad} × {item.nombre}
+                            {item.eliminado && " [Eliminado]"} — {platita.format(item.precioUnitario)}
                           </li>
                         ))}
                       </ul>
@@ -236,6 +251,25 @@ export function PanelCuentaCorriente({ cliente }: { cliente: Cliente }) {
 
           <div className="flex flex-col gap-2 rounded-[var(--radius-base)] border border-linea p-3">
             <p className="text-xs font-medium uppercase tracking-wide text-texto-suave">Registrar pago</p>
+            <div className="flex gap-1.5">
+              {(["efectivo", "transferencia"] as const).map((medio) => (
+                <button
+                  key={medio}
+                  type="button"
+                  onClick={() => setMedioPago(medio)}
+                  className={`flex-1 rounded-[var(--radius-base)] border px-2 py-1.5 text-xs font-semibold capitalize ${
+                    medioPago === medio
+                      ? "border-marco bg-marco text-white"
+                      : "border-linea bg-superficie text-texto hover:border-marco"
+                  }`}
+                >
+                  {medio}
+                </button>
+              ))}
+            </div>
+            {medioPago === "efectivo" && !turnoCajaId && (
+              <p className="text-xs text-alerta">Necesitás la caja abierta para cobrar en efectivo.</p>
+            )}
             <div className="flex items-end gap-2">
               <div className="flex-1">
                 <Campo
@@ -249,7 +283,12 @@ export function PanelCuentaCorriente({ cliente }: { cliente: Cliente }) {
                   className="font-[family-name:var(--font-numero)]"
                 />
               </div>
-              <Boton type="button" variante="confirmar" disabled={ocupado !== null} onClick={registrarPago}>
+              <Boton
+                type="button"
+                variante="confirmar"
+                disabled={ocupado !== null || (medioPago === "efectivo" && !turnoCajaId)}
+                onClick={registrarPago}
+              >
                 Cobrar
               </Boton>
             </div>

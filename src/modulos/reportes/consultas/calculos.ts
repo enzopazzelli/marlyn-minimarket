@@ -97,10 +97,15 @@ function calcularDistribucionMedioPago(
 }
 
 function calcularTopProductos(ventas: VentaReporte[]): ResumenDia["topProductos"] {
-  const porProducto = new Map<string, { nombre: string; cantidad: number; subtotal: number }>();
+  const porProducto = new Map<string, { nombre: string; cantidad: number; subtotal: number; eliminado: boolean }>();
   for (const venta of ventas) {
     for (const item of venta.items) {
-      const acumulado = porProducto.get(item.productoId) ?? { nombre: item.nombre, cantidad: 0, subtotal: 0 };
+      const acumulado = porProducto.get(item.productoId) ?? {
+        nombre: item.nombre,
+        cantidad: 0,
+        subtotal: 0,
+        eliminado: item.eliminado,
+      };
       acumulado.cantidad += item.cantidad;
       acumulado.subtotal = redondear(acumulado.subtotal + item.cantidad * item.precioUnitario);
       porProducto.set(item.productoId, acumulado);

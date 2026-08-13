@@ -11,8 +11,11 @@ describe("hoyISO", () => {
 function venta(datos: Partial<VentaReporte>): VentaReporte {
   return {
     id: "v1",
+    numero: 1,
     total: 0,
     creadoEn: "2026-08-13T12:00:00.000Z",
+    clienteId: null,
+    clienteNombre: null,
     items: [],
     pagos: [],
     ...datos,
@@ -60,15 +63,33 @@ describe("calcularResumenDelDia", () => {
   it("un producto vendido en dos ventas distintas se suma en el top", () => {
     const ventas = [
       venta({
-        items: [{ productoId: "p1", nombre: "Yerba", cantidad: 2, precioUnitario: 5000, precioCosto: 3000 }],
+        items: [
+          { productoId: "p1", nombre: "Yerba", cantidad: 2, precioUnitario: 5000, precioCosto: 3000, eliminado: false },
+        ],
       }),
       venta({
-        items: [{ productoId: "p1", nombre: "Yerba", cantidad: 3, precioUnitario: 5000, precioCosto: 3000 }],
+        items: [
+          { productoId: "p1", nombre: "Yerba", cantidad: 3, precioUnitario: 5000, precioCosto: 3000, eliminado: false },
+        ],
       }),
     ];
     const resumen = calcularResumenDelDia(ventas);
-    expect(resumen.topProductos).toEqual([{ productoId: "p1", nombre: "Yerba", cantidad: 5, subtotal: 25000 }]);
+    expect(resumen.topProductos).toEqual([
+      { productoId: "p1", nombre: "Yerba", cantidad: 5, subtotal: 25000, eliminado: false },
+    ]);
     expect(resumen.margenBruto).toBe(10000); // (5000-3000) * 5
+  });
+
+  it("arrastra 'eliminado' del producto al top", () => {
+    const ventas = [
+      venta({
+        items: [
+          { productoId: "p2", nombre: "Mani suelto", cantidad: 1, precioUnitario: 100, precioCosto: 50, eliminado: true },
+        ],
+      }),
+    ];
+    const resumen = calcularResumenDelDia(ventas);
+    expect(resumen.topProductos[0].eliminado).toBe(true);
   });
 
   it("pago mixto dentro de una venta reparte la distribución por medio", () => {

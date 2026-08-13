@@ -4,6 +4,10 @@ export type ItemVentaReporte = {
   cantidad: number;
   precioUnitario: number;
   precioCosto: number;
+  // El producto ya no existe en el catálogo activo (borrado con ventas
+  // encima, ver eliminarProducto.ts) — el nombre se conserva igual,
+  // esto solo marca que ya no se puede volver a vender.
+  eliminado: boolean;
 };
 
 export type PagoVentaReporte = {
@@ -14,8 +18,11 @@ export type PagoVentaReporte = {
 
 export type VentaReporte = {
   id: string;
+  numero: number;
   total: number;
   creadoEn: string;
+  clienteId: string | null;
+  clienteNombre: string | null;
   items: ItemVentaReporte[];
   pagos: PagoVentaReporte[];
 };
@@ -27,5 +34,5 @@ export type ResumenDia = {
   margenBruto: number;
   ventasPorHora: { hora: number; total: number }[];
   distribucionMedioPago: { medio: string; monto: number; porcentaje: number }[];
-  topProductos: { productoId: string; nombre: string; cantidad: number; subtotal: number }[];
+  topProductos: { productoId: string; nombre: string; cantidad: number; subtotal: number; eliminado: boolean }[];
 };

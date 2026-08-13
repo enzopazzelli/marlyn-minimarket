@@ -14,6 +14,13 @@ import {
 import type { Cliente } from "@/modulos/clientes/tipos";
 import type { Producto } from "@/modulos/stock/tipos";
 import type { ItemCarrito, MedioPago, PagoCarrito } from "../tipos";
+import { FilaCarritoItem } from "./FilaCarritoItem";
+
+const ETIQUETA_UNIDAD: Record<Producto["unidad"], string> = {
+  unidad: "unidades",
+  kg: "kg",
+  litro: "L",
+};
 
 const platita = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" });
 const CLAVE_SESSION = "ventas-carritos-en-curso";
@@ -142,7 +149,7 @@ export function PanelVentas({
     const yaCargadas = enCarrito?.cantidad ?? 0;
 
     if (yaCargadas + 1 > producto.stockActual) {
-      setError(`Quedan ${producto.stockActual} unidades de ${producto.nombre}`);
+      setError(`Quedan ${producto.stockActual} ${ETIQUETA_UNIDAD[producto.unidad]} de ${producto.nombre}`);
       return;
     }
 
@@ -183,12 +190,35 @@ export function PanelVentas({
     actualizarCarritoActivo({ items });
   }
 
+  // Para productos por kg/litro: la cantidad se edita directa (no hay
+  // un "−" natural que llegue a 0), así que sacar la fila es una acción
+  // aparte (quitarProducto) en vez de decrementar hasta cero.
+  function cambiarCantidadExacta(productoId: string, cantidad: number) {
+    const producto = productos.find((p) => p.id === productoId);
+    if (!producto) return;
+
+    if (cantidad > producto.stockActual) {
+      setError(`Quedan ${producto.stockActual} ${ETIQUETA_UNIDAD[producto.unidad]} de ${producto.nombre}`);
+      return;
+    }
+
+    const items = carritoActivo.items.map((item) =>
+      item.productoId === productoId ? { ...item, cantidad } : item,
+    );
+    actualizarCarritoActivo({ items });
+  }
+
+  function quitarProducto(productoId: string) {
+    const items = carritoActivo.items.filter((item) => item.productoId !== productoId);
+    actualizarCarritoActivo({ items });
+  }
+
   function leerCodigo(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault();
     const codigo = codigoLector.trim();
     if (!codigo) return;
 
-    const producto = productos.find((p) => p.codigoBarras === codigo);
+    const producto = productos.find((p) => p.activo && p.codigoBarras === codigo);
     if (!producto) {
       setError("No hay ningún producto con ese código");
       return;
@@ -202,9 +232,10 @@ export function PanelVentas({
     return productos
       .filter(
         (producto) =>
-          !termino ||
-          producto.nombre.toLowerCase().includes(termino) ||
-          (producto.codigoBarras ?? "").includes(termino),
+          producto.activo &&
+          (!termino ||
+            producto.nombre.toLowerCase().includes(termino) ||
+            (producto.codigoBarras ?? "").includes(termino)),
       )
       .slice(0, 12);
   }, [productos, busqueda]);
@@ -442,36 +473,14 @@ export function PanelVentas({
                 </p>
               ) : (
                 carritoActivo.items.map((item) => (
-                  <div key={item.productoId} className="border-b border-linea px-4 py-2.5 last:border-b-0">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <p className="text-sm font-semibold text-texto">{item.nombre}</p>
-                        <p className="numero text-xs text-texto-suave">{platita.format(item.precioUnitario)} c/u</p>
-                      </div>
-                      <p className="numero text-sm font-semibold text-texto">
-                        {platita.format(item.cantidad * item.precioUnitario)}
-                      </p>
-                    </div>
-                    <div className="mt-1.5 flex items-center justify-end gap-1.5">
-                      <button
-                        type="button"
-                        aria-label="Quitar una unidad"
-                        onClick={() => cambiarCantidad(item.productoId, -1)}
-                        className="numero h-6 w-6 rounded border border-linea text-sm hover:bg-fondo"
-                      >
-                        −
-                      </button>
-                      <span className="numero min-w-[20px] text-center text-sm">{item.cantidad}</span>
-                      <button
-                        type="button"
-                        aria-label="Sumar una unidad"
-                        onClick={() => cambiarCantidad(item.productoId, 1)}
-                        className="numero h-6 w-6 rounded border border-linea text-sm hover:bg-fondo"
-                      >
-                        +
-                      </button>
-                    </div>
-                  </div>
+                  <FilaCarritoItem
+                    key={item.productoId}
+                    item={item}
+                    producto={productos.find((producto) => producto.id === item.productoId)}
+                    onCambiarPaso={(delta) => cambiarCantidad(item.productoId, delta)}
+                    onCambiarCantidadExacta={(cantidad) => cambiarCantidadExacta(item.productoId, cantidad)}
+                    onQuitar={() => quitarProducto(item.productoId)}
+                  />
                 ))
               )}
             </div>
@@ -524,6 +533,7 @@ export function PanelVentas({
                     placeholder={String(total)}
                     value={carritoActivo.pagaCon}
                     onChange={(evento) => actualizarCarritoActivo({ pagaCon: evento.target.value })}
+                    onFocus={(evento) => evento.currentTarget.select()}
                     className={`${clasesFiltro} numero w-full`}
                   />
                   {carritoActivo.pagaCon && vuelto >= 0 && Number(carritoActivo.pagaCon) >= total && (
@@ -547,6 +557,7 @@ export function PanelVentas({
                     step="1"
                     value={carritoActivo.montoMixtoEfectivo}
                     onChange={(evento) => actualizarCarritoActivo({ montoMixtoEfectivo: evento.target.value })}
+                    onFocus={(evento) => evento.currentTarget.select()}
                     className={`${clasesFiltro} numero w-full`}
                   />
                 </div>

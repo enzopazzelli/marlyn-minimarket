@@ -1,7 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Boton } from "@/componentes/Boton";
 import { Insignia } from "@/componentes/Insignia";
+import { crearClienteNavegador } from "@/lib/supabase/cliente";
+import { BotonEliminarProducto } from "./BotonEliminarProducto";
+import { eliminarProducto } from "../consultas/eliminarProducto";
 import { FormularioEditarProducto } from "./FormularioEditarProducto";
 import { FormularioIngresoMercaderia } from "./FormularioIngresoMercaderia";
 import type { Categoria, Producto, Proveedor } from "../tipos";
@@ -22,10 +27,21 @@ export function ListaProductos({
   categorias: Categoria[];
   proveedores: Proveedor[];
 }) {
+  const router = useRouter();
   const [busqueda, setBusqueda] = useState("");
   const [rubroId, setRubroId] = useState("");
   const [proveedorId, setProveedorId] = useState("");
   const [estado, setEstado] = useState<FiltroEstado>("todos");
+
+  // "Eliminado" (activo = false) deja de ser parte del catálogo activo
+  // — no se lista acá ni se puede vender, pero la fila sigue en la
+  // base porque tiene ventas/movimientos de stock que la referencian.
+  const productosActivos = useMemo(() => productos.filter((producto) => producto.activo), [productos]);
+
+  const [modoSeleccion, setModoSeleccion] = useState(false);
+  const [seleccionados, setSeleccionados] = useState<Set<string>>(new Set());
+  const [eliminandoSeleccion, setEliminandoSeleccion] = useState(false);
+  const [resultadoSeleccion, setResultadoSeleccion] = useState<string | null>(null);
 
   const nombrePorCategoria = useMemo(
     () => new Map(categorias.map((categoria) => [categoria.id, categoria.nombre])),
@@ -33,14 +49,14 @@ export function ListaProductos({
   );
 
   const paraReponer = useMemo(
-    () => productos.filter((producto) => producto.stockActual <= producto.stockMinimo),
-    [productos],
+    () => productosActivos.filter((producto) => producto.stockActual <= producto.stockMinimo),
+    [productosActivos],
   );
 
   const filtrados = useMemo(() => {
     const termino = busqueda.trim().toLowerCase();
 
-    return productos.filter((producto) => {
+    return productosActivos.filter((producto) => {
       const rubro = producto.categoriaId ? (nombrePorCategoria.get(producto.categoriaId) ?? "") : "";
       const coincideBusqueda =
         !termino ||
@@ -56,7 +72,63 @@ export function ListaProductos({
 
       return coincideBusqueda && coincideRubro && coincideProveedor && coincideEstado;
     });
-  }, [productos, busqueda, rubroId, proveedorId, estado, nombrePorCategoria]);
+  }, [productosActivos, busqueda, rubroId, proveedorId, estado, nombrePorCategoria]);
+
+  function activarModoSeleccion() {
+    setSeleccionados(new Set());
+    setResultadoSeleccion(null);
+    setModoSeleccion(true);
+  }
+
+  function cancelarSeleccion() {
+    setModoSeleccion(false);
+    setSeleccionados(new Set());
+  }
+
+  function alternarSeleccionado(id: string) {
+    setSeleccionados((anteriores) => {
+      const nuevo = new Set(anteriores);
+      if (nuevo.has(id)) nuevo.delete(id);
+      else nuevo.add(id);
+      return nuevo;
+    });
+  }
+
+  function alternarSeleccionarTodos() {
+    setSeleccionados((anteriores) =>
+      anteriores.size === filtrados.length ? new Set() : new Set(filtrados.map((producto) => producto.id)),
+    );
+  }
+
+  async function eliminarSeleccionados() {
+    if (seleccionados.size === 0) return;
+    setEliminandoSeleccion(true);
+    setResultadoSeleccion(null);
+
+    const supabase = crearClienteNavegador();
+    let eliminados = 0;
+    let marcados = 0;
+    let errores = 0;
+
+    for (const id of seleccionados) {
+      const resultado = await eliminarProducto(supabase, id);
+      if (resultado === "eliminado") eliminados++;
+      else if (resultado === "marcado_eliminado") marcados++;
+      else errores++;
+    }
+
+    setEliminandoSeleccion(false);
+    setModoSeleccion(false);
+    setSeleccionados(new Set());
+
+    const partes = [];
+    if (eliminados > 0) partes.push(`${eliminados} eliminados`);
+    if (marcados > 0) partes.push(`${marcados} marcados como eliminados (tenían ventas)`);
+    if (errores > 0) partes.push(`${errores} no se pudieron borrar`);
+    setResultadoSeleccion(partes.join(", "));
+
+    router.refresh();
+  }
 
   return (
     <div className="flex flex-col gap-3">
@@ -100,10 +172,37 @@ export function ListaProductos({
           <option value="ok">Ok</option>
           <option value="reponer">Para reponer</option>
         </select>
+        {!modoSeleccion && (
+          <Boton type="button" variante="fantasma" className="px-2.5 py-1.5 text-xs" onClick={activarModoSeleccion}>
+            Eliminar productos
+          </Boton>
+        )}
         <span className="ml-auto whitespace-nowrap text-xs text-texto-suave">
-          {filtrados.length} de {productos.length} productos · {paraReponer.length} para reponer
+          {filtrados.length} de {productosActivos.length} productos · {paraReponer.length} para reponer
         </span>
       </div>
+
+      {modoSeleccion && (
+        <div className="flex items-center gap-3 rounded-[var(--radius-base)] border border-linea bg-fondo px-3 py-2">
+          <span className="text-sm text-texto">{seleccionados.size} seleccionados</span>
+          <Boton
+            type="button"
+            variante="peligro"
+            className="px-2.5 py-1.5 text-xs"
+            disabled={seleccionados.size === 0 || eliminandoSeleccion}
+            onClick={eliminarSeleccionados}
+          >
+            {eliminandoSeleccion ? "Eliminando…" : "Eliminar seleccionados"}
+          </Boton>
+          <Boton type="button" variante="fantasma" className="px-2.5 py-1.5 text-xs" onClick={cancelarSeleccion}>
+            Cancelar
+          </Boton>
+        </div>
+      )}
+
+      {resultadoSeleccion && (
+        <p className="rounded-[var(--radius-base)] bg-ok-fondo px-3 py-2 text-sm text-ok">{resultadoSeleccion}</p>
+      )}
 
       <div className="overflow-x-auto rounded-[var(--radius-base)] border border-linea bg-superficie">
         {filtrados.length === 0 ? (
@@ -114,18 +213,30 @@ export function ListaProductos({
           <table className="w-full border-collapse">
             <thead>
               <tr>
-                {["Código", "Producto", "Rubro", "Precio", "Stock", "Estado", "Acciones"].map((columna) => (
-                  <th
-                    key={columna}
-                    className={`border-b border-linea px-2.5 py-1.5 font-[family-name:var(--font-numero)] text-[10px] font-medium uppercase tracking-wider text-texto-suave ${
-                      columna === "Precio" || columna === "Stock" || columna === "Estado" || columna === "Acciones"
-                        ? "text-right"
-                        : "text-left"
-                    }`}
-                  >
-                    {columna}
-                  </th>
-                ))}
+                {["Código", "Producto", "Rubro", "Precio", "Stock", "Estado", modoSeleccion ? "" : "Acciones"].map(
+                  (columna, indice) => (
+                    <th
+                      key={indice}
+                      className={`border-b border-linea px-2.5 py-1.5 font-[family-name:var(--font-numero)] text-[10px] font-medium uppercase tracking-wider text-texto-suave ${
+                        columna === "Precio" || columna === "Stock" || columna === "Estado" || indice === 6
+                          ? "text-right"
+                          : "text-left"
+                      }`}
+                    >
+                      {indice === 6 && modoSeleccion ? (
+                        <input
+                          type="checkbox"
+                          aria-label="Seleccionar todos"
+                          checked={seleccionados.size === filtrados.length}
+                          onChange={alternarSeleccionarTodos}
+                          className="h-4 w-4 accent-acento"
+                        />
+                      ) : (
+                        columna
+                      )}
+                    </th>
+                  ),
+                )}
               </tr>
             </thead>
             <tbody>
@@ -148,14 +259,27 @@ export function ListaProductos({
                       <Insignia variante={reponer ? "alerta" : "ok"}>{reponer ? "reponer" : "ok"}</Insignia>
                     </td>
                     <td className="px-2.5 py-1.5">
-                      <div className="flex items-center justify-end gap-3">
-                        <FormularioIngresoMercaderia producto={producto} />
-                        <FormularioEditarProducto
-                          producto={producto}
-                          categoriasIniciales={categorias}
-                          proveedoresIniciales={proveedores}
-                        />
-                      </div>
+                      {modoSeleccion ? (
+                        <div className="flex justify-end">
+                          <input
+                            type="checkbox"
+                            aria-label={`Seleccionar ${producto.nombre}`}
+                            checked={seleccionados.has(producto.id)}
+                            onChange={() => alternarSeleccionado(producto.id)}
+                            className="h-4 w-4 accent-acento"
+                          />
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-end gap-3">
+                          <FormularioIngresoMercaderia producto={producto} />
+                          <FormularioEditarProducto
+                            producto={producto}
+                            categoriasIniciales={categorias}
+                            proveedoresIniciales={proveedores}
+                          />
+                          <BotonEliminarProducto producto={producto} />
+                        </div>
+                      )}
                     </td>
                   </tr>
                 );

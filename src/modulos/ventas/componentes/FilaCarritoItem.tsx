@@ -1,0 +1,114 @@
+"use client";
+
+import { useState } from "react";
+import type { Producto } from "@/modulos/stock/tipos";
+import type { ItemCarrito } from "../tipos";
+
+const platita = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" });
+
+type UnidadPeso = Exclude<Producto["unidad"], "unidad">;
+
+// El carrito guarda todo en kg/litro (lo que espera stock_actual,
+// precio_venta y ventas_items.cantidad) — un cajero rara vez tipea un
+// decimal como "0.250", así que el campo se muestra y edita en
+// gramos/mililitros (enteros) y esta es la única capa que convierte.
+const FACTOR: Record<UnidadPeso, number> = { kg: 1000, litro: 1000 };
+const ETIQUETA_CHICA: Record<UnidadPeso, string> = { kg: "g", litro: "ml" };
+const ETIQUETA_GRANDE: Record<UnidadPeso, string> = { kg: "/kg", litro: "/L" };
+
+function redondearAGramos(valor: number): number {
+  return Math.round(valor * 1000) / 1000;
+}
+
+export function FilaCarritoItem({
+  item,
+  producto,
+  onCambiarPaso,
+  onCambiarCantidadExacta,
+  onQuitar,
+}: {
+  item: ItemCarrito;
+  producto: Producto | undefined;
+  onCambiarPaso: (delta: number) => void;
+  onCambiarCantidadExacta: (cantidad: number) => void;
+  onQuitar: () => void;
+}) {
+  const unidad = producto?.unidad ?? "unidad";
+  const esPeso = unidad === "kg" || unidad === "litro";
+  const factor = esPeso ? FACTOR[unidad] : 1;
+
+  // Estado propio para el texto tipeado: si el valor mostrado viniera
+  // directo de item.cantidad, un "0." a mitad de tipeo se pisaría en
+  // cada render (mismo problema que ya evita pagaCon/montoMixtoEfectivo
+  // en PanelVentas.tsx). Al desmontarse esta fila (cambiar de pestaña
+  // de venta, o sacar el producto) este estado se pierde solo.
+  const [texto, setTexto] = useState(String(Math.round(item.cantidad * factor)));
+
+  function alCambiarTexto(valor: string) {
+    setTexto(valor);
+    const numero = Number(valor);
+    if (valor.trim() !== "" && Number.isFinite(numero) && numero >= 0) {
+      onCambiarCantidadExacta(esPeso ? redondearAGramos(numero / factor) : numero);
+    }
+  }
+
+  return (
+    <div className="border-b border-linea px-4 py-2.5 last:border-b-0">
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <p className="text-sm font-semibold text-texto">{item.nombre}</p>
+          <p className="numero text-xs text-texto-suave">
+            {platita.format(item.precioUnitario)} {esPeso ? ETIQUETA_GRANDE[unidad] : "c/u"}
+          </p>
+        </div>
+        <p className="numero text-sm font-semibold text-texto">
+          {platita.format(item.cantidad * item.precioUnitario)}
+        </p>
+      </div>
+
+      {!esPeso ? (
+        <div className="mt-1.5 flex items-center justify-end gap-1.5">
+          <button
+            type="button"
+            aria-label="Quitar una unidad"
+            onClick={() => onCambiarPaso(-1)}
+            className="numero h-6 w-6 rounded border border-linea text-sm hover:bg-fondo"
+          >
+            −
+          </button>
+          <span className="numero min-w-[20px] text-center text-sm">{item.cantidad}</span>
+          <button
+            type="button"
+            aria-label="Sumar una unidad"
+            onClick={() => onCambiarPaso(1)}
+            className="numero h-6 w-6 rounded border border-linea text-sm hover:bg-fondo"
+          >
+            +
+          </button>
+        </div>
+      ) : (
+        <div className="mt-1.5 flex items-center justify-end gap-2">
+          <button
+            type="button"
+            onClick={onQuitar}
+            className="text-xs text-texto-suave underline decoration-dotted underline-offset-2 hover:text-alerta"
+          >
+            Quitar
+          </button>
+          <input
+            type="number"
+            inputMode="numeric"
+            min={0}
+            step="1"
+            aria-label={`Cantidad de ${item.nombre} en ${ETIQUETA_CHICA[unidad]}`}
+            value={texto}
+            onChange={(evento) => alCambiarTexto(evento.target.value)}
+            onFocus={(evento) => evento.currentTarget.select()}
+            className="numero w-20 rounded border border-linea px-2 py-1 text-right text-sm outline-none focus-visible:border-acento"
+          />
+          <span className="numero text-xs text-texto-suave">{ETIQUETA_CHICA[unidad]}</span>
+        </div>
+      )}
+    </div>
+  );
+}

@@ -2,11 +2,33 @@
 
 import { useState } from "react";
 import { Boton } from "@/componentes/Boton";
-import type { ResumenDia } from "../tipos";
+import type { ResumenDia, VentaReporte } from "../tipos";
+
+const fechaFormateador = new Intl.DateTimeFormat("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
+const horaFormateador = new Intl.DateTimeFormat("es-AR", { hour: "2-digit", minute: "2-digit" });
+
+const ETIQUETA_MEDIO: Record<string, string> = {
+  efectivo: "Efectivo",
+  transferencia: "Transferencia",
+  qr: "QR",
+  fiado: "Fiado",
+};
+
+function medioTexto(venta: VentaReporte): string {
+  return [...new Set(venta.pagos.map((pago) => ETIQUETA_MEDIO[pago.medio] ?? pago.medio))].join(" + ");
+}
 
 // exceljs se importa dinámicamente, solo al hacer click: es una
 // dependencia pesada y este botón puede no usarse nunca en una visita.
-export function BotonExportarExcel({ fecha, resumen }: { fecha: string; resumen: ResumenDia }) {
+export function BotonExportarExcel({
+  fecha,
+  resumen,
+  ventas,
+}: {
+  fecha: string;
+  resumen: ResumenDia;
+  ventas: VentaReporte[];
+}) {
   const [exportando, setExportando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -41,7 +63,41 @@ export function BotonExportarExcel({ fecha, resumen }: { fecha: string; resumen:
         { header: "Cantidad", key: "cantidad", width: 12 },
         { header: "Subtotal", key: "subtotal", width: 16, style: { numFmt: '"$"#,##0.00' } },
       ];
-      hojaProductos.addRows(resumen.topProductos);
+      hojaProductos.addRows(
+        resumen.topProductos.map((producto) => ({
+          ...producto,
+          nombre: `${producto.nombre}${producto.eliminado ? " [Eliminado]" : ""}`,
+        })),
+      );
+
+      const hojaDetalle = libro.addWorksheet("Detalle de ventas");
+      hojaDetalle.columns = [
+        { header: "Fecha", key: "fecha", width: 12 },
+        { header: "Hora", key: "hora", width: 8 },
+        { header: "Venta", key: "venta", width: 8 },
+        { header: "Cliente", key: "cliente", width: 22 },
+        { header: "Producto", key: "producto", width: 32 },
+        { header: "Cantidad", key: "cantidad", width: 12 },
+        { header: "Precio unitario", key: "precioUnitario", width: 16, style: { numFmt: '"$"#,##0.00' } },
+        { header: "Subtotal", key: "subtotal", width: 16, style: { numFmt: '"$"#,##0.00' } },
+        { header: "Medio", key: "medio", width: 16 },
+      ];
+      for (const venta of ventas) {
+        const fechaVenta = new Date(venta.creadoEn);
+        for (const item of venta.items) {
+          hojaDetalle.addRow({
+            fecha: fechaFormateador.format(fechaVenta),
+            hora: horaFormateador.format(fechaVenta),
+            venta: venta.numero,
+            cliente: venta.clienteNombre ?? "",
+            producto: `${item.nombre}${item.eliminado ? " [Eliminado]" : ""}`,
+            cantidad: item.cantidad,
+            precioUnitario: item.precioUnitario,
+            subtotal: item.cantidad * item.precioUnitario,
+            medio: medioTexto(venta),
+          });
+        }
+      }
 
       const buffer = await libro.xlsx.writeBuffer();
       const blob = new Blob([buffer], {

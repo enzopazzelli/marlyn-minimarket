@@ -1,6 +1,6 @@
-# Mini Market Merlyn — sistema de gestión
+# Mini Market Marlyn — sistema de gestión
 
-Sistema de gestión comercial a medida para Mini Market Merlyn (minimarket
+Sistema de gestión comercial a medida para Mini Market Marlyn (minimarket
 / despensa, un solo local). Construido siguiendo
 `prompt-base-sistemas-gestion.md` del repo de metodología propia:
 Next.js (App Router) + Supabase (Postgres, Auth, RLS), un módulo por
@@ -72,13 +72,37 @@ a uno existente con motivo, vía la función `registrar_ingreso_stock`,
 que además dejó un movimiento en `movimientos_stock` con
 `tipo = 'ingreso'` para no perder el historial — el stock cargado nunca
 se pisa con un update directo). El botón "Rubros" en la barra superior
-abre alta/renombre/borrado de rubros, con el borrado bloqueado si hay
-productos usando ese rubro. "Proveedores" es lo mismo, sobre la tabla
-`proveedores` (nueva) — ambos paneles son instancias de
+abre alta/renombre/borrado de rubros; "Proveedores" es lo mismo, sobre
+la tabla `proveedores` (nueva) — ambos paneles son instancias de
 `PanelListaSimple` (`src/componentes/`), el mismo componente genérico.
 Decisión tomada con el cliente sobre `BACKUP.xlsx` (ver más abajo):
 "Familia" del Excel es conceptualmente lo mismo que "Rubro" acá, no una
 tabla aparte; "Género" no se suma.
+
+**Borrar ya no se bloquea, se acomoda.** Pedido explícito de Enzo tras
+usar el import de catálogo: borrar un rubro o un proveedor con
+productos asignados ya no se bloquea — esos productos quedan sin ese
+dato (`categoria_id`/`proveedor_id` en `null`, se ven como "—" en la
+tabla). Los FKs correspondientes pasaron de `NO ACTION` (default) a
+`ON DELETE SET NULL`
+(`supabase/migrations/20260813210000_borrado_sin_bloqueo_y_soft_delete.sql`)
+— ni `PanelListaSimple.tsx` ni `BotonEliminarProveedor.tsx` necesitaron
+cambios, simplemente dejó de haber error. Un **producto** con ventas o
+movimientos de stock sí necesita conservar la fila (`ventas_items.producto_id`/
+`movimientos_stock.producto_id` son `not null`, borrarlo de la tabla
+rompería esas ventas viejas) — ahí `eliminarProducto()`
+(`src/modulos/stock/consultas/eliminarProducto.ts`) intenta el borrado
+real primero y, si choca con esas dos tablas, marca el producto
+`activo = false` en vez de fallar. Desde el botón "Eliminar"
+(`BotonEliminarProducto.tsx`) se ve igual en los dos casos: la fila
+desaparece de `/stock` y deja de poder venderse
+(`PanelVentas.tsx` filtra `activo` en la búsqueda y el lector de
+código) — pero en `/reportes` (detalle de ventas, top productos, Excel
+exportado) y en el detalle de un fiado en `/clientes` sigue apareciendo
+con el sufijo "[Eliminado]" en vez de desaparecer del historial.
+"Eliminar productos" en la barra de filtros de `/stock` activa un modo
+de selección múltiple (checkbox por fila) para borrar varios de una,
+con el mismo criterio real/marcado por fila.
 
 **Caja, con arqueo al cierre**: `/caja` abre un turno (monto de
 apertura, insert directo — el índice único parcial de `turnos_caja` ya
@@ -95,7 +119,12 @@ efectivo contado, precargado con el calculado; al confirmar hace un
 `update` directo sobre `turnos_caja` (estado, `monto_cierre_declarado`,
 `monto_cierre_calculado`, `cerrado_en`) y muestra si sobró, faltó, o
 cerró justo. Movimientos manuales de caja (retiros/ingresos fuera de
-una venta) quedan afuera de este cambio.
+una venta) quedan afuera de este cambio. Debajo de "Ventas de este
+turno" hay una segunda lista, "Movimientos de caja"
+(`ListaMovimientosCaja.tsx`, sobre `listarMovimientosCaja`), con el
+detalle línea por línea de lo que ya suma `calcularEfectivoEsperado`:
+cada venta en efectivo ("Venta #N") y cada pago de cuenta corriente
+cobrado en efectivo ("Pago cta. cte. — Nombre", ver Clientes abajo).
 
 **Clientes**: `/clientes` tiene ficha (nombre, teléfono, dirección),
 buscador, y por cliente "Ver cuenta" abre el historial de cuenta
@@ -111,6 +140,16 @@ registra el pago; `'recargo'` se sumó al `check` de
 (`FormularioEditarCliente.tsx`, al lado de "Ver cuenta") — hacía falta
 porque el alta al vuelo desde el TPV (ver Ventas más abajo) solo pide
 el nombre, y el teléfono/dirección se completan después desde acá.
+**Registrar pago pide medio** (Efectivo/Transferencia, mismos botones
+que "Cómo paga" en el TPV): si es efectivo, además de saldar la cuenta
+corriente deja un ingreso en `movimientos_caja` — antes ese dinero
+entraba al cajón sin quedar registrado en ningún lado, y el efectivo
+esperado al cerrar caja no lo contemplaba. Pedir efectivo sin caja
+abierta se bloquea (`registrar_movimiento_cuenta_corriente()` ahora
+recibe `p_medio`/`p_turno_caja_id`, ambos opcionales — `'recargo'` sigue
+sin pedirlos, nunca toca caja). La venta fiada original ya se ve en
+`/caja` sin cambios (es una venta más de "Ventas de este turno"); el
+pago posterior ahora se ve al lado, en "Movimientos de caja".
 
 **Ventas (TPV)**: `/ventas` — lector de código de barras con foco fijo,
 buscador con grilla de productos, carrito, y cobro en
@@ -129,6 +168,15 @@ puede cargar el cliente en el momento ("+ Nuevo cliente…", mismo patrón
 de alta al vuelo que Rubro/Proveedor en Stock) — se decidió así después
 de que el primer diseño lo dejaba afuera a propósito y el cliente pidió
 lo contrario: a veces el fiado se decide en el momento, no antes.
+**Cantidades fraccionarias (kg/litro)**: `productos.unidad` ya existía
+pero el carrito lo ignoraba — cada click sumaba 1 entero, sin forma de
+cargar "0.350 kg" de queso. `FilaCarritoItem.tsx` separa las dos
+mecánicas: productos por unidad siguen con los botones −/+ de siempre;
+productos por kg/litro muestran un campo numérico editable (con el
+número real, no enteros) más un botón "Quitar" explícito, porque una
+cantidad fraccionaria no tiene un "−" natural que llegue a 0. No hizo
+falta tocar la base: `ventas_items.cantidad` ya era numérico, era pura
+falta de UI.
 **Seguimiento de ventas del turno**: las ventas confirmadas no se veían
 en ningún lado después de cerrar el comprobante — `listarVentasDelTurno`
 (`src/modulos/ventas/consultas/ventas.ts`) trae las ventas del turno
@@ -180,7 +228,7 @@ ya refleja el costo nuevo, no el que tenía al momento de la venta.
 **Supuesto sin confirmar con el cliente**: el checkbox "Incluye IVA" de
 la calculadora arranca tildado y usa 21% (`config/cliente.ts`,
 `reglasNegocio.ivaPorcentaje`) — no está confirmado si Mini Market
-Merlyn factura como responsable inscripto o si ese 21% aplica igual a
+Marlyn factura como responsable inscripto o si ese 21% aplica igual a
 todo su catálogo (ej. alimentos de la canasta básica suelen tener otra
 alícuota). Es una ayuda para cargar precios más rápido, no afecta el
 ticket (que sigue sin discriminar IVA).
@@ -227,46 +275,61 @@ suscripción a Supabase Realtime que lo conecta con la venta en curso.
 - Confirmar si hay cajonera electrónica de verdad (el cliente dijo
   "creo que sí") — no bloquea nada de esta entrega, pero condiciona el
   complemento de impresión en la segunda etapa.
-- `codigo_barras` es `unique` en `productos` (sección siguiente):
-  ¿bloqueamos la importación de una fila sin código real, o el import
-  simplemente la deja sin código (`null`)? Ver el detalle abajo.
-- `Familia` (511 valores distintos en `BACKUP.xlsx`, con duplicados por
-  mayúscula/minúscula tipo `"Varios"`/`"VARIOS"`) se decidió mapear
-  directo a `rubro` en vez de sumar una tabla nueva — falta confirmar
-  con el cliente si esos ~511 valores se importan tal cual (quedarían
-  ~511 rubros) o se agrupan/normalizan antes.
+- ~~`codigo_barras` es `unique`...~~ resuelto — ver "Excel" abajo.
+- ~~`Familia` (511 valores...~~ resuelto — ver "Excel" abajo.
 
-## Excel: import de catálogo (pendiente) y export de reportes (construido)
+## Excel: import de catálogo y export de reportes (los dos construidos)
 
 Pedido del cliente, con `BACKUP.xlsx` (raíz del repo, no versionado) como
 dato real de referencia: un export de ~2991 productos de su sistema
 anterior. Columnas: `Descripcion`, `Proveedor`, `Codigo de barra`,
-`Familia`, `Costo`, `Codigo` (interno, correlativo del sistema viejo).
-Alcance pedido: import de catálogo (altas masivas a `productos`) y
-export de reportes — con ExcelJS (mencionado como stack en
-`guia-openspec-gestion-comercial.md`, sección 4). **El export ya está
-construido**: el botón "Exportar a Excel" de `/reportes` (ver más
-arriba) usa `exceljs` para armar un `.xlsx` de 3 hojas (resumen, medios
-de pago, top productos) del día elegido. El import de catálogo en sí
-sigue sin implementar; lo que sí ya se resolvió, de cara a ese import
-futuro:
+`Familia`, `Costo`, `Codigo` (interno, correlativo del sistema viejo,
+no se usa). Alcance pedido: import de catálogo (altas masivas a
+`productos`) y export de reportes — los dos con `exceljs`.
 
-- **`Proveedor` ya tiene tabla propia** (`proveedores`, igual de simple
-  que `categorias`) y su panel de administración/select en los
-  formularios de producto.
-- **`Familia` se decidió tratar como sinónimo de `Rubro`**, no como una
-  clasificación aparte (ver "Preguntas todavía abiertas" arriba para lo
-  que falta confirmar sobre eso). No se agregó "Género".
+**Export** (`/reportes`, ver más arriba): botón "Exportar a Excel" arma
+un `.xlsx` de 4 hojas (resumen, medios de pago, top productos, detalle
+de ventas) del día elegido.
 
-Sigue pendiente para cuando se construya el import en sí:
+**Import** (`/stock`, botón "Importar Excel",
+`FormularioImportarExcel.tsx`): sube cualquier `.xlsx` con esas mismas
+columnas (no hace falta que sea `BACKUP.xlsx` puntual — busca las
+columnas por nombre de encabezado, no por posición). Decidido con el
+cliente sobre los dos puntos que quedaban abiertos:
 
-- **El 43% de las filas (1290 de 2991) repite código de barras**, pero
-  caso por caso: la inmensa mayoría son placeholders del sistema
-  anterior (`"0"` sola en 1048 filas, más `"11111111"`, `"4444444444"`,
-  etc.), no colisiones reales — son productos pesados/sueltos o
-  cargados sin escanear. La migración de Stock ya tiene
-  `codigo_barras` como `unique`, lo cual es correcto para códigos
-  reales pero **rechazaría de plano un import directo de este archivo**
-  tal cual. El import va a necesitar tratar esos placeholders como "sin
-  código" (`null`, que sí admite múltiples filas bajo `unique`) en vez
-  de copiarlos literalmente. Hay 6 filas más sin `Familia` cargada.
+- **Código de barras placeholder → `null`, no bloquea el import.**
+  Inspeccionado el archivo real: 1048 filas con `"0"` sola, más 297 con
+  patrones de dígito repetido (`"11111111"`, `"4444444444"`, etc.) — no
+  son colisiones reales, son productos pesados/sueltos del sistema
+  viejo. `esCodigoBarrasPlaceholder()` en
+  `src/modulos/stock/consultas/importarExcel.ts` los detecta
+  (`/^(\d)\1*$/`) y esas filas entran con `codigo_barras = null`, que
+  `unique` sí admite en múltiples filas. De paso: 37 filas más tienen un
+  código *real* pero duplicado dentro del propio archivo — la primera
+  aparición se queda con el código, las siguientes entran sin él (dos
+  filas con el mismo código en el mismo insert rompería `unique`).
+- **`Familia` se normaliza antes de crear rubros** (trim + Title Case),
+  para que `"VARIOS"`/`"Varios"`/`"varios "` terminen siendo un solo
+  rubro en vez de tres — contados en el archivo real, son 483 rubros
+  distintos después de normalizar (no ~511, esa cifra era una
+  estimación a mano de antes de tener el import construido). Mismo
+  criterio aplicado a `Proveedor` (65 distintos), aunque no fue pedido
+  explícito, por el mismo tipo de problema.
+- **El Excel no trae precio de venta ni stock.** El precio de venta se
+  calcula como costo × margen (% elegido en el momento del import, con
+  IVA opcional) usando `calcularPrecioVentaDesdeGanancia()` — la misma
+  fórmula de la calculadora del alta manual
+  (`stock/consultas/precios.ts`), no una nueva. El stock arranca en 0
+  para todo lo importado; el conteo físico se carga después, producto
+  por producto, como ya se hacía.
+- **Si el código de barras ya existe en la base, la fila se saltea**
+  (no se pisa ni se duplica) — para no arrastrarse por encima de
+  productos que ya se cargaron o editaron a mano.
+
+Todo el cálculo (qué se importa, qué se saltea, qué rubros/proveedores
+son nuevos, el precio de venta) es una función pura
+(`construirImportacion`, con tests en `importarExcel.test.ts`) — el
+componente solo parsea el archivo y llama a una única función
+transaccional en la base, `importar_catalogo()`
+(`supabase/migrations/20260813200000_importar_catalogo.sql`, mismo
+criterio que `registrar_venta()`: con miles de filas, todo-o-nada).

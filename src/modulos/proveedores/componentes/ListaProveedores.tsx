@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { BotonEliminarProveedor } from "./BotonEliminarProveedor";
 import { FormularioEditarProveedor } from "./FormularioEditarProveedor";
 import { PanelPedidoProveedor } from "./PanelPedidoProveedor";
 import type { Producto } from "@/modulos/stock/tipos";
@@ -74,6 +75,7 @@ export function ListaProveedores({ proveedores, productos }: { proveedores: Prov
                     <div className="flex items-center justify-end gap-3">
                       <PanelPedidoProveedor proveedor={proveedor} productos={productos} />
                       <FormularioEditarProveedor proveedor={proveedor} />
+                      <BotonEliminarProveedor proveedor={proveedor} />
                     </div>
                   </td>
                 </tr>
