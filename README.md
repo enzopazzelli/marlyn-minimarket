@@ -39,10 +39,18 @@ Scripts útiles: `npm run lint`, `npm run typecheck`, `npm run test`
 Lo que ya existe: auth con Supabase (`/ingresar`), layout con barra
 lateral agrupada por frecuencia de uso, tokens de diseño y tres roles
 tipográficos, migraciones de Núcleo + M1 Stock + M2 Clientes + M5 Caja +
-M3 Ventas (con RLS y las funciones `registrar_venta`/`anular_venta`), y
-las rutas de cada módulo con su estado vacío. Las demás pantallas reales
-(carrito, arqueo de caja, alta de cliente) todavía no están construidas —
-es el trabajo de los próximos días de esta entrega.
+M3 Ventas (con RLS y las funciones `registrar_venta`/`anular_venta`).
+
+**Ventas, Clientes y la apertura de Caja ya funcionan de punta a
+punta**: `/ventas` es el TPV real (buscador + lector de código de barras
++ carrito + cobro en efectivo/transferencia/QR/mixto/fiado, usando
+`registrar_venta`), `/clientes` tiene ficha, cuenta corriente con
+recargo manual por atraso, y `/caja` permite abrir un turno (requisito
+para poder vender). Detalle de las tres más abajo. Lo único que falta de
+Caja es cierre con arqueo y movimientos manuales — eso queda para un
+próximo cambio, igual que la pantalla al cliente en vivo (sigue con su
+propio "PENDIENTE" en `src/app/pantalla/[token]/page.tsx`) y los
+reportes.
 
 **Stock ya tiene su primera pantalla real**: `/stock` lista los
 productos cargados (código, rubro, precio, stock, alerta de mínimo), con
@@ -69,6 +77,43 @@ productos usando ese rubro. "Proveedores" es lo mismo, sobre la tabla
 Decisión tomada con el cliente sobre `BACKUP.xlsx` (ver más abajo):
 "Familia" del Excel es conceptualmente lo mismo que "Rubro" acá, no una
 tabla aparte; "Género" no se suma.
+
+**Caja, mínimo indispensable**: `/caja` solo abre un turno (monto de
+apertura, insert directo — el índice único parcial de
+`turnos_caja` ya impide dos turnos abiertos a la vez, no hace falta una
+función). Se sumó porque `registrar_venta()` exige un turno abierto y no
+había forma de conseguir uno; cierre con arqueo y movimientos manuales
+de caja quedan afuera de este cambio, para M5 Caja completo.
+
+**Clientes**: `/clientes` tiene ficha (nombre, teléfono, dirección),
+buscador, y por cliente "Ver cuenta" abre el historial de cuenta
+corriente — cada `fiado` muestra los productos de la venta que lo
+originó (fecha/producto/precio, como pidió el cliente). Pedido
+específico: un recargo manual por atraso ("a la semana 5%, al mes 15 o
+20%, no es una fórmula fija, es criterio nuestro") — el campo "% de
+recargo" en `PanelCuentaCorriente.tsx` calcula el total, no lo decide
+el sistema. `registrar_movimiento_cuenta_corriente()` (nueva función,
+mismo patrón que `registrar_ingreso_stock`) aplica el recargo o
+registra el pago; `'recargo'` se sumó al `check` de
+`movimientos_cuenta_corriente.tipo`.
+
+**Ventas (TPV)**: `/ventas` — lector de código de barras con foco fijo,
+buscador con grilla de productos, carrito, y cobro en
+efectivo/transferencia/QR/mixto/fiado (los medios reales de
+`ventas_pagos.medio`; "débito" del mockup no está soportado por el
+esquema, "mixto" arma dos filas de pago en vez de ser un medio propio).
+Reusa tal cual las funciones puras ya testeadas de
+`src/modulos/ventas/consultas/calculos.ts`. **Pedido del cliente:
+varias ventas en curso a la vez** ("se le olvida un producto y hay que
+atender a otro", "atendemos 2 clientes en la misma PC") — se resolvió
+con pestañas de venta independientes (`PanelVentas.tsx`): cambiar de
+pestaña es "guardar para después", la misma mecánica cubre atender dos
+clientes a la vez. Se guarda en `sessionStorage` para no perder una
+venta en curso ante un F5 sin querer. Al elegir "Fiado" también se
+puede cargar el cliente en el momento ("+ Nuevo cliente…", mismo patrón
+de alta al vuelo que Rubro/Proveedor en Stock) — se decidió así después
+de que el primer diseño lo dejaba afuera a propósito y el cliente pidió
+lo contrario: a veces el fiado se decide en el momento, no antes.
 
 **Proveedores va a crecer a un módulo propio** (pedido 2026-08-12, no
 construido todavía): ficha por proveedor (contacto, teléfono, etc. —

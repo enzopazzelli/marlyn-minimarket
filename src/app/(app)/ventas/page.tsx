@@ -1,16 +1,54 @@
+import Link from "next/link";
 import { BarraSuperior } from "@/componentes/BarraSuperior";
-import { EstadoVacio } from "@/componentes/EstadoVacio";
+import { Boton } from "@/componentes/Boton";
+import { ChipCaja } from "@/componentes/ChipCaja";
+import { crearClienteServidor } from "@/lib/supabase/servidor";
+import { buscarTurnoAbierto } from "@/modulos/caja/consultas/caja";
+import { listarClientes } from "@/modulos/clientes/consultas/clientes";
+import { listarProductos } from "@/modulos/stock/consultas/productos";
+import { PanelVentas } from "@/modulos/ventas/componentes/PanelVentas";
 
-export default function PaginaVentas() {
+export default async function PaginaVentas() {
+  const supabase = await crearClienteServidor();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const turno = user ? await buscarTurnoAbierto(supabase, user.id) : null;
+
   return (
     <>
-      <BarraSuperior titulo="Ventas" />
+      <BarraSuperior titulo="Ventas">
+        <ChipCaja abierta={!!turno} />
+      </BarraSuperior>
       <main className="flex-1 p-4 md:p-6">
-        <EstadoVacio
-          titulo="El punto de venta todavía no está armado"
-          descripcion="Acá va a vivir el carrito, el lector con foco fijo y el cobro con pago simple o mixto."
-        />
+        {turno ? (
+          <PanelVentasConectado supabase={supabase} turnoCajaId={turno.id} />
+        ) : (
+          <div className="max-w-sm rounded-[var(--radius-base)] border border-dashed border-linea bg-superficie px-6 py-10 text-center">
+            <p className="font-[family-name:var(--font-display)] text-base text-texto">
+              Abrí la caja para poder vender
+            </p>
+            <p className="mt-2 text-sm text-texto-suave">
+              Toda venta queda asociada a un turno de caja abierto.
+            </p>
+            <Link href="/caja" className="mt-4 inline-block">
+              <Boton type="button">Ir a Caja</Boton>
+            </Link>
+          </div>
+        )}
       </main>
     </>
   );
+}
+
+async function PanelVentasConectado({
+  supabase,
+  turnoCajaId,
+}: {
+  supabase: Awaited<ReturnType<typeof crearClienteServidor>>;
+  turnoCajaId: string;
+}) {
+  const [productos, clientes] = await Promise.all([listarProductos(supabase), listarClientes(supabase)]);
+
+  return <PanelVentas productos={productos} clientes={clientes} turnoCajaId={turnoCajaId} />;
 }

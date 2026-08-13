@@ -12,7 +12,7 @@ export type MovimientoCuentaCorriente = {
   id: string;
   clienteId: string;
   ventaId: string | null;
-  tipo: "fiado" | "pago";
+  tipo: "fiado" | "pago" | "recargo";
   monto: number;
   nota: string | null;
   creadoEn: string;
