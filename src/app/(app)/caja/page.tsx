@@ -4,6 +4,7 @@ import { crearClienteServidor } from "@/lib/supabase/servidor";
 import { buscarTurnoAbierto, calcularEfectivoEsperado, listarMovimientosCaja } from "@/modulos/caja/consultas/caja";
 import { FormularioAbrirCaja } from "@/modulos/caja/componentes/FormularioAbrirCaja";
 import { FormularioCerrarCaja } from "@/modulos/caja/componentes/FormularioCerrarCaja";
+import { FormularioMovimientoCaja } from "@/modulos/caja/componentes/FormularioMovimientoCaja";
 import { ListaMovimientosCaja } from "@/modulos/caja/componentes/ListaMovimientosCaja";
 import { listarVentasDelTurno } from "@/modulos/ventas/consultas/ventas";
 import { ListaVentasDelTurno } from "@/modulos/ventas/componentes/ListaVentasDelTurno";
@@ -62,11 +63,10 @@ async function TurnoAbierto({
 
       <ListaVentasDelTurno ventas={ventas} />
 
-      <ListaMovimientosCaja movimientos={movimientos} />
-
-      <p className="text-xs text-texto-suave">
-        Retiros/ingresos manuales de caja quedan para un próximo cambio.
-      </p>
+      <ListaMovimientosCaja
+        movimientos={movimientos}
+        accion={<FormularioMovimientoCaja turnoId={turno.id} />}
+      />
     </div>
   );
 }

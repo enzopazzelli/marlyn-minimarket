@@ -49,10 +49,10 @@ recargo manual por atraso, `/caja` abre y cierra turno con arqueo,
 `/proveedores` tiene ficha, productos por proveedor y genera el texto
 del pedido, y `/reportes` es el dashboard del día (KPIs, ventas por
 hora, medios de pago, top productos, alertas de stock) con export a
-Excel. Detalle de las cinco más abajo. Lo único que falta de Caja son
-los movimientos manuales (retiros/ingresos fuera de una venta) — eso
-queda para un próximo cambio, igual que la pantalla al cliente en vivo
-(sigue con su propio "PENDIENTE" en `src/app/pantalla/[token]/page.tsx`).
+Excel, con retiros/ingresos manuales además de lo que ya deja cada
+venta. Detalle de las cinco más abajo. Sigue pendiente la pantalla al
+cliente en vivo (con su propio "PENDIENTE" en
+`src/app/pantalla/[token]/page.tsx`).
 
 **Stock ya tiene su primera pantalla real**: `/stock` lista los
 productos cargados (código, rubro, precio, stock, alerta de mínimo), con
@@ -118,13 +118,21 @@ ver más abajo) y el botón "Cerrar caja"
 efectivo contado, precargado con el calculado; al confirmar hace un
 `update` directo sobre `turnos_caja` (estado, `monto_cierre_declarado`,
 `monto_cierre_calculado`, `cerrado_en`) y muestra si sobró, faltó, o
-cerró justo. Movimientos manuales de caja (retiros/ingresos fuera de
-una venta) quedan afuera de este cambio. Debajo de "Ventas de este
-turno" hay una segunda lista, "Movimientos de caja"
-(`ListaMovimientosCaja.tsx`, sobre `listarMovimientosCaja`), con el
-detalle línea por línea de lo que ya suma `calcularEfectivoEsperado`:
-cada venta en efectivo ("Venta #N") y cada pago de cuenta corriente
-cobrado en efectivo ("Pago cta. cte. — Nombre", ver Clientes abajo).
+cerró justo. Debajo de "Ventas de este turno" hay una segunda lista,
+"Movimientos de caja" (`ListaMovimientosCaja.tsx`, sobre
+`listarMovimientosCaja`), con el detalle línea por línea de lo que ya
+suma `calcularEfectivoEsperado`: cada venta en efectivo ("Venta #N"),
+cada pago de cuenta corriente cobrado en efectivo ("Pago cta. cte. —
+Nombre", ver Clientes abajo), y ahora también los retiros/ingresos
+manuales — botón "Registrar movimiento" en el encabezado de esa misma
+lista (`FormularioMovimientoCaja.tsx`), con tipo (salió/entró plata),
+monto y motivo obligatorio ("¿para qué es?", para que el registro
+tenga sentido después). Insert directo a `movimientos_caja`, mismo
+criterio que abrir turno: una sola tabla, sin invariante que proteger
+más allá de los checks de la columna (`monto > 0`, `tipo` válido). No
+se valida contra el efectivo disponible — si un retiro deja la caja en
+negativo, eso se ve reflejado como diferencia recién al cerrar, que es
+el momento real de arqueo.
 
 **Clientes**: `/clientes` tiene ficha (nombre, teléfono, dirección),
 buscador, y por cliente "Ver cuenta" abre el historial de cuenta
