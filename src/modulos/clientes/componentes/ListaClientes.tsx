@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { FormularioEditarCliente } from "./FormularioEditarCliente";
 import { PanelCuentaCorriente } from "./PanelCuentaCorriente";
 import type { Cliente } from "../tipos";
 
@@ -81,8 +82,11 @@ export function ListaClientes({ clientes }: { clientes: Cliente[] }) {
                   >
                     {cliente.saldoCuentaCorriente > 0 ? platita.format(cliente.saldoCuentaCorriente) : "Al día"}
                   </td>
-                  <td className="px-2.5 py-1.5 text-right">
-                    <PanelCuentaCorriente cliente={cliente} />
+                  <td className="px-2.5 py-1.5">
+                    <div className="flex items-center justify-end gap-3">
+                      <PanelCuentaCorriente cliente={cliente} />
+                      <FormularioEditarCliente cliente={cliente} />
+                    </div>
                   </td>
                 </tr>
               ))}

@@ -43,3 +43,24 @@ export async function buscarTurnoAbierto(
     cerradoEn: fila.cerrado_en,
   };
 }
+
+// Apertura + movimientos del turno (ingresos suman, egresos restan).
+// Desde 20260813180000, registrar_venta() deja un 'ingreso' acá por
+// cada pago en efectivo (neto de vuelto) — sin eso no habría con qué
+// comparar el efectivo contado al cerrar.
+export async function calcularEfectivoEsperado(
+  supabase: SupabaseClient,
+  turnoId: string,
+  montoApertura: number,
+): Promise<number> {
+  const { data, error } = await supabase.from("movimientos_caja").select("tipo, monto").eq("turno_id", turnoId);
+
+  if (error) throw error;
+
+  const neto = (data ?? []).reduce((suma, movimiento) => {
+    const monto = Number(movimiento.monto);
+    return suma + (movimiento.tipo === "egreso" ? -monto : monto);
+  }, 0);
+
+  return montoApertura + neto;
+}

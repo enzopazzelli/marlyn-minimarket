@@ -1,7 +1,8 @@
 import { BarraSuperior } from "@/componentes/BarraSuperior";
 import { EstadoVacio } from "@/componentes/EstadoVacio";
 import { crearClienteServidor } from "@/lib/supabase/servidor";
-import { listarCategorias, listarProductos, listarProveedores } from "@/modulos/stock/consultas/productos";
+import { listarCategorias, listarProductos } from "@/modulos/stock/consultas/productos";
+import { listarProveedores } from "@/modulos/proveedores/consultas/proveedores";
 import { FormularioNuevoProducto } from "@/modulos/stock/componentes/FormularioNuevoProducto";
 import { ListaProductos } from "@/modulos/stock/componentes/ListaProductos";
 import { PanelRubros } from "@/modulos/stock/componentes/PanelRubros";

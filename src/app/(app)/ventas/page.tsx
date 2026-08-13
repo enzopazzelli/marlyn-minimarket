@@ -6,6 +6,8 @@ import { crearClienteServidor } from "@/lib/supabase/servidor";
 import { buscarTurnoAbierto } from "@/modulos/caja/consultas/caja";
 import { listarClientes } from "@/modulos/clientes/consultas/clientes";
 import { listarProductos } from "@/modulos/stock/consultas/productos";
+import { listarVentasDelTurno } from "@/modulos/ventas/consultas/ventas";
+import { ListaVentasDelTurno } from "@/modulos/ventas/componentes/ListaVentasDelTurno";
 import { PanelVentas } from "@/modulos/ventas/componentes/PanelVentas";
 
 export default async function PaginaVentas() {
@@ -48,7 +50,16 @@ async function PanelVentasConectado({
   supabase: Awaited<ReturnType<typeof crearClienteServidor>>;
   turnoCajaId: string;
 }) {
-  const [productos, clientes] = await Promise.all([listarProductos(supabase), listarClientes(supabase)]);
+  const [productos, clientes, ventas] = await Promise.all([
+    listarProductos(supabase),
+    listarClientes(supabase),
+    listarVentasDelTurno(supabase, turnoCajaId),
+  ]);
 
-  return <PanelVentas productos={productos} clientes={clientes} turnoCajaId={turnoCajaId} />;
+  return (
+    <div className="flex flex-col gap-4">
+      <PanelVentas productos={productos} clientes={clientes} turnoCajaId={turnoCajaId} />
+      <ListaVentasDelTurno ventas={ventas} />
+    </div>
+  );
 }

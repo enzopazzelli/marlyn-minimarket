@@ -13,6 +13,10 @@ export const clienteConfig = {
     clientes: true,
     ventas: true,
     caja: true,
+    // Catálogo de proveedores (ficha, productos que provee, generar
+    // pedido de texto) — no es M6 Compras completo (orden de
+    // compra/recepción formal), eso sigue en `compras`.
+    proveedores: true,
     // Fase 2, fuera del alcance de esta entrega:
     panel: false,
     compras: false,

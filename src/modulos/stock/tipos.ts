@@ -3,9 +3,11 @@ export type Categoria = {
   nombre: string;
 };
 
-// Misma forma que Categoria (id + nombre) — proveedores es una tabla
-// plana igual que categorias, no una jerarquía.
-export type Proveedor = Categoria;
+// La definición canónica de Proveedor vive en el módulo proveedores
+// (tiene su propia pantalla desde /proveedores); se reexporta acá para
+// no tener que tocar los imports de los formularios de producto, que
+// ya lo traían de "../tipos".
+export type { Proveedor } from "@/modulos/proveedores/tipos";
 
 export type Producto = {
   id: string;

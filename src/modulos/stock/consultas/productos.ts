@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Categoria, Producto, Proveedor } from "../tipos";
+import type { Categoria, Producto } from "../tipos";
 
 type FilaProducto = {
   id: string;
@@ -56,15 +56,4 @@ export async function listarCategorias(supabase: SupabaseClient): Promise<Catego
   if (error) throw error;
 
   return (data ?? []) as Categoria[];
-}
-
-export async function listarProveedores(supabase: SupabaseClient): Promise<Proveedor[]> {
-  const { data, error } = await supabase
-    .from("proveedores")
-    .select("id, nombre")
-    .order("nombre", { ascending: true });
-
-  if (error) throw error;
-
-  return (data ?? []) as Proveedor[];
 }

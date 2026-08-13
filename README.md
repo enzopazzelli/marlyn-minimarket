@@ -41,16 +41,17 @@ lateral agrupada por frecuencia de uso, tokens de diseño y tres roles
 tipográficos, migraciones de Núcleo + M1 Stock + M2 Clientes + M5 Caja +
 M3 Ventas (con RLS y las funciones `registrar_venta`/`anular_venta`).
 
-**Ventas, Clientes y la apertura de Caja ya funcionan de punta a
-punta**: `/ventas` es el TPV real (buscador + lector de código de barras
-+ carrito + cobro en efectivo/transferencia/QR/mixto/fiado, usando
+**Ventas, Clientes, Caja y Proveedores ya funcionan de punta a punta**:
+`/ventas` es el TPV real (buscador + lector de código de barras +
+carrito + cobro en efectivo/transferencia/QR/mixto/fiado, usando
 `registrar_venta`), `/clientes` tiene ficha, cuenta corriente con
-recargo manual por atraso, y `/caja` permite abrir un turno (requisito
-para poder vender). Detalle de las tres más abajo. Lo único que falta de
-Caja es cierre con arqueo y movimientos manuales — eso queda para un
-próximo cambio, igual que la pantalla al cliente en vivo (sigue con su
-propio "PENDIENTE" en `src/app/pantalla/[token]/page.tsx`) y los
-reportes.
+recargo manual por atraso, `/caja` abre y cierra turno con arqueo, y
+`/proveedores` tiene ficha, productos por proveedor y genera el texto
+del pedido. Detalle de las cuatro más abajo. Lo único que falta de Caja
+son los movimientos manuales (retiros/ingresos fuera de una venta) —
+eso queda para un próximo cambio, igual que la pantalla al cliente en
+vivo (sigue con su propio "PENDIENTE" en
+`src/app/pantalla/[token]/page.tsx`) y los reportes.
 
 **Stock ya tiene su primera pantalla real**: `/stock` lista los
 productos cargados (código, rubro, precio, stock, alerta de mínimo), con
@@ -78,12 +79,22 @@ Decisión tomada con el cliente sobre `BACKUP.xlsx` (ver más abajo):
 "Familia" del Excel es conceptualmente lo mismo que "Rubro" acá, no una
 tabla aparte; "Género" no se suma.
 
-**Caja, mínimo indispensable**: `/caja` solo abre un turno (monto de
-apertura, insert directo — el índice único parcial de
-`turnos_caja` ya impide dos turnos abiertos a la vez, no hace falta una
-función). Se sumó porque `registrar_venta()` exige un turno abierto y no
-había forma de conseguir uno; cierre con arqueo y movimientos manuales
-de caja quedan afuera de este cambio, para M5 Caja completo.
+**Caja, con arqueo al cierre**: `/caja` abre un turno (monto de
+apertura, insert directo — el índice único parcial de `turnos_caja` ya
+impide dos turnos abiertos a la vez, no hace falta una función) y
+ahora también lo cierra. Para poder arquear, `registrar_venta()` inserta
+en `movimientos_caja` la parte en efectivo de cada pago (monto menos
+vuelto) al confirmar una venta — antes no lo hacía y no había forma de
+saber cuánto efectivo debía haber en el cajón. Con turno abierto,
+`/caja` muestra "Ventas de este turno" (mismo listado que `/ventas`,
+ver más abajo) y el botón "Cerrar caja"
+(`FormularioCerrarCaja.tsx`): un modal con el monto calculado
+(apertura + neto de `movimientos_caja`) y un campo editable para el
+efectivo contado, precargado con el calculado; al confirmar hace un
+`update` directo sobre `turnos_caja` (estado, `monto_cierre_declarado`,
+`monto_cierre_calculado`, `cerrado_en`) y muestra si sobró, faltó, o
+cerró justo. Movimientos manuales de caja (retiros/ingresos fuera de
+una venta) quedan afuera de este cambio.
 
 **Clientes**: `/clientes` tiene ficha (nombre, teléfono, dirección),
 buscador, y por cliente "Ver cuenta" abre el historial de cuenta
@@ -95,7 +106,10 @@ recargo" en `PanelCuentaCorriente.tsx` calcula el total, no lo decide
 el sistema. `registrar_movimiento_cuenta_corriente()` (nueva función,
 mismo patrón que `registrar_ingreso_stock`) aplica el recargo o
 registra el pago; `'recargo'` se sumó al `check` de
-`movimientos_cuenta_corriente.tipo`.
+`movimientos_cuenta_corriente.tipo`. También tiene "Editar"
+(`FormularioEditarCliente.tsx`, al lado de "Ver cuenta") — hacía falta
+porque el alta al vuelo desde el TPV (ver Ventas más abajo) solo pide
+el nombre, y el teléfono/dirección se completan después desde acá.
 
 **Ventas (TPV)**: `/ventas` — lector de código de barras con foco fijo,
 buscador con grilla de productos, carrito, y cobro en
@@ -114,15 +128,29 @@ puede cargar el cliente en el momento ("+ Nuevo cliente…", mismo patrón
 de alta al vuelo que Rubro/Proveedor en Stock) — se decidió así después
 de que el primer diseño lo dejaba afuera a propósito y el cliente pidió
 lo contrario: a veces el fiado se decide en el momento, no antes.
+**Seguimiento de ventas del turno**: las ventas confirmadas no se veían
+en ningún lado después de cerrar el comprobante — `listarVentasDelTurno`
+(`src/modulos/ventas/consultas/ventas.ts`) trae las ventas del turno
+abierto con su medio de pago (o "Fiado — nombre del cliente") y
+`ListaVentasDelTurno.tsx` las lista (número, hora, medio, total) tanto
+en `/ventas` como en `/caja`, para tener el detalle a mano al arquear.
+Es de solo lectura por ahora, no incluye anular venta desde acá.
 
-**Proveedores va a crecer a un módulo propio** (pedido 2026-08-12, no
-construido todavía): ficha por proveedor (contacto, teléfono, etc. —
-falta definir qué campos exactos), ver sus productos al entrar, y un
-botón "Generar pedido" que arma una lista de productos elegidos como
-texto/documento para mandarle al proveedor. Esto es, en la práctica,
-el contenido de **M6 Compras**, hoy `compras: false` en
-`config/cliente.ts` ("Fase 2, fuera del alcance de esta entrega") — al
-cotizar/planificar ese módulo, este pedido ya es parte de su alcance.
+**Proveedores, módulo propio**: `/proveedores` tiene ficha (nombre,
+contacto, teléfono), buscador, y por proveedor "Editar" y "Productos y
+pedido". El alta rápida (solo nombre) se mantiene sin tocar en Stock
+vía `PanelListaSimple`, para cargar un proveedor al vuelo mientras se
+da de alta un producto; el alta completa con contacto/teléfono
+(`FormularioNuevoProveedor.tsx`) y la edición
+(`FormularioEditarProveedor.tsx`) viven en `/proveedores`.
+"Productos y pedido" (`PanelPedidoProveedor.tsx`) filtra en el cliente
+la misma lista de productos que ya trae la página (sin consulta
+nueva) por `proveedor_id`, y arma un texto plano ("2 x Coca Cola 2L" o
+"- Coca Cola 2L" sin cantidad) con un botón "Copiar"
+(`navigator.clipboard`) — el documento para mandarle al proveedor. Esto
+es catálogo de proveedores, no **M6 Compras** completo (orden de
+compra/recepción formal), que sigue en `compras: false` en
+`config/cliente.ts` ("Fase 2, fuera del alcance de esta entrega").
 
 **Supuesto sin confirmar con el cliente**: el checkbox "Incluye IVA" de
 la calculadora arranca tildado y usa 21% (`config/cliente.ts`,
