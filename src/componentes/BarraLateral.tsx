@@ -13,6 +13,7 @@ type ItemNav = { href: string; etiqueta: string };
 const grupoDiaADia: ItemNav[] = [
   ...(clienteConfig.modulos.ventas ? [{ href: "/ventas", etiqueta: "Ventas" }] : []),
   ...(clienteConfig.modulos.caja ? [{ href: "/caja", etiqueta: "Caja" }] : []),
+  ...(clienteConfig.modulos.reportes ? [{ href: "/reportes", etiqueta: "Reportes" }] : []),
 ];
 
 const grupoAdministracion: ItemNav[] = [

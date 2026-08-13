@@ -17,10 +17,14 @@ export const clienteConfig = {
     // pedido de texto) — no es M6 Compras completo (orden de
     // compra/recepción formal), eso sigue en `compras`.
     proveedores: true,
+    // Dashboard de indicadores del día (ventas, balance, medios de
+    // pago, top productos, alertas de stock) + export a Excel — no
+    // incluye alertas de vencimiento ni metas configurables, quedan
+    // afuera hasta que haya dónde cargar esos datos.
+    reportes: true,
     // Fase 2, fuera del alcance de esta entrega:
     panel: false,
     compras: false,
-    reportes: false,
     usuariosGranular: false,
     promociones: false,
   },

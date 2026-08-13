@@ -41,17 +41,18 @@ lateral agrupada por frecuencia de uso, tokens de diseño y tres roles
 tipográficos, migraciones de Núcleo + M1 Stock + M2 Clientes + M5 Caja +
 M3 Ventas (con RLS y las funciones `registrar_venta`/`anular_venta`).
 
-**Ventas, Clientes, Caja y Proveedores ya funcionan de punta a punta**:
-`/ventas` es el TPV real (buscador + lector de código de barras +
-carrito + cobro en efectivo/transferencia/QR/mixto/fiado, usando
+**Ventas, Clientes, Caja, Proveedores y Reportes ya funcionan de punta a
+punta**: `/ventas` es el TPV real (buscador + lector de código de barras
++ carrito + cobro en efectivo/transferencia/QR/mixto/fiado, usando
 `registrar_venta`), `/clientes` tiene ficha, cuenta corriente con
-recargo manual por atraso, `/caja` abre y cierra turno con arqueo, y
+recargo manual por atraso, `/caja` abre y cierra turno con arqueo,
 `/proveedores` tiene ficha, productos por proveedor y genera el texto
-del pedido. Detalle de las cuatro más abajo. Lo único que falta de Caja
-son los movimientos manuales (retiros/ingresos fuera de una venta) —
-eso queda para un próximo cambio, igual que la pantalla al cliente en
-vivo (sigue con su propio "PENDIENTE" en
-`src/app/pantalla/[token]/page.tsx`) y los reportes.
+del pedido, y `/reportes` es el dashboard del día (KPIs, ventas por
+hora, medios de pago, top productos, alertas de stock) con export a
+Excel. Detalle de las cinco más abajo. Lo único que falta de Caja son
+los movimientos manuales (retiros/ingresos fuera de una venta) — eso
+queda para un próximo cambio, igual que la pantalla al cliente en vivo
+(sigue con su propio "PENDIENTE" en `src/app/pantalla/[token]/page.tsx`).
 
 **Stock ya tiene su primera pantalla real**: `/stock` lista los
 productos cargados (código, rubro, precio, stock, alerta de mínimo), con
@@ -152,6 +153,30 @@ es catálogo de proveedores, no **M6 Compras** completo (orden de
 compra/recepción formal), que sigue en `compras: false` en
 `config/cliente.ts` ("Fase 2, fuera del alcance de esta entrega").
 
+**Reportes, dashboard del día**: `/reportes` (pedido explícito del
+cliente, con un mockup propio como referencia) muestra 4 KPIs (Ventas,
+Ticket promedio, Transacciones, Balance), ventas por hora, distribución
+por medio de pago, top 10 productos más vendidos y alertas de stock
+bajo (mismo criterio `stockActual <= stockMinimo` que Stock), todo para
+un día elegido con un selector de fecha (arranca en hoy). Sin migración
+nueva: todo sale de `ventas`/`ventas_items`/`ventas_pagos`/`productos`,
+que ya existían. Los gráficos son `div`/Tailwind a mano, sin librería
+nueva — coherente con el resto de la app — con una paleta categórica
+nueva en `tema.css` (`--grafico-1` a `--grafico-4`) validada contra
+daltonismo con el skill de dataviz. Botón "Exportar a Excel" arma un
+`.xlsx` de 3 hojas en el navegador con `exceljs` (primer uso real de esa
+dependencia, cargada solo al hacer click). **Dos cosas del pedido
+original quedaron afuera a propósito**, decidido con el cliente: alertas
+de vencimiento (no hay `fecha_vencimiento` en `productos`, ni pantalla
+para cargarla) y una "Meta" de ventas (no hay dónde configurar un
+objetivo todavía) — quedan para cuando exista esa base.
+
+**Supuesto de "Balance"**: es margen bruto (ventas − costo de
+mercadería vendida), calculado con el `precio_costo` ACTUAL de cada
+producto — no se guarda un histórico de costo por venta, así que si el
+costo de un producto cambió después de venderlo hoy, el balance de hoy
+ya refleja el costo nuevo, no el que tenía al momento de la venta.
+
 **Supuesto sin confirmar con el cliente**: el checkbox "Incluye IVA" de
 la calculadora arranca tildado y usa 21% (`config/cliente.ts`,
 `reglasNegocio.ivaPorcentaje`) — no está confirmado si Mini Market
@@ -211,17 +236,20 @@ suscripción a Supabase Realtime que lo conecta con la venta en curso.
   con el cliente si esos ~511 valores se importan tal cual (quedarían
   ~511 rubros) o se agrupan/normalizan antes.
 
-## Excel: import de catálogo y export de reportes (pendiente, sin construir)
+## Excel: import de catálogo (pendiente) y export de reportes (construido)
 
 Pedido del cliente, con `BACKUP.xlsx` (raíz del repo, no versionado) como
 dato real de referencia: un export de ~2991 productos de su sistema
 anterior. Columnas: `Descripcion`, `Proveedor`, `Codigo de barra`,
 `Familia`, `Costo`, `Codigo` (interno, correlativo del sistema viejo).
 Alcance pedido: import de catálogo (altas masivas a `productos`) y
-export de reportes de Ventas y Caja — probablemente con ExcelJS
-(mencionado como stack en `guia-openspec-gestion-comercial.md`, sección
-4). El import en sí no está implementado todavía; lo que sí ya se
-resolvió, de cara a ese import futuro:
+export de reportes — con ExcelJS (mencionado como stack en
+`guia-openspec-gestion-comercial.md`, sección 4). **El export ya está
+construido**: el botón "Exportar a Excel" de `/reportes` (ver más
+arriba) usa `exceljs` para armar un `.xlsx` de 3 hojas (resumen, medios
+de pago, top productos) del día elegido. El import de catálogo en sí
+sigue sin implementar; lo que sí ya se resolvió, de cara a ese import
+futuro:
 
 - **`Proveedor` ya tiene tabla propia** (`proveedores`, igual de simple
   que `categorias`) y su panel de administración/select en los

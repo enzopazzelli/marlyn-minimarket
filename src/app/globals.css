@@ -21,6 +21,10 @@
   --color-ok-fondo: var(--ok-fondo);
   --color-alerta: var(--alerta);
   --color-alerta-fondo: var(--alerta-fondo);
+  --color-grafico-1: var(--grafico-1);
+  --color-grafico-2: var(--grafico-2);
+  --color-grafico-3: var(--grafico-3);
+  --color-grafico-4: var(--grafico-4);
 
   --radius-base: var(--r);
 

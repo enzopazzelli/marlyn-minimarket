@@ -28,6 +28,19 @@
   --alerta: #c8452f; /* faltantes, deuda, cerrar caja, errores */
   --alerta-fondo: #fceeea;
 
+  /* --- Gráficos (solo /reportes, no reutilizar en otro lado) ---
+   * 4 primeros slots de una paleta categórica de 8, orden fijo (no
+   * reordenar: el orden es lo que garantiza que sean distinguibles con
+   * daltonismo). Validados contra --superficie (#ffffff) con el
+   * validador del skill de dataviz: pasan banda de luminosidad, piso de
+   * croma, separación CVD y piso de visión normal. grafico-3/4 dan WARN
+   * de contraste de texto — por eso los gráficos que los usan siempre
+   * llevan una etiqueta directa encima, nunca el color solo. */
+  --grafico-1: #2a78d6; /* magnitud (ventas por hora, ranking de productos) */
+  --grafico-2: #eb6834; /* medio de pago 2 */
+  --grafico-3: #1baf7a; /* medio de pago 3 */
+  --grafico-4: #eda100; /* medio de pago 4 */
+
   /* --- Forma --- */
   --r: 10px; /* radio base, único en todo el sistema */
 }
