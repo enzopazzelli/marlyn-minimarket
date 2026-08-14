@@ -1,5 +1,6 @@
 import { BarraSuperior } from "@/componentes/BarraSuperior";
 import { ChipCaja } from "@/componentes/ChipCaja";
+import { formatearHora } from "@/lib/formato";
 import { crearClienteServidor } from "@/lib/supabase/servidor";
 import { buscarTurnoAbierto, calcularEfectivoEsperado, listarMovimientosCaja } from "@/modulos/caja/consultas/caja";
 import { BotonExportarCaja } from "@/modulos/caja/componentes/BotonExportarCaja";
@@ -11,7 +12,6 @@ import { listarVentasDelTurno } from "@/modulos/ventas/consultas/ventas";
 import { ListaVentasDelTurno } from "@/modulos/ventas/componentes/ListaVentasDelTurno";
 
 const platita = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" });
-const horaFormateador = new Intl.DateTimeFormat("es-AR", { hour: "2-digit", minute: "2-digit" });
 
 export default async function PaginaCaja() {
   const supabase = await crearClienteServidor();
@@ -55,9 +55,7 @@ async function TurnoAbierto({
         <div className="flex-1">
           <p className="text-sm text-texto-suave">Apertura</p>
           <p className="numero text-2xl font-semibold text-texto">{platita.format(turno.montoApertura)}</p>
-          <p className="mt-1 text-xs text-texto-suave">
-            Desde las {horaFormateador.format(new Date(turno.abiertoEn))}
-          </p>
+          <p className="mt-1 text-xs text-texto-suave">Desde las {formatearHora(turno.abiertoEn)}</p>
         </div>
         <div className="flex-1">
           <p className="text-sm text-texto-suave">Debería haber</p>

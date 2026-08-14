@@ -32,7 +32,7 @@ export function FormularioImportarExcel({
   const [nombreArchivo, setNombreArchivo] = useState<string | null>(null);
   const [filas, setFilas] = useState<FilaExcelCatalogo[] | null>(null);
   const [porcentajeGanancia, setPorcentajeGanancia] = useState("30");
-  const [incluyeIva, setIncluyeIva] = useState(true);
+  const [incluyeIva, setIncluyeIva] = useState(false);
   const [resultado, setResultado] = useState<Resultado | null>(null);
 
   function abrir() {

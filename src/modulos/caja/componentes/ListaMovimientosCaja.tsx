@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
+import { formatearHora } from "@/lib/formato";
 import type { MovimientoCaja } from "../tipos";
 
 const platita = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" });
-const horaFormateador = new Intl.DateTimeFormat("es-AR", { hour: "2-digit", minute: "2-digit" });
 
 // El detalle de lo que ya usa calcularEfectivoEsperado para el monto
 // calculado al cerrar: cada venta en efectivo, cada pago de cuenta
@@ -47,9 +47,7 @@ export function ListaMovimientosCaja({
           <tbody>
             {movimientos.map((movimiento) => (
               <tr key={movimiento.id} className="border-b border-linea last:border-b-0">
-                <td className="numero px-3 py-2 text-xs text-texto-suave">
-                  {horaFormateador.format(new Date(movimiento.creadoEn))}
-                </td>
+                <td className="numero px-3 py-2 text-xs text-texto-suave">{formatearHora(movimiento.creadoEn)}</td>
                 <td className="px-3 py-2 text-xs text-texto">{movimiento.motivo}</td>
                 <td
                   className={`numero px-3 py-2 text-right text-xs font-semibold ${

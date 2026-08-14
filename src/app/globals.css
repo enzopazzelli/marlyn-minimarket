@@ -56,3 +56,32 @@ body {
     scroll-behavior: auto !important;
   }
 }
+
+/* Único uso de impresión del sistema hoy: el botón "Imprimir" del
+   ticket de venta (TicketVenta.tsx, vía AccionesTicket.tsx). Aísla
+   #ticket-imprimible de todo lo demás (el fondo del Modal incluido) y
+   ajusta la página al ancho de un rollo térmico de 80mm — si el
+   comercio usa una térmica de 58mm, cambiar acá. Si el día de mañana
+   se imprime otra cosa desde la app, esta regla necesita dejar de ser
+   global. */
+@media print {
+  @page {
+    size: 80mm auto;
+    margin: 0;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  #ticket-imprimible,
+  #ticket-imprimible * {
+    visibility: visible;
+  }
+
+  #ticket-imprimible {
+    position: fixed;
+    inset: 0;
+    width: 80mm;
+  }
+}

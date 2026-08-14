@@ -222,7 +222,35 @@ en ningún lado después de cerrar el comprobante — `listarVentasDelTurno`
 abierto con su medio de pago (o "Fiado — nombre del cliente") y
 `ListaVentasDelTurno.tsx` las lista (número, hora, medio, total) tanto
 en `/ventas` como en `/caja`, para tener el detalle a mano al arquear.
-Es de solo lectura por ahora, no incluye anular venta desde acá.
+**Anular venta** (`BotonAnularVenta.tsx`, pedido explícito de Enzo,
+2026-08-14): cada fila de "Ventas de este turno" que sigue confirmada
+tiene un botón "Anular" — solo ahí, no desde `/reportes`, para no
+tener que lidiar con reabrir el arqueo de un turno ya cerrado. Pide un
+motivo obligatorio y llama a `anular_venta()` (la función ya existía
+desde la primera entrega, con RLS, pero no estaba conectada a ninguna
+pantalla): devuelve el stock vendido, revierte el fiado si lo hubo y
+—desde la migración `20260814120000`— también descuenta de
+`movimientos_caja` la parte que se había cobrado en efectivo, para que
+"Debería haber" en `/caja` siga siendo correcto (antes de esa
+migración, anular una venta en efectivo dejaba ese ingreso pegado en
+el arqueo aunque la plata ya no estuviera realmente en el cajón). Una
+venta anulada sigue viéndose en la lista, atenuada y con la insignia
+"anulada" en vez del botón — no desaparece, es historial —
+pero deja de contar en el resumen "N · $total" de arriba y en
+`/reportes` (que ya filtraba `estado = 'confirmada'`).
+**Ticket imprimible y descargable** (`src/componentes/TicketVenta.tsx` +
+`AccionesTicket.tsx`, pedido explícito de Enzo, 2026-08-14): el
+comprobante que ya se mostraba al confirmar una venta se separó en un
+componente reusable, para poder verlo también desde el historial —
+`/reportes` → "Detalle de ventas" tiene ahora un ícono de ticket por
+fila que abre el mismo comprobante reconstruido con los datos que esa
+tabla ya trae (no se guarda un ticket aparte). Desde cualquiera de los
+dos lugares, "Imprimir" dispara la impresión nativa del navegador —
+`#ticket-imprimible` queda aislado del resto de la página por una
+regla `@media print` en `globals.css`, ajustada a una térmica de 80mm
+(`@page { size: 80mm auto }`; cambiar ese valor si el comercio usa una
+de 58mm) — y "Descargar" lo baja como `.png` con `html-to-image`
+(mismo criterio que `exceljs`: se importa recién al hacer click).
 
 **Proveedores, módulo propio**: `/proveedores` tiene ficha (nombre,
 contacto, teléfono), buscador, y por proveedor "Editar" y "Productos y
@@ -258,6 +286,44 @@ de vencimiento (no hay `fecha_vencimiento` en `productos`, ni pantalla
 para cargarla) y una "Meta" de ventas (no hay dónde configurar un
 objetivo todavía) — quedan para cuando exista esa base.
 
+**Backup manual** (`BotonDescargarBackup.tsx`, al lado de "Exportar a
+Excel", pedido explícito de Enzo, 2026-08-14): baja un `.xlsx` con una
+hoja por tabla (categorías, productos, proveedores, clientes, turnos y
+movimientos de caja, ventas + ítems + pagos, movimientos de stock y de
+cuenta corriente) tal cual está guardado, sin curar — a diferencia del
+resto de los exports, esto es un respaldo para archivar, no un reporte
+para leer. Pagina con `.range()` en vez de un `select("*")` directo:
+PostgREST corta cualquier consulta en 1000 filas (`max_rows` de
+`config.toml`) aunque no se pida un `.limit()`, así que sin eso el
+catálogo real del cliente (~2991 productos) se hubiera truncado a los
+primeros 1000 sin ningún error visible. Es manual y bajo demanda, no
+un backup automático recurrente — `perfiles` (cuentas de operador, no
+datos del negocio) queda afuera a propósito. **De un solo sentido a
+propósito**: no hay pantalla para volver a cargar ese `.xlsx` — restaurar
+12 tablas con relaciones por `id` (respetando orden de dependencias,
+qué hacer si un id ya existe, etc.) es mucho más riesgoso que
+exportarlas, y no fue lo que se pidió (decidido con Enzo, 2026-08-14).
+Es un archivo para tener guardado por las dudas, no una función de
+"deshacer". Si alguna vez hace falta restaurar de verdad, es trabajo
+puntual para hacer con cuidado en el momento — o, para un desastre real
+de la base, los backups del lado de Supabase (Point-in-Time Recovery,
+plan pago), no este archivo.
+
+**Bug de hidratación al mostrar la hora, encontrado y corregido**
+(2026-08-14): React tiraba "Hydration failed" en `/reportes` (y latente
+en cualquier otra pantalla con hora en una tabla). Causa:
+`Intl.DateTimeFormat("es-AR", { hour: "2-digit", minute: "2-digit" })`
+separa "a. m."/"p. m." con un carácter de espacio que varía según el
+motor ICU (normal, non-breaking, narrow no-break) — el Node del
+servidor y el V8 del navegador no siempre coinciden, mismo horario,
+bytes distintos. `formatearHora()` (`src/lib/formato.ts`) normaliza
+esos espacios después de formatear; reemplaza el `Intl.DateTimeFormat`
+inline en los cuatro lugares que renderizan hora directo en el DOM
+(`ListaVentasDelTurno.tsx`, `TablaDetalleVentas.tsx`,
+`ListaMovimientosCaja.tsx`, `caja/page.tsx`). Los dos usos que solo
+escriben a Excel (`BotonExportarExcel.tsx`, `BotonExportarCaja.tsx`) no
+lo necesitan, ahí no hay hidratación de por medio.
+
 **Supuesto de "Balance"**: es margen bruto (ventas − costo de
 mercadería vendida), calculado con el `precio_costo` ACTUAL de cada
 producto — no se guarda un histórico de costo por venta, así que si el
@@ -265,12 +331,14 @@ costo de un producto cambió después de venderlo hoy, el balance de hoy
 ya refleja el costo nuevo, no el que tenía al momento de la venta.
 
 **Supuesto sin confirmar con el cliente**: el checkbox "Incluye IVA" de
-la calculadora arranca tildado y usa 21% (`config/cliente.ts`,
-`reglasNegocio.ivaPorcentaje`) — no está confirmado si Mini Market
-Marlyn factura como responsable inscripto o si ese 21% aplica igual a
-todo su catálogo (ej. alimentos de la canasta básica suelen tener otra
-alícuota). Es una ayuda para cargar precios más rápido, no afecta el
-ticket (que sigue sin discriminar IVA).
+la calculadora arranca destildado (pedido explícito de Enzo,
+2026-08-14 — la mayoría de los productos no lo necesita) y de tildarse
+usa 21% (`config/cliente.ts`, `reglasNegocio.ivaPorcentaje`) — no está
+confirmado si Mini Market Marlyn factura como responsable inscripto o
+si ese 21% aplica igual a todo su catálogo (ej. alimentos de la
+canasta básica suelen tener otra alícuota). Es una ayuda para cargar
+precios más rápido, no afecta el ticket (que sigue sin discriminar
+IVA).
 
 **Las migraciones SQL ya se corrieron contra una base real** (Supabase
 local vía Docker, `supabase db reset`): las 5 migraciones de Núcleo + M1

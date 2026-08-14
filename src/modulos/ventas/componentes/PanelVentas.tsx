@@ -6,7 +6,9 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 import { crearClienteNavegador } from "@/lib/supabase/cliente";
 import { Boton } from "@/componentes/Boton";
 import { Campo } from "@/componentes/Campo";
+import { AccionesTicket } from "@/componentes/AccionesTicket";
 import { Modal } from "@/componentes/Modal";
+import { TicketVenta } from "@/componentes/TicketVenta";
 import { CANAL_EVENTO_CARRITO, nombreCanalPantalla } from "@/modulos/pantalla/tipos";
 import {
   calcularTotalCarrito,
@@ -670,26 +672,13 @@ export function PanelVentas({
       <Modal titulo="Venta registrada" abierto={comprobante !== null} onCerrar={() => setComprobante(null)}>
         {comprobante && (
           <div className="flex flex-col gap-3">
-            <div className="rounded-[var(--radius-base)] bg-fondo p-4 font-[family-name:var(--font-numero)] text-xs leading-relaxed">
-              {comprobante.items.map((item) => (
-                <div key={item.productoId} className="flex justify-between gap-3">
-                  <span>
-                    {item.cantidad} × {item.nombre}
-                  </span>
-                  <span>{platita.format(item.cantidad * item.precioUnitario)}</span>
-                </div>
-              ))}
-              <div className="my-2 border-t border-dashed border-linea" />
-              <div className="flex justify-between text-sm font-semibold">
-                <span>Total</span>
-                <span>{platita.format(comprobante.total)}</span>
-              </div>
-              <div className="flex justify-between text-texto-suave">
-                <span>{comprobante.medioTexto}</span>
-                {comprobante.vuelto > 0 && <span>Vuelto {platita.format(comprobante.vuelto)}</span>}
-              </div>
-              <p className="mt-2 text-center text-[10px] text-texto-suave">Documento no válido como factura</p>
-            </div>
+            <TicketVenta
+              items={comprobante.items}
+              total={comprobante.total}
+              medioTexto={comprobante.medioTexto}
+              vuelto={comprobante.vuelto}
+            />
+            <AccionesTicket />
             <Boton type="button" variante="confirmar" onClick={() => setComprobante(null)}>
               Seguir vendiendo
             </Boton>

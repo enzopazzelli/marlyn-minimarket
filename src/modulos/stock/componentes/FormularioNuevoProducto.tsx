@@ -35,7 +35,7 @@ function estadoInicial() {
     nombreProveedorNuevo: "",
     codigoBarras: "",
     precioCosto: "0",
-    incluyeIva: true,
+    incluyeIva: false,
     porcentajeGanancia: "",
     precioVenta: "",
     stockActual: "0",

@@ -7,6 +7,7 @@ import type { Producto } from "@/modulos/stock/tipos";
 import { calcularResumenDelDia, hoyISO } from "../consultas/calculos";
 import { obtenerVentasDelDia } from "../consultas/reportes";
 import type { ResumenDia, VentaReporte } from "../tipos";
+import { BotonDescargarBackup } from "./BotonDescargarBackup";
 import { BotonExportarExcel } from "./BotonExportarExcel";
 import { FilaKpis } from "./FilaKpis";
 import { GraficoMedioPago } from "./GraficoMedioPago";
@@ -72,7 +73,10 @@ export function PanelReportes({
           max={hoyISO()}
           onChange={(evento) => cambiarFecha(evento.target.value)}
         />
-        <BotonExportarExcel fecha={fecha} resumen={resumen} ventas={ventas} />
+        <div className="flex items-start gap-2">
+          <BotonExportarExcel fecha={fecha} resumen={resumen} ventas={ventas} />
+          <BotonDescargarBackup />
+        </div>
       </div>
 
       {error && (
