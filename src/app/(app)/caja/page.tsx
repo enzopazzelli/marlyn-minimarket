@@ -2,6 +2,7 @@ import { BarraSuperior } from "@/componentes/BarraSuperior";
 import { ChipCaja } from "@/componentes/ChipCaja";
 import { crearClienteServidor } from "@/lib/supabase/servidor";
 import { buscarTurnoAbierto, calcularEfectivoEsperado, listarMovimientosCaja } from "@/modulos/caja/consultas/caja";
+import { BotonExportarCaja } from "@/modulos/caja/componentes/BotonExportarCaja";
 import { FormularioAbrirCaja } from "@/modulos/caja/componentes/FormularioAbrirCaja";
 import { FormularioCerrarCaja } from "@/modulos/caja/componentes/FormularioCerrarCaja";
 import { FormularioMovimientoCaja } from "@/modulos/caja/componentes/FormularioMovimientoCaja";
@@ -65,6 +66,7 @@ async function TurnoAbierto({
             Apertura + efectivo cobrado + movimientos — esto es el cajón, no &ldquo;Ventas&rdquo; de Reportes
           </p>
         </div>
+        <BotonExportarCaja turno={turno} montoCalculado={montoCalculado} ventas={ventas} movimientos={movimientos} />
         <FormularioCerrarCaja turnoId={turno.id} montoCalculado={montoCalculado} />
       </div>
 

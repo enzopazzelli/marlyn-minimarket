@@ -184,22 +184,31 @@ export function PanelVentas({
     setError(null);
     const enCarrito = carritoActivo.items.find((item) => item.productoId === producto.id);
     const yaCargadas = enCarrito?.cantidad ?? 0;
+    const disponible = producto.stockActual - yaCargadas;
 
-    if (yaCargadas + 1 > producto.stockActual) {
+    if (disponible <= 0) {
       setError(`Quedan ${producto.stockActual} ${ETIQUETA_UNIDAD[producto.unidad]} de ${producto.nombre}`);
       return;
     }
 
+    // Por kg/litro, "agregar" es un solo click que arranca la fila —
+    // el ajuste fino después es por gramos/monto (FilaCarritoItem). Con
+    // menos de 1 kg/L en góndola, sumar el paso fijo de 1 la bloqueaba
+    // por completo aunque hubiera de sobra para vender una fracción; el
+    // paso queda acotado a lo que realmente queda.
+    const esPeso = producto.unidad === "kg" || producto.unidad === "litro";
+    const incremento = esPeso ? Math.round(Math.min(1, disponible) * 1000) / 1000 : 1;
+
     const items = enCarrito
       ? carritoActivo.items.map((item) =>
-          item.productoId === producto.id ? { ...item, cantidad: item.cantidad + 1 } : item,
+          item.productoId === producto.id ? { ...item, cantidad: item.cantidad + incremento } : item,
         )
       : [
           ...carritoActivo.items,
           {
             productoId: producto.id,
             nombre: producto.nombre,
-            cantidad: 1,
+            cantidad: incremento,
             precioUnitario: producto.precioVenta,
           },
         ];

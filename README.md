@@ -141,7 +141,11 @@ criterio que abrir turno: una sola tabla, sin invariante que proteger
 más allá de los checks de la columna (`monto > 0`, `tipo` válido). No
 se valida contra el efectivo disponible — si un retiro deja la caja en
 negativo, eso se ve reflejado como diferencia recién al cerrar, que es
-el momento real de arqueo.
+el momento real de arqueo. "Exportar Excel" (`BotonExportarCaja.tsx`,
+al lado de "Cerrar caja") arma un `.xlsx` de 3 hojas (resumen, ventas
+del turno, movimientos de caja) con los mismos datos que ya están en
+pantalla — a nivel turno, no día: un turno puede cruzar la medianoche,
+y un día puede tener más de un turno.
 
 **Clientes**: `/clientes` tiene ficha (nombre, teléfono, dirección),
 buscador, y por cliente "Ver cuenta" abre el historial de cuenta
@@ -166,7 +170,12 @@ abierta se bloquea (`registrar_movimiento_cuenta_corriente()` ahora
 recibe `p_medio`/`p_turno_caja_id`, ambos opcionales — `'recargo'` sigue
 sin pedirlos, nunca toca caja). La venta fiada original ya se ve en
 `/caja` sin cambios (es una venta más de "Ventas de este turno"); el
-pago posterior ahora se ve al lado, en "Movimientos de caja".
+pago posterior ahora se ve al lado, en "Movimientos de caja". Dentro de
+"Ver cuenta", al lado de "Debe", el botón "Exportar"
+(`BotonExportarCuentaCorriente.tsx`) arma un `.xlsx` de 2 hojas
+(resumen del cliente, historial de movimientos con el detalle de
+productos de cada fiado) — mismo criterio que el resto de los exports
+ya construidos, `exceljs` cargado solo al hacer click.
 
 **Ventas (TPV)**: `/ventas` — lector de código de barras con foco fijo,
 buscador con grilla de productos, carrito, y cobro en
@@ -197,7 +206,16 @@ de jamón" es tan común como pedir por peso). Cambiar cualquiera de los
 dos recalcula el otro contra el mismo precio por kg/L; `cantidad` sigue
 guardándose en kg/litro como siempre, la conversión es solo de esta
 capa. No hizo falta tocar la base: `ventas_items.cantidad` ya era
-numérico, era pura falta de UI.
+numérico, era pura falta de UI. **Bug reportado por Enzo**: con menos
+de 1 kg/L en góndola (ej. 0.906 kg de queso), tocar el producto para
+agregarlo a la venta lo bloqueaba por completo ("no puedo vender más")
+en vez de dejar cargar lo que quedaba. `agregarProducto()` en
+`PanelVentas.tsx` sumaba siempre un paso fijo de 1 kg/L y comparaba eso
+contra el stock — con menos de 1 disponible, ese paso ya no entraba.
+Ahora, para kg/litro, el paso queda acotado a lo que realmente hay
+(`Math.min(1, disponible)`): con 0.906 kg carga los 906 g de una, y el
+cajero ajusta fino después con los mismos campos de gramos/monto. Por
+unidad no cambia — ahí un paso de 1 siempre tuvo sentido.
 **Seguimiento de ventas del turno**: las ventas confirmadas no se veían
 en ningún lado después de cerrar el comprobante — `listarVentasDelTurno`
 (`src/modulos/ventas/consultas/ventas.ts`) trae las ventas del turno

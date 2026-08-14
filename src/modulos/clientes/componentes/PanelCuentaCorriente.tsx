@@ -6,6 +6,7 @@ import { crearClienteNavegador } from "@/lib/supabase/cliente";
 import { Boton } from "@/componentes/Boton";
 import { Campo } from "@/componentes/Campo";
 import { Modal } from "@/componentes/Modal";
+import { BotonExportarCuentaCorriente } from "./BotonExportarCuentaCorriente";
 import {
   listarMovimientosCuentaCorriente,
   type MovimientoCuentaCorrienteDetallado,
@@ -176,11 +177,14 @@ export function PanelCuentaCorriente({
 
       <Modal titulo={`Cuenta de ${cliente.nombre}`} abierto={abierto} onCerrar={cerrar}>
         <div className="flex flex-col gap-4">
-          <div className="rounded-[var(--radius-base)] bg-fondo px-4 py-3">
-            <p className="text-xs text-texto-suave">Debe</p>
-            <p className={`numero text-xl font-semibold ${saldoActual > 0 ? "text-alerta" : "text-ok"}`}>
-              {saldoActual > 0 ? platita.format(saldoActual) : "Al día"}
-            </p>
+          <div className="flex items-center justify-between gap-3 rounded-[var(--radius-base)] bg-fondo px-4 py-3">
+            <div>
+              <p className="text-xs text-texto-suave">Debe</p>
+              <p className={`numero text-xl font-semibold ${saldoActual > 0 ? "text-alerta" : "text-ok"}`}>
+                {saldoActual > 0 ? platita.format(saldoActual) : "Al día"}
+              </p>
+            </div>
+            <BotonExportarCuentaCorriente cliente={cliente} saldoActual={saldoActual} movimientos={movimientos} />
           </div>
 
           <div className="max-h-56 overflow-y-auto rounded-[var(--radius-base)] border border-linea">
