@@ -19,6 +19,7 @@ navegador.
 | Tiempo real | Supabase Realtime | Usado por la pantalla al cliente (carrito en vivo) |
 | Exportaciones | ExcelJS | Generación de todos los archivos `.xlsx` (reportes, stock, caja, backup) |
 | Testing | Vitest + GitHub Actions (CI) | Tests automáticos en cada cambio: funciones de cálculo, y pruebas reales de seguridad contra la base |
+| Hosting | Vercel | Aloja la aplicación web en un dominio público, con un despliegue nuevo automático cada vez que se actualiza el código |
 
 No se usan frameworks de UI de terceros (como Material UI o Bootstrap)
 ni librerías de gráficos: los gráficos del panel de reportes están
@@ -34,7 +35,7 @@ flowchart LR
     end
 
     subgraph Nube["Infraestructura en la nube"]
-        APP["Aplicación web (Next.js)"]
+        APP["Aplicación web (Next.js) — Vercel"]
 
         subgraph SB["Supabase"]
             AUTH["Autenticación"]
@@ -55,11 +56,11 @@ La aplicación es una única app web: no hay un "servidor" aparte que
 mantener, ni instalación local de base de datos. Todo el dato vive en
 Supabase, en la nube.
 
-**Estado del hosting**: durante esta etapa la aplicación se corrió en
-modo desarrollo apuntando a la base de datos real (ya en la nube). El
-despliegue a un dominio público estable (por ejemplo con Vercel, que
-es la forma más directa para una app Next.js) es un paso pendiente,
-sencillo de hacer cuando se defina.
+**Estado del hosting**: la aplicación ya está desplegada en un dominio
+público estable (Vercel), conectada a la misma base de datos real en
+Supabase. Cada vez que se sube una actualización al repositorio del
+código, Vercel la despliega sola — no hay un paso manual de "subir la
+versión nueva al servidor".
 
 ## 4. Módulos del sistema
 
@@ -182,7 +183,8 @@ Esto corre en cada actualización, no es una revisión manual ocasional.
 **Incluido**: Ventas (con pago simple, mixto y fiado; venta por unidad
 o por peso/volumen; anulación), Caja (apertura, cierre con arqueo,
 movimientos manuales, historial de cierres), Stock (alta, edición,
-ingreso de mercadería, import/export Excel), Clientes (cuenta
+ajuste de stock con entrada/salida, carga rápida para reponer varios
+productos seguidos, import/export Excel), Clientes (cuenta
 corriente, recargos, cobros), Proveedores (ficha, generación de
 pedidos), Reportes (panel del día, export, backup completo), Notas,
 Pantalla al cliente en vivo, tickets con impresión y descarga en

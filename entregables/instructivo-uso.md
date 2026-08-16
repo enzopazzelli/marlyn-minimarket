@@ -112,10 +112,22 @@ calcula solo el precio de venta (o al revés: si se carga el precio a
 mano, calcula qué porcentaje de ganancia queda). Hay un casillero
 aparte por si el precio necesita sumar IVA.
 
-**Ingresar mercadería**: cuando llega un pedido, se suma stock a un
-producto que ya existe (con el motivo, para tener el historial de por
-qué entró esa cantidad) — el stock nunca se pisa a mano, siempre queda
-el registro de cada ingreso.
+**Ajustar stock**: en cada producto, el botón "Ajustar stock" suma o
+resta cantidad — se elige "Entrada" (llegó mercadería) o "Salida"
+(rotura, vencido, corrección de un conteo) y se carga la cantidad,
+siempre en positivo, con un motivo opcional. El sistema no deja hacer
+una salida por más de lo que hay cargado. Como con todo lo demás en
+Stock, el stock nunca se pisa a mano: cada ajuste queda en el
+historial.
+
+**Carga rápida**: para cuando llega un pedido con varios productos a
+la vez, el botón "Carga rápida" (al lado de "Etiquetas") evita tener
+que buscar cada producto en la tabla uno por uno. Se busca por nombre
+o se escanea el código de barras, se carga Entrada o Salida y la
+cantidad, "Guardar y buscar el siguiente" lo guarda al toque y deja
+todo listo para cargar el producto que sigue sin cerrar la ventana —
+recién al tocar "Cerrar" se actualiza la tabla de Stock con todo lo
+cargado.
 
 **Rubros**: se pueden crear, renombrar o borrar desde el botón
 "Rubros" arriba de la lista.
@@ -224,10 +236,11 @@ el vendedor.
 - **Sin stock cargado, no se puede vender** un producto — es una
   decisión a propósito, para que el stock del sistema siempre refleje
   la realidad.
-- Los dos usuarios (dueños) tienen el mismo nivel de acceso por ahora;
-  si en algún momento hace falta un usuario con permisos más
-  limitados (por ejemplo, para un empleado), se puede sumar más
-  adelante.
+- Todos los usuarios con login tienen hoy el mismo nivel de acceso
+  completo, sin importar el nombre de la cuenta — no hay todavía un
+  rol limitado (por ejemplo, uno acotado solo a Ventas/Caja para un
+  empleado de mostrador, sin acceso a Reportes o a borrar productos).
+  Se puede sumar más adelante si hace falta.
 
 Ante cualquier duda de uso, o si algo no se comporta como esperan,
 avisen y lo vemos juntos.
