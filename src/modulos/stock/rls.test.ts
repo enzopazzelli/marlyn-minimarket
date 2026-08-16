@@ -89,3 +89,27 @@ describe("registrar_ingreso_stock (M1 Stock)", () => {
     expect(error?.message).toMatch(/sesión activa/);
   });
 });
+
+describe("registrar_ajuste_stock (M1 Stock)", () => {
+  it("sin sesión no se puede ajustar stock", async () => {
+    const { error } = await clienteAnonimo.rpc("registrar_ajuste_stock", {
+      p_producto_id: productoId,
+      p_cantidad: 1,
+      p_tipo: "entrada",
+    });
+
+    expect(error).not.toBeNull();
+    expect(error?.message).toMatch(/sesión activa/);
+  });
+
+  it("una salida no puede dejar el stock en negativo", async () => {
+    const { error } = await clienteServicio.rpc("registrar_ajuste_stock", {
+      p_producto_id: productoId,
+      p_cantidad: 999999,
+      p_tipo: "salida",
+    });
+
+    expect(error).not.toBeNull();
+    expect(error?.message).toMatch(/no hay stock suficiente/i);
+  });
+});

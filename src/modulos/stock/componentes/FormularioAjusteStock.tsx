@@ -8,20 +8,28 @@ import { Campo } from "@/componentes/Campo";
 import { Modal } from "@/componentes/Modal";
 import type { Producto } from "../tipos";
 
+type Tipo = "entrada" | "salida";
+
 function pasoDeStock(unidad: "unidad" | "kg" | "litro") {
   return unidad === "unidad" ? "1" : "0.1";
 }
 
-export function FormularioIngresoMercaderia({ producto }: { producto: Producto }) {
+// Reemplaza al viejo "ingresar mercadería" (solo sumaba): un mismo
+// modal con toggle Entrada/Salida en vez de pedir un número con signo
+// — el signo lo decide el toggle, nunca hay que tipear un "-" (en
+// pantallas táctiles el teclado numérico con min=0 ni lo muestra).
+export function FormularioAjusteStock({ producto }: { producto: Producto }) {
   const router = useRouter();
   const [abierto, setAbierto] = useState(false);
   const [guardando, setGuardando] = useState(false);
+  const [tipo, setTipo] = useState<Tipo>("entrada");
   const [cantidad, setCantidad] = useState("");
   const [precioVenta, setPrecioVenta] = useState(String(producto.precioVenta));
   const [motivo, setMotivo] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   function abrir() {
+    setTipo("entrada");
     setCantidad("");
     setPrecioVenta(String(producto.precioVenta));
     setMotivo("");
@@ -43,25 +51,38 @@ export function FormularioIngresoMercaderia({ producto }: { producto: Producto }
       return;
     }
 
-    const precioNumero = Number(precioVenta);
-    if (!Number.isFinite(precioNumero) || precioNumero < 0) {
-      setError("El precio de venta tiene que ser mayor o igual a cero");
+    if (tipo === "salida" && cantidadNumero > producto.stockActual) {
+      setError(`Solo hay ${producto.stockActual} en góndola`);
       return;
+    }
+
+    let precioNumero: number | null = null;
+    if (tipo === "entrada") {
+      precioNumero = Number(precioVenta);
+      if (!Number.isFinite(precioNumero) || precioNumero < 0) {
+        setError("El precio de venta tiene que ser mayor o igual a cero");
+        return;
+      }
     }
 
     setGuardando(true);
     const supabase = crearClienteNavegador();
 
     try {
-      const { error: errorRpc } = await supabase.rpc("registrar_ingreso_stock", {
+      const { error: errorRpc } = await supabase.rpc("registrar_ajuste_stock", {
         p_producto_id: producto.id,
         p_cantidad: cantidadNumero,
+        p_tipo: tipo,
         p_precio_venta_nuevo: precioNumero,
-        p_motivo: motivo.trim() || "Ingreso de mercadería",
+        p_motivo: motivo.trim() || null,
       });
 
       if (errorRpc) {
-        setError("No se pudo registrar el ingreso. Probá de nuevo.");
+        setError(
+          /stock suficiente/i.test(errorRpc.message)
+            ? `Solo hay ${producto.stockActual} en góndola`
+            : "No se pudo registrar el ajuste. Probá de nuevo.",
+        );
         return;
       }
 
@@ -79,44 +100,61 @@ export function FormularioIngresoMercaderia({ producto }: { producto: Producto }
         onClick={abrir}
         className="text-xs font-medium text-texto-suave underline decoration-dotted underline-offset-2 hover:text-texto"
       >
-        Ingresar
+        Ajustar stock
       </button>
 
-      <Modal titulo={`Ingresar mercadería — ${producto.nombre}`} abierto={abierto} onCerrar={cerrar}>
+      <Modal titulo={`Ajustar stock — ${producto.nombre}`} abierto={abierto} onCerrar={cerrar}>
         <form onSubmit={alGuardar} noValidate className="flex flex-col gap-4">
           <p className="text-sm text-texto-suave">
             Hay <span className="numero font-semibold text-texto">{producto.stockActual}</span> en góndola.
           </p>
 
-          <div className="flex flex-col gap-1.5">
-            <Campo
-              etiqueta="¿Cuántas unidades entraron?"
-              id={`cantidad-${producto.id}`}
-              type="number"
-              min={0}
-              step={pasoDeStock(producto.unidad)}
-              value={cantidad}
-              onChange={(evento) => setCantidad(evento.target.value)}
-              className="font-[family-name:var(--font-numero)]"
-              autoFocus
-            />
+          <div className="grid grid-cols-2 gap-2">
+            <Boton
+              type="button"
+              variante={tipo === "entrada" ? "confirmar" : "fantasma"}
+              onClick={() => setTipo("entrada")}
+            >
+              Entrada
+            </Boton>
+            <Boton
+              type="button"
+              variante={tipo === "salida" ? "peligro" : "fantasma"}
+              onClick={() => setTipo("salida")}
+            >
+              Salida
+            </Boton>
           </div>
 
           <Campo
-            etiqueta="Precio de venta"
-            id={`precioVentaIngreso-${producto.id}`}
+            etiqueta={tipo === "entrada" ? "¿Cuántas unidades entraron?" : "¿Cuántas unidades salieron?"}
+            id={`cantidad-${producto.id}`}
             type="number"
             min={0}
-            step="1"
-            value={precioVenta}
-            onChange={(evento) => setPrecioVenta(evento.target.value)}
+            step={pasoDeStock(producto.unidad)}
+            value={cantidad}
+            onChange={(evento) => setCantidad(evento.target.value)}
             className="font-[family-name:var(--font-numero)]"
+            autoFocus
           />
+
+          {tipo === "entrada" && (
+            <Campo
+              etiqueta="Precio de venta"
+              id={`precioVentaIngreso-${producto.id}`}
+              type="number"
+              min={0}
+              step="1"
+              value={precioVenta}
+              onChange={(evento) => setPrecioVenta(evento.target.value)}
+              className="font-[family-name:var(--font-numero)]"
+            />
+          )}
 
           <Campo
             etiqueta="Motivo (opcional)"
             id={`motivo-${producto.id}`}
-            placeholder="Ej: compra a proveedor"
+            placeholder={tipo === "entrada" ? "Ej: compra a proveedor" : "Ej: rotura, vencido, conteo físico"}
             value={motivo}
             onChange={(evento) => setMotivo(evento.target.value)}
           />

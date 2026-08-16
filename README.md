@@ -69,11 +69,8 @@ para reusarse en Caja y Clientes.
 
 **M1 Stock queda completo para esta entrega**: cada fila de la tabla
 tiene "Editar" (todos los datos del producto salvo el stock — precio,
-rubro, código de barras, unidad, stock mínimo) e "Ingresar" (sumar stock
-a uno existente con motivo, vía la función `registrar_ingreso_stock`,
-que además dejó un movimiento en `movimientos_stock` con
-`tipo = 'ingreso'` para no perder el historial — el stock cargado nunca
-se pisa con un update directo). El botón "Rubros" en la barra superior
+rubro, código de barras, unidad, stock mínimo) y "Ajustar stock" (ver
+más abajo, reemplazo de lo que antes era solo "Ingresar"). El botón "Rubros" en la barra superior
 abre alta/renombre/borrado de rubros — `PanelListaSimple.tsx`
 (`src/componentes/`), componente genérico. El de "Proveedores" que
 vivía acá al lado se sacó: quedó redundante en cuanto `/proveedores`
@@ -166,6 +163,41 @@ del Modal, y una copia gemela portaleada que es la que
 impresión distintas conviviendo en la misma app. `page: etiquetas-a4`
 (la misma "named page" de CSS Paged Media de antes) sigue resolviendo
 que el ticket imprima a 80mm y las etiquetas a A4 en la misma sesión.
+
+**"Ingresar" pasó a ser "Ajustar stock", con salida además de
+entrada** (pedido explícito de Enzo, 2026-08-16: hacía falta poder
+restar stock a mano — rotura, vencido, corrección de conteo — y el
+campo de cantidad, con `min={0}` para el teclado numérico, no dejaba
+tipear un negativo en pantallas táctiles). En vez de aceptar un número
+con signo, `FormularioAjusteStock.tsx` (antes
+`FormularioIngresoMercaderia.tsx`) agregó un toggle Entrada/Salida: la
+cantidad que se tipea siempre es positiva, el toggle decide el signo
+— mismo criterio que ya usan los botones −/+ del carrito en Ventas, y
+evita el problema del teclado táctil de raíz en vez de pedir que el
+cajero encuentre la tecla "-". La función `registrar_ingreso_stock`
+se reemplazó por `registrar_ajuste_stock(p_producto_id, p_cantidad,
+p_tipo, p_precio_venta_nuevo, p_motivo)` — `p_tipo` en
+`'entrada'`/`'salida'`, guarda en `movimientos_stock` con
+`tipo = 'ingreso'` o `'ajuste'` según corresponda (la columna
+`cantidad` de esa tabla ya era signada desde el día 1: "negativo =
+salida, positivo = entrada") y bloquea la operación si restar deja el
+stock por debajo de cero, la misma regla de "sin stock negativo" que
+ya rige en Ventas (`reglasNegocio.permiteStockNegativo` en
+`config/cliente.ts`). `registrar_ingreso_stock` queda sin usar desde
+el front pero no se borró (nadie más la llama, no hay razón para
+tocar una migración ya aplicada).
+**Carga rápida** (`FormularioCargaRapida.tsx`, mismo pedido): botón
+nuevo al lado de "Etiquetas" para reponer varios productos seguidos
+— buscador por nombre o código de barras (coincidencia exacta de
+código entra directo, igual que el lector de `/ventas`), Entrada/Salida
+y cantidad por producto, "Guardar y buscar el siguiente" sin cerrar el
+modal. Cada producto se guarda al toque contra `registrar_ajuste_stock`,
+pero la tabla de `/stock` no se refresca hasta cerrar el modal — con
+~2991 productos, recargarla entera después de cada uno de 20-30
+productos de un pedido se sentía lento; el stock mostrado dentro del
+modal mientras tanto se actualiza con el valor que devuelve la propia
+función (ahora `returns numeric` en vez de `void`), no con una consulta
+aparte.
 
 **Caja, con arqueo al cierre**: `/caja` abre un turno (monto de
 apertura, insert directo — el índice único parcial de `turnos_caja` ya

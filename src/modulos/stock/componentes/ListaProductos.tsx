@@ -8,8 +8,9 @@ import { crearClienteNavegador } from "@/lib/supabase/cliente";
 import { BotonEliminarProducto } from "./BotonEliminarProducto";
 import { eliminarProducto } from "../consultas/eliminarProducto";
 import { EtiquetasProductos } from "./EtiquetasProductos";
+import { FormularioAjusteStock } from "./FormularioAjusteStock";
+import { FormularioCargaRapida } from "./FormularioCargaRapida";
 import { FormularioEditarProducto } from "./FormularioEditarProducto";
-import { FormularioIngresoMercaderia } from "./FormularioIngresoMercaderia";
 import type { Categoria, Producto, Proveedor } from "../tipos";
 
 const platita = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" });
@@ -209,6 +210,7 @@ export function ListaProductos({
         </select>
         {!modoSeleccion && (
           <>
+            <FormularioCargaRapida productos={productosActivos} />
             <EtiquetasProductos productos={productosActivos} />
             <Boton type="button" variante="fantasma" className="px-2.5 py-1.5 text-xs" onClick={activarModoSeleccion}>
               Eliminar productos
@@ -309,7 +311,7 @@ export function ListaProductos({
                         </div>
                       ) : (
                         <div className="flex items-center justify-end gap-3">
-                          <FormularioIngresoMercaderia producto={producto} />
+                          <FormularioAjusteStock producto={producto} />
                           <FormularioEditarProducto
                             producto={producto}
                             categoriasIniciales={categorias}

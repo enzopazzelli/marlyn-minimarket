@@ -19,7 +19,7 @@ import type { Categoria, Producto, Proveedor } from "../tipos";
 //
 // A diferencia del alta, acá NO hay campo de stock inicial: el stock ya
 // cargado solo cambia por movimientos con motivo (ver
-// FormularioIngresoMercaderia.tsx), nunca por una edición directa.
+// FormularioAjusteStock.tsx), nunca por una edición directa.
 
 const RUBRO_NUEVO = "__nuevo__";
 const PROVEEDOR_NUEVO = "__nuevo__";
