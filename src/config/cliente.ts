@@ -17,6 +17,9 @@ export const clienteConfig = {
     // pedido de texto) — no es M6 Compras completo (orden de
     // compra/recepción formal), eso sigue en `compras`.
     proveedores: true,
+    // Notas sueltas de uso general (texto libre + fecha) — pegar el
+    // pedido que se le mandó a un proveedor, un recordatorio, etc.
+    notas: true,
     // Dashboard de indicadores del día (ventas, balance, medios de
     // pago, top productos, alertas de stock) + export a Excel — no
     // incluye alertas de vencimiento ni metas configurables, quedan

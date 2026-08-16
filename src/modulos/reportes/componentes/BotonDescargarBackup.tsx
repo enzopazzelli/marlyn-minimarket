@@ -1,17 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { Boton } from "@/componentes/Boton";
+import { filaSegura } from "@/lib/excel";
 import { crearClienteNavegador } from "@/lib/supabase/cliente";
+import { traerTodasLasFilas } from "@/lib/supabase/paginado";
 
 // Backup manual bajo pedido (no automático, no reemplaza un backup real
 // de la base): una hoja por tabla, con las columnas tal cual están
 // guardadas — a diferencia de los otros exports (Stock, Caja, cuenta
 // corriente, Reportes del día), esto es un respaldo para archivar, no
-// un reporte para leer, así que no se cura ni se traduce nada.
-// `perfiles` queda afuera: son cuentas de operador, no datos del
-// negocio, y tiene `token_pantalla` (sensible).
+// un reporte para leer, así que no se cura ni se traduce nada (salvo
+// `filaSegura`, ver más abajo). `perfiles` queda afuera: son cuentas de
+// operador, no datos del negocio, y tiene `token_pantalla` (sensible).
 const TABLAS = [
   "categorias",
   "productos",
@@ -24,32 +25,8 @@ const TABLAS = [
   "ventas_pagos",
   "movimientos_stock",
   "movimientos_cuenta_corriente",
+  "notas",
 ] as const;
-
-// PostgREST corta cualquier select en 1000 filas (max_rows, config.toml)
-// aunque no se pida un límite — sin paginar, un backup de un catálogo de
-// ~2991 productos como el real del cliente quedaría truncado a los
-// primeros 1000 sin ningún error visible.
-async function traerTodasLasFilas(supabase: SupabaseClient, tabla: string): Promise<Record<string, unknown>[]> {
-  const TAMANO_PAGINA = 1000;
-  const filas: Record<string, unknown>[] = [];
-  let desde = 0;
-
-  while (true) {
-    const { data, error } = await supabase
-      .from(tabla)
-      .select("*")
-      .range(desde, desde + TAMANO_PAGINA - 1);
-
-    if (error) throw error;
-
-    filas.push(...(data ?? []));
-    if (!data || data.length < TAMANO_PAGINA) break;
-    desde += TAMANO_PAGINA;
-  }
-
-  return filas;
-}
 
 export function BotonDescargarBackup() {
   const [generando, setGenerando] = useState(false);
@@ -64,12 +41,12 @@ export function BotonDescargarBackup() {
       const libro = new ExcelJS.Workbook();
 
       for (const tabla of TABLAS) {
-        const filas = await traerTodasLasFilas(supabase, tabla);
+        const filas = await traerTodasLasFilas<Record<string, unknown>>(supabase, tabla, "*");
         const hoja = libro.addWorksheet(tabla);
 
         if (filas.length > 0) {
           hoja.columns = Object.keys(filas[0]).map((columna) => ({ header: columna, key: columna, width: 22 }));
-          hoja.addRows(filas);
+          hoja.addRows(filas.map(filaSegura));
         }
       }
 

@@ -38,8 +38,11 @@ Scripts útiles: `npm run lint`, `npm run typecheck`, `npm run test`
 
 Lo que ya existe: auth con Supabase (`/ingresar`), layout con barra
 lateral agrupada por frecuencia de uso, tokens de diseño y tres roles
-tipográficos, migraciones de Núcleo + M1 Stock + M2 Clientes + M5 Caja +
-M3 Ventas (con RLS y las funciones `registrar_venta`/`anular_venta`).
+tipográficos, y migraciones de Núcleo + M1 Stock + M2 Clientes + M5 Caja
++ M3 Ventas + M6 Proveedores (catálogo) + Reportes + Pantalla al
+cliente + Notas, todas con RLS activa (funciones clave:
+`registrar_venta`/`anular_venta`, `registrar_ingreso_stock`,
+`registrar_movimiento_cuenta_corriente`, `importar_catalogo`).
 
 **Ventas, Clientes, Caja, Proveedores y Reportes ya funcionan de punta a
 punta**: `/ventas` es el TPV real (buscador + lector de código de barras
@@ -83,6 +86,27 @@ cliente sobre `BACKUP.xlsx` (ver más abajo): "Familia" del Excel es
 conceptualmente lo mismo que "Rubro" acá, no una tabla aparte; "Género"
 no se suma.
 
+**Bug encontrado y corregido: `/stock` solo mostraba 1000 productos**
+(2026-08-15, reportado por Enzo — el catálogo real del cliente tiene
+~2991). Causa: `listarProductos()` hacía un `select()` directo, y
+PostgREST corta cualquier consulta en 1000 filas (`max_rows` de
+`config.toml`) sin avisar. Efecto colateral que generó la confusión:
+al borrar productos basura ("asdasd", "111") que estaban dentro de
+esos primeros 1000, otros productos basura que habían quedado ocultos
+más allá del corte pasaban a ocupar ese lugar — daba la sensación de
+que lo borrado seguía apareciendo, cuando en realidad eran filas
+distintas. Corregido paginando con `.range()` hasta traer todo
+(`traerTodasLasFilas()`, nuevo en `src/lib/supabase/paginado.ts` —
+mismo mecanismo que ya usaba `BotonDescargarBackup.tsx`, ahora
+compartido entre los dos en vez de duplicado). Como consecuencia
+directa, `ListaProductos.tsx` pasó a paginar la tabla en el cliente
+(de a 50, con "Página X de Y") — antes nunca hacía falta porque nunca
+había más de 1000 filas para renderizar de una, ahora si hay que
+mostrar cerca de 3000 sí. El checkbox "seleccionar todos" en el modo
+de borrado múltiple selecciona solo la página visible, no todo lo
+filtrado — con miles de filas detrás de un filtro, tildar "todos" y
+borrar de una sin haber visto qué se estaba por borrar era peligroso.
+
 **Borrar ya no se bloquea, se acomoda.** Pedido explícito de Enzo tras
 usar el import de catálogo: borrar un rubro o un proveedor con
 productos asignados ya no se bloquea — esos productos quedan sin ese
@@ -107,6 +131,41 @@ con el sufijo "[Eliminado]" en vez de desaparecer del historial.
 "Eliminar productos" en la barra de filtros de `/stock` activa un modo
 de selección múltiple (checkbox por fila) para borrar varios de una,
 con el mismo criterio real/marcado por fila.
+
+**Etiquetas de góndola** (`EtiquetasProductos.tsx`, pedido explícito de
+Enzo, 2026-08-15, con captura de referencia del cliente): botón
+"Etiquetas" en `/stock` — elegís productos con un buscador propio
+(selector independiente del modo de selección de "Eliminar productos",
+para no mezclar dos usos distintos del mismo estado), y arma una
+grilla imprimible de 2 columnas × 5 filas (10 por hoja A4) con el
+nombre y el precio de cada uno, grande, en el mismo estilo que la
+referencia. Pensada para papel o adhesivo liso que se corta después
+(decidido con Enzo, no depende de ninguna hoja pre-troquelada
+puntual) — border dashed como guía de corte. Por ahora una etiqueta
+por producto elegido, sin cantidad por producto — si hace falta
+repetir una porque hay varias góndolas con el mismo artículo, es una
+extensión chica para cuando se pida.
+
+**Bug encontrado y corregido: las etiquetas no se apilaban en la
+hoja** (2026-08-15, reportado por Enzo con captura del diálogo de
+impresión — A4 se detectaba bien, pero cada fila saltaba a una página
+nueva en vez de completar las 5 de la hoja). Causa: el mecanismo de
+impresión original (heredado del ticket) aislaba el contenido con
+`visibility: hidden` en todo lo demás + `position: fixed; inset: 0`
+en el contenedor imprimible — funciona para el ticket porque siempre
+entra en una sola página chica, pero un elemento fuera de flujo
+(`fixed`/`absolute`) no se pagina: lo que no entra en una página se
+recorta o se pierde en vez de continuar en la siguiente. Corregido de
+raíz con `CapaImpresion.tsx` (`src/componentes/`): en vez de aislar
+con CSS, portalea el contenido imprimible fuera del árbol de la app
+—Modal incluido— directo a `<body>`, en flujo normal de documento, que
+sí pagina bien. `TicketVenta.tsx` también se migró a este mecanismo
+(se renderiza dos veces con las mismas props: la copia visible dentro
+del Modal, y una copia gemela portaleada que es la que
+`#ticket-imprimible` aísla al imprimir) para no dejar dos técnicas de
+impresión distintas conviviendo en la misma app. `page: etiquetas-a4`
+(la misma "named page" de CSS Paged Media de antes) sigue resolviendo
+que el ticket imprima a 80mm y las etiquetas a A4 en la misma sesión.
 
 **Caja, con arqueo al cierre**: `/caja` abre un turno (monto de
 apertura, insert directo — el índice único parcial de `turnos_caja` ya
@@ -146,6 +205,17 @@ al lado de "Cerrar caja") arma un `.xlsx` de 3 hojas (resumen, ventas
 del turno, movimientos de caja) con los mismos datos que ya están en
 pantalla — a nivel turno, no día: un turno puede cruzar la medianoche,
 y un día puede tener más de un turno.
+**Historial de cierres** (`HistorialCierres.tsx`, pedido explícito de
+Enzo, 2026-08-15 — ya estaba prometido al cliente en la cotización
+original y faltaba construirlo): debajo del turno actual (esté abierto
+o no), una tabla de solo lectura con los últimos 30 turnos cerrados —
+día, horario, apertura, "debería haber", contado y diferencia (en
+verde si sobró, en rojo si faltó, "Justo" si cerró exacto). Lectura
+directa de `turnos_caja`: los montos de cierre ya quedan congelados en
+la fila al cerrar (`FormularioCerrarCaja.tsx`), no hay que recalcular
+nada como con el turno abierto. `listarTurnosCerrados()`
+(`consultas/caja.ts`) no filtra por usuario — los dos dueños comparten
+el mismo nivel de acceso, así que cualquiera ve el historial completo.
 
 **Clientes**: `/clientes` tiene ficha (nombre, teléfono, dirección),
 buscador, y por cliente "Ver cuenta" abre el historial de cuenta
@@ -249,8 +319,17 @@ dos lugares, "Imprimir" dispara la impresión nativa del navegador —
 `#ticket-imprimible` queda aislado del resto de la página por una
 regla `@media print` en `globals.css`, ajustada a una térmica de 80mm
 (`@page { size: 80mm auto }`; cambiar ese valor si el comercio usa una
-de 58mm) — y "Descargar" lo baja como `.png` con `html-to-image`
-(mismo criterio que `exceljs`: se importa recién al hacer click).
+de 58mm) — y "Descargar" ofrece PNG o PDF con `html-to-image` +
+`jspdf` (mismo criterio que `exceljs`: se importan recién al hacer
+click). **Rediseño a solo íconos** (pedido explícito de Enzo,
+2026-08-15): entre "Ver ticket", "Imprimir" y "Descargar" ya eran
+varios botones con texto juntos en pantalla — ahora son íconos con
+`title`/`aria-label`, y "Descargar" abre un menú chico de dos
+opciones. El PDF reusa la misma captura en imagen que ya se generaba
+para el PNG (`toPng` de `html-to-image`) en vez de redibujar el ticket
+con la API de dibujo de `jsPDF`: la página del PDF queda del tamaño
+exacto de esa imagen, sin manejar mm/DPI a mano, y no hay dos layouts
+del comprobante para mantener sincronizados.
 
 **Proveedores, módulo propio**: `/proveedores` tiene ficha (nombre,
 contacto, teléfono), buscador, y por proveedor "Editar" y "Productos y
@@ -285,6 +364,14 @@ original quedaron afuera a propósito**, decidido con el cliente: alertas
 de vencimiento (no hay `fecha_vencimiento` en `productos`, ni pantalla
 para cargarla) y una "Meta" de ventas (no hay dónde configurar un
 objetivo todavía) — quedan para cuando exista esa base.
+**"Alertas de stock" paginado** (`PanelAlertasStock.tsx`, pedido
+explícito de Enzo, 2026-08-15): con un catálogo grande, la cantidad de
+productos por debajo del mínimo puede ser larga y estirar la tarjeta
+hasta el final de la pantalla. Ahora se muestran de a 8, con
+"Página X de Y" y flechas para moverse — mismo criterio de paginación
+en el cliente que ya usa el resto de este panel (los datos del día ya
+vienen completos desde el servidor, no hay una consulta nueva por
+página).
 
 **Backup manual** (`BotonDescargarBackup.tsx`, al lado de "Exportar a
 Excel", pedido explícito de Enzo, 2026-08-14): baja un `.xlsx` con una
@@ -323,6 +410,26 @@ inline en los cuatro lugares que renderizan hora directo en el DOM
 `ListaMovimientosCaja.tsx`, `caja/page.tsx`). Los dos usos que solo
 escriben a Excel (`BotonExportarExcel.tsx`, `BotonExportarCaja.tsx`) no
 lo necesitan, ahí no hay hidratación de por medio.
+
+**Notas, módulo nuevo** (`/notas`, pedido explícito de Enzo,
+2026-08-14): lista de notas sueltas de texto libre con fecha
+automática, sin título ni categoría — para cualquier uso, desde pegar
+el pedido que se le mandó a un proveedor hasta un recordatorio
+cualquiera. El formulario de alta queda siempre visible arriba de la
+lista (no en un modal): la idea es poder pegar algo rápido. Tabla
+`notas` con RLS directa, mismo criterio que `movimientos_caja` (sin
+función `security definer`, no hay ningún invariante que proteger más
+allá del `check` de que el texto no quede vacío). Se sumó a
+`BotonDescargarBackup.tsx`. De paso, encontrado al sumar `notas` ahí:
+ese backup nunca sanitizaba el texto libre que vuelca (nombres,
+motivos, y ahora el texto de una nota) contra CSV/Formula Injection —
+regla 5 de `prompt-base-sistemas-gestion.md`, que ya estaba escrita
+pero no se había aplicado en ningún export de este proyecto. Corregido
+con `filaSegura()`/`celdaSegura()` (`src/lib/excel.ts`), que prefija
+con una comilla cualquier celda que empiece con `=`, `+`, `-` o `@`
+—aplicado solo en el backup por ahora; los otros exports (Stock, Caja,
+cuenta corriente, Reportes) tienen el mismo hueco pendiente, sin
+resolver todavía.
 
 **Supuesto de "Balance"**: es margen bruto (ventas − costo de
 mercadería vendida), calculado con el `precio_costo` ACTUAL de cada
@@ -388,8 +495,13 @@ reservado para esto desde el día 1.
   (`reglasNegocio.permiteStockNegativo = false`).
 - Sin logo ni paleta propia todavía: se usa la paleta por defecto del
   sistema (verde tinta + amarillo cartel) en `src/estilos/tema.css`.
-- Complementos de impresión térmica y facturación quedan para una
-  segunda etapa; el complemento de pantalla al cliente sí entra en esta
+- Facturación fiscal queda para una segunda etapa (decidido con el
+  cliente). El botón "Imprimir" del ticket (ver más arriba) es
+  impresión nativa del navegador, no una integración dedicada con la
+  térmica (ESC/POS) — funciona si la impresora está instalada como
+  impresora normal de Windows, que es el caso más común; una
+  integración de bajo nivel sigue quedando para una segunda etapa si
+  hiciera falta. El complemento de pantalla al cliente sí entra en esta
   entrega, a pedido explícito del cliente.
 
 ## Preguntas todavía abiertas

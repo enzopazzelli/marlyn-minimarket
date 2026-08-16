@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { traerTodasLasFilas } from "@/lib/supabase/paginado";
 import type { Categoria, Producto } from "../tipos";
 
 type FilaProducto = {
@@ -21,16 +22,17 @@ type FilaProducto = {
 // component la usa para la carga inicial, el formulario de alta la
 // reusaría para un refresco optimista si hiciera falta más adelante.
 export async function listarProductos(supabase: SupabaseClient): Promise<Producto[]> {
-  const { data, error } = await supabase
-    .from("productos")
-    .select(
-      "id, nombre, categoria_id, proveedor_id, codigo_barras, precio_costo, precio_venta, incluye_iva, porcentaje_ganancia, stock_actual, stock_minimo, unidad, activo",
-    )
-    .order("creado_en", { ascending: false });
+  const data = await traerTodasLasFilas<FilaProducto>(
+    supabase,
+    "productos",
+    "id, nombre, categoria_id, proveedor_id, codigo_barras, precio_costo, precio_venta, incluye_iva, porcentaje_ganancia, stock_actual, stock_minimo, unidad, activo",
+    [
+      { columna: "creado_en", ascendente: false },
+      { columna: "id", ascendente: true },
+    ],
+  );
 
-  if (error) throw error;
-
-  return ((data ?? []) as FilaProducto[]).map((fila) => ({
+  return data.map((fila) => ({
     id: fila.id,
     nombre: fila.nombre,
     categoriaId: fila.categoria_id,

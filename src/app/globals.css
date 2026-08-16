@@ -57,31 +57,48 @@ body {
   }
 }
 
-/* Único uso de impresión del sistema hoy: el botón "Imprimir" del
-   ticket de venta (TicketVenta.tsx, vía AccionesTicket.tsx). Aísla
-   #ticket-imprimible de todo lo demás (el fondo del Modal incluido) y
-   ajusta la página al ancho de un rollo térmico de 80mm — si el
-   comercio usa una térmica de 58mm, cambiar acá. Si el día de mañana
-   se imprime otra cosa desde la app, esta regla necesita dejar de ser
-   global. */
+/* Todo lo que se imprime (ticket de venta, etiquetas de góndola) se
+   portalea fuera del árbol normal de la app con CapaImpresion.tsx, en
+   vez de aislarse con el viejo truco visibility:hidden +
+   position:fixed/inset:0. Ese truco solo servía para algo que entra
+   en una sola página — un elemento fuera de flujo no se pagina, así
+   que las etiquetas (que pueden cruzar varias hojas A4) no se
+   repartían bien. Portaleado a <body> en flujo normal de documento,
+   el navegador sí las parte en páginas de verdad. Oculto en pantalla
+   por default; visible solo acá adentro. */
+.capa-impresion {
+  display: none;
+}
+
+/* El tamaño de página de cada trabajo se resuelve con "named pages"
+   (CSS Paged Media): la página por default es el ticket (térmica de
+   80mm — cambiar ese valor si el comercio usa una de 58mm), y
+   `page: etiquetas-a4` en #etiquetas-imprimibles hace que esas páginas
+   usen la definición de @page etiquetas-a4 en cambio. */
 @media print {
   @page {
     size: 80mm auto;
     margin: 0;
   }
 
-  body * {
-    visibility: hidden;
+  @page etiquetas-a4 {
+    size: A4;
+    margin: 10mm;
   }
 
-  #ticket-imprimible,
-  #ticket-imprimible * {
-    visibility: visible;
+  .capa-impresion {
+    display: block;
+  }
+
+  body > :not(.capa-impresion) {
+    display: none !important;
   }
 
   #ticket-imprimible {
-    position: fixed;
-    inset: 0;
     width: 80mm;
+  }
+
+  #etiquetas-imprimibles {
+    page: etiquetas-a4;
   }
 }

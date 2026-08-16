@@ -7,6 +7,7 @@ import { Insignia } from "@/componentes/Insignia";
 import { crearClienteNavegador } from "@/lib/supabase/cliente";
 import { BotonEliminarProducto } from "./BotonEliminarProducto";
 import { eliminarProducto } from "../consultas/eliminarProducto";
+import { EtiquetasProductos } from "./EtiquetasProductos";
 import { FormularioEditarProducto } from "./FormularioEditarProducto";
 import { FormularioIngresoMercaderia } from "./FormularioIngresoMercaderia";
 import type { Categoria, Producto, Proveedor } from "../tipos";
@@ -15,6 +16,11 @@ const platita = new Intl.NumberFormat("es-AR", { style: "currency", currency: "A
 
 const clasesFiltro =
   "rounded-[var(--radius-base)] border border-linea bg-superficie px-3 py-1.5 text-sm text-texto outline-none focus-visible:border-acento focus-visible:ring-2 focus-visible:ring-acento/40";
+
+const clasesBotonPagina =
+  "rounded-[var(--radius-base)] p-1 text-texto-suave hover:bg-fondo hover:text-texto disabled:opacity-30 disabled:pointer-events-none";
+
+const TAMANO_PAGINA = 50;
 
 type FiltroEstado = "todos" | "ok" | "reponer";
 
@@ -74,6 +80,24 @@ export function ListaProductos({
     });
   }, [productosActivos, busqueda, rubroId, proveedorId, estado, nombrePorCategoria]);
 
+  // Con el catálogo real (~2991 productos) renderizar `filtrados` entero
+  // como filas de tabla es pesado apenas se entra sin buscar nada
+  // todavía — se pagina de a 50. "Adjusting state when a prop changes"
+  // (mismo patrón que PanelListaSimple.tsx): al cambiar cualquier
+  // filtro hay que volver a la página 1, no quedarse en una que puede
+  // ni existir ya para el resultado nuevo.
+  const claveFiltro = `${busqueda}|${rubroId}|${proveedorId}|${estado}`;
+  const [claveFiltroVista, setClaveFiltroVista] = useState(claveFiltro);
+  const [pagina, setPagina] = useState(0);
+  if (claveFiltro !== claveFiltroVista) {
+    setClaveFiltroVista(claveFiltro);
+    setPagina(0);
+  }
+
+  const totalPaginas = Math.max(1, Math.ceil(filtrados.length / TAMANO_PAGINA));
+  const paginaSegura = Math.min(pagina, totalPaginas - 1);
+  const productosPagina = filtrados.slice(paginaSegura * TAMANO_PAGINA, paginaSegura * TAMANO_PAGINA + TAMANO_PAGINA);
+
   function activarModoSeleccion() {
     setSeleccionados(new Set());
     setResultadoSeleccion(null);
@@ -94,10 +118,21 @@ export function ListaProductos({
     });
   }
 
+  // Selecciona solo lo que se ve en esta página, no todo `filtrados"
+  // — con la lista paginada, tildar "todos" y borrar sin querer
+  // productos de otra página que ni se llegaron a ver sería peligroso.
   function alternarSeleccionarTodos() {
-    setSeleccionados((anteriores) =>
-      anteriores.size === filtrados.length ? new Set() : new Set(filtrados.map((producto) => producto.id)),
-    );
+    const idsPagina = productosPagina.map((producto) => producto.id);
+    const yaEstanTodos = idsPagina.every((id) => seleccionados.has(id));
+
+    setSeleccionados((anteriores) => {
+      const nuevo = new Set(anteriores);
+      for (const id of idsPagina) {
+        if (yaEstanTodos) nuevo.delete(id);
+        else nuevo.add(id);
+      }
+      return nuevo;
+    });
   }
 
   async function eliminarSeleccionados() {
@@ -173,9 +208,12 @@ export function ListaProductos({
           <option value="reponer">Para reponer</option>
         </select>
         {!modoSeleccion && (
-          <Boton type="button" variante="fantasma" className="px-2.5 py-1.5 text-xs" onClick={activarModoSeleccion}>
-            Eliminar productos
-          </Boton>
+          <>
+            <EtiquetasProductos productos={productosActivos} />
+            <Boton type="button" variante="fantasma" className="px-2.5 py-1.5 text-xs" onClick={activarModoSeleccion}>
+              Eliminar productos
+            </Boton>
+          </>
         )}
         <span className="ml-auto whitespace-nowrap text-xs text-texto-suave">
           {filtrados.length} de {productosActivos.length} productos · {paraReponer.length} para reponer
@@ -226,8 +264,8 @@ export function ListaProductos({
                       {indice === 6 && modoSeleccion ? (
                         <input
                           type="checkbox"
-                          aria-label="Seleccionar todos"
-                          checked={seleccionados.size === filtrados.length}
+                          aria-label="Seleccionar todos los de esta página"
+                          checked={productosPagina.length > 0 && productosPagina.every((p) => seleccionados.has(p.id))}
                           onChange={alternarSeleccionarTodos}
                           className="h-4 w-4 accent-acento"
                         />
@@ -240,7 +278,7 @@ export function ListaProductos({
               </tr>
             </thead>
             <tbody>
-              {filtrados.map((producto) => {
+              {productosPagina.map((producto) => {
                 const reponer = producto.stockActual <= producto.stockMinimo;
                 return (
                   <tr key={producto.id} className="border-b border-linea last:border-b-0">
@@ -288,6 +326,52 @@ export function ListaProductos({
           </table>
         )}
       </div>
+
+      {totalPaginas > 1 && (
+        <div className="flex items-center justify-center gap-3">
+          <button
+            type="button"
+            onClick={() => setPagina((anterior) => Math.max(0, anterior - 1))}
+            disabled={paginaSegura === 0}
+            aria-label="Página anterior"
+            className={clasesBotonPagina}
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.75"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="h-4 w-4"
+            >
+              <path d="m15 18-6-6 6-6" />
+            </svg>
+          </button>
+          <span className="numero text-xs text-texto-suave">
+            Página {paginaSegura + 1} de {totalPaginas}
+          </span>
+          <button
+            type="button"
+            onClick={() => setPagina((anterior) => Math.min(totalPaginas - 1, anterior + 1))}
+            disabled={paginaSegura === totalPaginas - 1}
+            aria-label="Página siguiente"
+            className={clasesBotonPagina}
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.75"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="h-4 w-4"
+            >
+              <path d="m9 18 6-6-6-6" />
+            </svg>
+          </button>
+        </div>
+      )}
     </div>
   );
 }

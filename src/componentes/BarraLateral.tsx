@@ -20,6 +20,7 @@ const grupoAdministracion: ItemNav[] = [
   ...(clienteConfig.modulos.stock ? [{ href: "/stock", etiqueta: "Stock" }] : []),
   ...(clienteConfig.modulos.clientes ? [{ href: "/clientes", etiqueta: "Clientes" }] : []),
   ...(clienteConfig.modulos.proveedores ? [{ href: "/proveedores", etiqueta: "Proveedores" }] : []),
+  ...(clienteConfig.modulos.notas ? [{ href: "/notas", etiqueta: "Notas" }] : []),
 ];
 
 const grupoComplementos: ItemNav[] = [

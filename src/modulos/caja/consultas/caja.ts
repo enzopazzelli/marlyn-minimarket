@@ -12,6 +12,19 @@ type FilaTurno = {
   cerrado_en: string | null;
 };
 
+function mapearTurno(fila: FilaTurno): TurnoCaja {
+  return {
+    id: fila.id,
+    usuarioId: fila.usuario_id,
+    montoApertura: Number(fila.monto_apertura),
+    montoCierreDeclarado: fila.monto_cierre_declarado === null ? null : Number(fila.monto_cierre_declarado),
+    montoCierreCalculado: fila.monto_cierre_calculado === null ? null : Number(fila.monto_cierre_calculado),
+    estado: fila.estado,
+    abiertoEn: fila.abierto_en,
+    cerradoEn: fila.cerrado_en,
+  };
+}
+
 // El índice único parcial (turno_abierto_unico_por_usuario, migración
 // de Caja) es la barrera real de "un usuario, un turno abierto a la
 // vez" — esto solo lee cuál es, si existe.
@@ -31,17 +44,29 @@ export async function buscarTurnoAbierto(
   if (error) throw error;
   if (!data) return null;
 
-  const fila = data as FilaTurno;
-  return {
-    id: fila.id,
-    usuarioId: fila.usuario_id,
-    montoApertura: Number(fila.monto_apertura),
-    montoCierreDeclarado: fila.monto_cierre_declarado === null ? null : Number(fila.monto_cierre_declarado),
-    montoCierreCalculado: fila.monto_cierre_calculado === null ? null : Number(fila.monto_cierre_calculado),
-    estado: fila.estado,
-    abiertoEn: fila.abierto_en,
-    cerradoEn: fila.cerrado_en,
-  };
+  return mapearTurno(data as FilaTurno);
+}
+
+// Historial de cierres (pedido explícito de Enzo, 2026-08-14 — ya
+// prometido al cliente como parte del plan). montoCierreCalculado y
+// montoCierreDeclarado quedan congelados en la fila desde
+// FormularioCerrarCaja.tsx, así que acá no hace falta recalcular nada
+// como en calcularEfectivoEsperado — es una lectura directa. No filtra
+// por usuario: los dos dueños comparten el mismo nivel de acceso, así
+// que cualquiera puede revisar el historial completo del local.
+export async function listarTurnosCerrados(supabase: SupabaseClient, limite = 30): Promise<TurnoCaja[]> {
+  const { data, error } = await supabase
+    .from("turnos_caja")
+    .select(
+      "id, usuario_id, monto_apertura, monto_cierre_declarado, monto_cierre_calculado, estado, abierto_en, cerrado_en",
+    )
+    .eq("estado", "cerrado")
+    .order("cerrado_en", { ascending: false })
+    .limit(limite);
+
+  if (error) throw error;
+
+  return ((data ?? []) as FilaTurno[]).map(mapearTurno);
 }
 
 // Apertura + movimientos del turno (ingresos suman, egresos restan).

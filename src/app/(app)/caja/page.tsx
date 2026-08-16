@@ -2,11 +2,17 @@ import { BarraSuperior } from "@/componentes/BarraSuperior";
 import { ChipCaja } from "@/componentes/ChipCaja";
 import { formatearHora } from "@/lib/formato";
 import { crearClienteServidor } from "@/lib/supabase/servidor";
-import { buscarTurnoAbierto, calcularEfectivoEsperado, listarMovimientosCaja } from "@/modulos/caja/consultas/caja";
+import {
+  buscarTurnoAbierto,
+  calcularEfectivoEsperado,
+  listarMovimientosCaja,
+  listarTurnosCerrados,
+} from "@/modulos/caja/consultas/caja";
 import { BotonExportarCaja } from "@/modulos/caja/componentes/BotonExportarCaja";
 import { FormularioAbrirCaja } from "@/modulos/caja/componentes/FormularioAbrirCaja";
 import { FormularioCerrarCaja } from "@/modulos/caja/componentes/FormularioCerrarCaja";
 import { FormularioMovimientoCaja } from "@/modulos/caja/componentes/FormularioMovimientoCaja";
+import { HistorialCierres } from "@/modulos/caja/componentes/HistorialCierres";
 import { ListaMovimientosCaja } from "@/modulos/caja/componentes/ListaMovimientosCaja";
 import { listarVentasDelTurno } from "@/modulos/ventas/consultas/ventas";
 import { ListaVentasDelTurno } from "@/modulos/ventas/componentes/ListaVentasDelTurno";
@@ -19,18 +25,20 @@ export default async function PaginaCaja() {
     data: { user },
   } = await supabase.auth.getUser();
   const turno = user ? await buscarTurnoAbierto(supabase, user.id) : null;
+  const turnosCerrados = user ? await listarTurnosCerrados(supabase) : [];
 
   return (
     <>
       <BarraSuperior titulo="Caja">
         <ChipCaja abierta={!!turno} />
       </BarraSuperior>
-      <main className="flex-1 p-4 md:p-6">
+      <main className="flex flex-1 flex-col gap-4 p-4 md:p-6">
         {turno ? (
           <TurnoAbierto supabase={supabase} turno={turno} />
         ) : user ? (
           <FormularioAbrirCaja usuarioId={user.id} />
         ) : null}
+        {user && <HistorialCierres turnos={turnosCerrados} />}
       </main>
     </>
   );
