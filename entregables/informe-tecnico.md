@@ -56,11 +56,12 @@ La aplicación es una única app web: no hay un "servidor" aparte que
 mantener, ni instalación local de base de datos. Todo el dato vive en
 Supabase, en la nube.
 
-**Estado del hosting**: la aplicación ya está desplegada en un dominio
-público estable (Vercel), conectada a la misma base de datos real en
-Supabase. Cada vez que se sube una actualización al repositorio del
-código, Vercel la despliega sola — no hay un paso manual de "subir la
-versión nueva al servidor".
+**Estado del hosting**: la aplicación ya está desplegada en
+[marlyn-minimarket.vercel.app](https://marlyn-minimarket.vercel.app/)
+(Vercel), conectada a la misma base de datos real en Supabase. Cada
+vez que se sube una actualización al repositorio del código, Vercel la
+despliega sola — no hay un paso manual de "subir la versión nueva al
+servidor".
 
 ## 4. Módulos del sistema
 

@@ -9,8 +9,11 @@ haga falta.
 
 ## Cómo entrar
 
-Entrando a la dirección del sistema van a ver una pantalla para poner
-usuario y contraseña. Una vez adentro, a la izquierda (o arriba, si lo
+La dirección del sistema es
+[marlyn-minimarket.vercel.app](https://marlyn-minimarket.vercel.app/) —
+conviene guardarla como favorito en la PC del local. Ahí van a ver una
+pantalla para poner usuario y contraseña. Una vez adentro, a la
+izquierda (o arriba, si lo
 abren desde el celular) van a ver el menú con todas las secciones:
 **Ventas, Caja, Reportes, Stock, Clientes, Proveedores y Notas**.
 
