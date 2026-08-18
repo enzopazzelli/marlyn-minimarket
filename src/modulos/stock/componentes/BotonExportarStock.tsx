@@ -49,7 +49,7 @@ export function BotonExportarStock({
             nombre: producto.nombre,
             rubro: producto.categoriaId ? (nombrePorCategoria.get(producto.categoriaId) ?? "") : "",
             proveedor: producto.proveedorId ? (nombrePorProveedor.get(producto.proveedorId) ?? "") : "",
-            precioCosto: producto.precioCosto,
+            precioCosto: producto.precioCosto ?? undefined,
             precioVenta: producto.precioVenta,
             stockActual: producto.stockActual,
             stockMinimo: producto.stockMinimo,

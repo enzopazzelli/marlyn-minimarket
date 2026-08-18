@@ -14,7 +14,7 @@
 // la que efectivamente bloqueó.
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -25,6 +25,14 @@ const clienteAnonimo = createClient(url, anonKey);
 
 let categoriaId: string;
 let productoId: string;
+let operadorAuthId: string;
+let dueñoAuthId: string;
+// Sesiones reales (no la clave de servicio, que no tiene auth.uid() y
+// por lo tanto nunca pasa auth_activo()): las necesitan tanto los tests
+// de rol como los tests preexistentes de registrar_ajuste_stock que
+// antes usaban clienteServicio para simular "cualquier usuario activo".
+let clienteOperador: SupabaseClient;
+let clienteDueño: SupabaseClient;
 
 beforeAll(async () => {
   const { data: categoria, error: errorCategoria } = await clienteServicio
@@ -42,11 +50,55 @@ beforeAll(async () => {
     .single();
   if (errorProducto || !producto) throw errorProducto ?? new Error("No se pudo crear el producto de prueba");
   productoId = producto.id;
+
+  const password = "prueba-rls-operador-123";
+
+  const emailOperador = `operador-stock-${Date.now()}@marlyn-minimarket.test`;
+  const { data: operador, error: errorOperador } = await clienteServicio.auth.admin.createUser({
+    email: emailOperador,
+    password,
+    email_confirm: true,
+  });
+  if (errorOperador || !operador.user) throw errorOperador ?? new Error("No se pudo crear el operador de prueba");
+  operadorAuthId = operador.user.id;
+
+  // El trigger gestionar_usuario_nuevo() crea el perfil con rol 'dueño'
+  // por defecto — se pisa para probar justo el otro caso.
+  const { error: errorRolOperador } = await clienteServicio
+    .from("perfiles")
+    .update({ rol: "operador" })
+    .eq("id", operadorAuthId);
+  if (errorRolOperador) throw errorRolOperador;
+
+  clienteOperador = createClient(url, anonKey);
+  const { error: errorLoginOperador } = await clienteOperador.auth.signInWithPassword({
+    email: emailOperador,
+    password,
+  });
+  if (errorLoginOperador) throw errorLoginOperador;
+
+  // Segundo usuario de prueba, con el rol 'dueño' por defecto (no hace
+  // falta pisarlo) — sirve tanto para el lado "sí puede" de los tests
+  // de rol como de sesión activa genérica para los tests viejos.
+  const emailDueño = `dueno-stock-${Date.now()}@marlyn-minimarket.test`;
+  const { data: dueño, error: errorDueño } = await clienteServicio.auth.admin.createUser({
+    email: emailDueño,
+    password,
+    email_confirm: true,
+  });
+  if (errorDueño || !dueño.user) throw errorDueño ?? new Error("No se pudo crear el dueño de prueba");
+  dueñoAuthId = dueño.user.id;
+
+  clienteDueño = createClient(url, anonKey);
+  const { error: errorLoginDueño } = await clienteDueño.auth.signInWithPassword({ email: emailDueño, password });
+  if (errorLoginDueño) throw errorLoginDueño;
 });
 
 afterAll(async () => {
   if (productoId) await clienteServicio.from("productos").delete().eq("id", productoId);
   if (categoriaId) await clienteServicio.from("categorias").delete().eq("id", categoriaId);
+  if (operadorAuthId) await clienteServicio.auth.admin.deleteUser(operadorAuthId);
+  if (dueñoAuthId) await clienteServicio.auth.admin.deleteUser(dueñoAuthId);
 });
 
 describe("RLS de productos y categorías (M1 Stock)", () => {
@@ -90,6 +142,55 @@ describe("registrar_ingreso_stock (M1 Stock)", () => {
   });
 });
 
+describe("Rol operador (Fase 1 de PLAN-ROLES-AUDITORIA.md)", () => {
+  it("el operador no ve precio_costo en productos_visibles", async () => {
+    const { data, error } = await clienteOperador
+      .from("productos_visibles")
+      .select("id, precio_costo")
+      .eq("id", productoId)
+      .single();
+
+    expect(error).toBeNull();
+    expect(data?.precio_costo).toBeNull();
+  });
+
+  it("el dueño sí ve precio_costo en productos_visibles (no es un apagado global)", async () => {
+    const { data, error } = await clienteDueño
+      .from("productos_visibles")
+      .select("id, precio_costo")
+      .eq("id", productoId)
+      .single();
+
+    expect(error).toBeNull();
+    expect(data?.precio_costo).not.toBeNull();
+  });
+
+  it("el operador no puede crear un producto", async () => {
+    const { error } = await clienteOperador
+      .from("productos")
+      .insert({ nombre: "Intento operador", precio_venta: 1 });
+
+    expect(error?.code).toBe("42501");
+  });
+
+  it("el operador no puede editar un producto existente", async () => {
+    const { error, count } = await clienteOperador
+      .from("productos")
+      .update({ precio_venta: 999999 }, { count: "exact" })
+      .eq("id", productoId);
+
+    // Mismo criterio que notas/rls.test.ts: RLS puede devolver 42501 o
+    // simplemente no afectar ninguna fila, según el camino interno.
+    expect(error?.code === "42501" || count === 0).toBe(true);
+  });
+
+  it("el operador no puede crear un rubro", async () => {
+    const { error } = await clienteOperador.from("categorias").insert({ nombre: "Rubro de operador" });
+
+    expect(error?.code).toBe("42501");
+  });
+});
+
 describe("registrar_ajuste_stock (M1 Stock)", () => {
   it("sin sesión no se puede ajustar stock", async () => {
     const { error } = await clienteAnonimo.rpc("registrar_ajuste_stock", {
@@ -103,13 +204,28 @@ describe("registrar_ajuste_stock (M1 Stock)", () => {
   });
 
   it("una salida no puede dejar el stock en negativo", async () => {
-    const { error } = await clienteServicio.rpc("registrar_ajuste_stock", {
+    // clienteServicio no sirve acá: no tiene auth.uid() (no es una
+    // sesión de usuario), así que nunca pasa auth_activo() y no llega a
+    // esta validación — hace falta una sesión real.
+    const { error } = await clienteDueño.rpc("registrar_ajuste_stock", {
       p_producto_id: productoId,
       p_cantidad: 999999,
       p_tipo: "salida",
+      p_motivo: "Prueba de RLS",
     });
 
     expect(error).not.toBeNull();
     expect(error?.message).toMatch(/no hay stock suficiente/i);
+  });
+
+  it("una salida sin motivo se rechaza (Fase 0 de PLAN-ROLES-AUDITORIA.md)", async () => {
+    const { error } = await clienteDueño.rpc("registrar_ajuste_stock", {
+      p_producto_id: productoId,
+      p_cantidad: 1,
+      p_tipo: "salida",
+    });
+
+    expect(error).not.toBeNull();
+    expect(error?.message).toMatch(/contá el motivo/i);
   });
 });

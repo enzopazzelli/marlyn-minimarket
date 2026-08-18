@@ -15,7 +15,10 @@ export type Producto = {
   categoriaId: string | null;
   proveedorId: string | null;
   codigoBarras: string | null;
-  precioCosto: number;
+  // null cuando lo consulta un operador (Fase 1 de
+  // PLAN-ROLES-AUDITORIA.md — productos_visibles lo oculta a nivel
+  // base, no es un recorte de la UI). Nunca null para el dueño.
+  precioCosto: number | null;
   precioVenta: number;
   // Cómo se llegó a precioVenta la última vez que se calculó en el
   // formulario — se guarda para que editar el producto más adelante no

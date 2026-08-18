@@ -40,7 +40,11 @@ function estadoDesdeProducto(producto: Producto) {
     proveedorSeleccionado: producto.proveedorId ?? "",
     nombreProveedorNuevo: "",
     codigoBarras: producto.codigoBarras ?? "",
-    precioCosto: String(producto.precioCosto),
+    // producto.precioCosto llega null si lo abrió un operador (no
+    // debería pasar, "Editar" queda oculto para ese rol — ver Fase 5 de
+    // PLAN-ROLES-AUDITORIA.md), pero el campo tiene que arrancar vacío
+    // y no con el string "null" si de todos modos ocurre.
+    precioCosto: producto.precioCosto === null ? "" : String(producto.precioCosto),
     incluyeIva: producto.incluyeIva,
     porcentajeGanancia: producto.porcentajeGanancia === null ? "" : String(producto.porcentajeGanancia),
     precioVenta: String(producto.precioVenta),

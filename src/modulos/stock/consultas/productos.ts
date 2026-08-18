@@ -8,7 +8,7 @@ type FilaProducto = {
   categoria_id: string | null;
   proveedor_id: string | null;
   codigo_barras: string | null;
-  precio_costo: number | string;
+  precio_costo: number | string | null;
   precio_venta: number | string;
   incluye_iva: boolean;
   porcentaje_ganancia: number | string | null;
@@ -18,13 +18,18 @@ type FilaProducto = {
   activo: boolean;
 };
 
+// Lee de productos_visibles (vista, no la tabla): igual que productos,
+// salvo que precio_costo viaja null si quien consulta no es dueño —
+// esa es la barrera real (Fase 1 de PLAN-ROLES-AUDITORIA.md), acá solo
+// hace falta no pisarlo con 0 al mapear.
+//
 // Recibe cualquier cliente de Supabase (servidor o navegador): el server
 // component la usa para la carga inicial, el formulario de alta la
 // reusaría para un refresco optimista si hiciera falta más adelante.
 export async function listarProductos(supabase: SupabaseClient): Promise<Producto[]> {
   const data = await traerTodasLasFilas<FilaProducto>(
     supabase,
-    "productos",
+    "productos_visibles",
     "id, nombre, categoria_id, proveedor_id, codigo_barras, precio_costo, precio_venta, incluye_iva, porcentaje_ganancia, stock_actual, stock_minimo, unidad, activo",
     [
       { columna: "creado_en", ascendente: false },
@@ -38,7 +43,7 @@ export async function listarProductos(supabase: SupabaseClient): Promise<Product
     categoriaId: fila.categoria_id,
     proveedorId: fila.proveedor_id,
     codigoBarras: fila.codigo_barras,
-    precioCosto: Number(fila.precio_costo),
+    precioCosto: fila.precio_costo === null ? null : Number(fila.precio_costo),
     precioVenta: Number(fila.precio_venta),
     incluyeIva: fila.incluye_iva,
     porcentajeGanancia: fila.porcentaje_ganancia === null ? null : Number(fila.porcentaje_ganancia),
