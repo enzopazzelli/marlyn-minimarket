@@ -7,8 +7,7 @@ import { buscarTurnoAbierto } from "@/modulos/caja/consultas/caja";
 import { listarClientes } from "@/modulos/clientes/consultas/clientes";
 import { listarProductos } from "@/modulos/stock/consultas/productos";
 import { listarVentasDelTurno } from "@/modulos/ventas/consultas/ventas";
-import { ListaVentasDelTurno } from "@/modulos/ventas/componentes/ListaVentasDelTurno";
-import { PanelVentas } from "@/modulos/ventas/componentes/PanelVentas";
+import { SeccionVentas } from "@/modulos/ventas/componentes/SeccionVentas";
 
 export default async function PaginaVentas() {
   const supabase = await crearClienteServidor();
@@ -60,14 +59,13 @@ async function PanelVentasConectado({
   ]);
 
   return (
-    <div className="flex flex-col gap-4">
-      <PanelVentas
-        productos={productos}
-        clientes={clientes}
-        turnoCajaId={turnoCajaId}
-        tokenPantalla={perfil.data?.token_pantalla ?? ""}
-      />
-      <ListaVentasDelTurno ventas={ventas} />
-    </div>
+    <SeccionVentas
+      productosIniciales={productos}
+      clientes={clientes}
+      turnoCajaId={turnoCajaId}
+      usuarioId={usuarioId}
+      tokenPantalla={perfil.data?.token_pantalla ?? ""}
+      ventasIniciales={ventas}
+    />
   );
 }

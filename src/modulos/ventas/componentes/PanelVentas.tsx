@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { crearClienteNavegador } from "@/lib/supabase/cliente";
 import { Boton } from "@/componentes/Boton";
@@ -17,6 +16,7 @@ import {
 } from "../consultas/calculos";
 import type { Cliente } from "@/modulos/clientes/tipos";
 import type { Producto } from "@/modulos/stock/tipos";
+import type { VentaResumen } from "../consultas/ventas";
 import type { ItemCarrito, MedioPago, PagoCarrito } from "../tipos";
 import { FilaCarritoItem } from "./FilaCarritoItem";
 
@@ -85,14 +85,17 @@ export function PanelVentas({
   productos,
   clientes,
   turnoCajaId,
+  usuarioId,
   tokenPantalla,
+  onVentaConfirmada,
 }: {
   productos: Producto[];
   clientes: Cliente[];
   turnoCajaId: string;
+  usuarioId: string;
   tokenPantalla: string;
+  onVentaConfirmada: (venta: VentaResumen, items: { productoId: string; cantidad: number }[]) => void;
 }) {
-  const router = useRouter();
   // "Adjusting state when a prop changes" (react.dev) — mismo patrón que
   // categorías/proveedores en los formularios de Stock: crear un
   // cliente nuevo acá adentro lo agrega a esta lista local al toque, y
@@ -373,7 +376,7 @@ export function PanelVentas({
       }
     }
 
-    const { error: errorRpc } = await supabase.rpc("registrar_venta", {
+    const { data: filasVenta, error: errorRpc } = await supabase.rpc("registrar_venta", {
       p_turno_caja_id: turnoCajaId,
       p_cliente_id: clienteId,
       p_items: carritoActivo.items.map((item) => ({
@@ -385,8 +388,8 @@ export function PanelVentas({
     });
     setGuardando(false);
 
-    if (errorRpc) {
-      setError(errorRpc.message);
+    if (errorRpc || !filasVenta?.[0]) {
+      setError(errorRpc?.message ?? "No se pudo registrar la venta. Probá de nuevo.");
       return;
     }
 
@@ -403,8 +406,54 @@ export function PanelVentas({
       medioTexto: medioTexto[carritoActivo.medioPago],
       vuelto: pagos.reduce((suma, pago) => suma + pago.vuelto, 0),
     });
+
+    // Antes esto era un router.refresh(): recargaba toda /ventas para
+    // que "Ventas de este turno" mostrara la nueva fila — de paso
+    // volvía a traer el catálogo completo (~2991 productos) por cada
+    // venta, la acción más frecuente del sistema. registrar_venta()
+    // ahora devuelve numero/creado_en, así que se puede armar la fila
+    // acá mismo y avisarle al padre (SeccionVentas) sin ir de nuevo a
+    // la base.
+    //
+    // El texto del medio se arma desde `pagos` (lo que efectivamente
+    // se guardó como ventas_pagos), no desde el selector de la UI: en
+    // "mixto" son dos filas reales (por ejemplo efectivo+transferencia)
+    // y así es como listarVentasDelTurno las muestra — si acá pusiera
+    // "Mixto" a secas, la fila se vería distinta apenas hubiera un
+    // refetch real más adelante.
+    const filaVenta = filasVenta[0];
+    const etiquetaMedioReal: Record<string, string> = {
+      efectivo: "Efectivo",
+      transferencia: "Transferencia",
+      qr: "QR",
+      fiado: "Fiado",
+    };
+    const medioTextoReal = [...new Set(pagos.map((pago) => etiquetaMedioReal[pago.medio] ?? pago.medio))].join(
+      " + ",
+    );
+    const nombreClienteFiado =
+      carritoActivo.medioPago === "fiado"
+        ? listaClientes.find((c) => c.id === clienteId)?.nombre ?? (carritoActivo.nombreClienteNuevo.trim() || null)
+        : null;
+
+    onVentaConfirmada(
+      {
+        id: filaVenta.id,
+        numero: filaVenta.numero,
+        turnoCajaId,
+        clienteId,
+        usuarioId,
+        subtotal: total,
+        total,
+        estado: "confirmada",
+        creadoEn: filaVenta.creado_en,
+        medioTexto: medioTextoReal,
+        clienteNombre: nombreClienteFiado,
+      },
+      carritoActivo.items.map((item) => ({ productoId: item.productoId, cantidad: item.cantidad })),
+    );
+
     cerrarVenta(carritoActivo.id);
-    router.refresh();
   }
 
   const vuelto =
