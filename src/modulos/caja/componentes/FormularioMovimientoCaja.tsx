@@ -13,7 +13,10 @@ import type { MovimientoCaja } from "../tipos";
 // etc.). Insert directo a movimientos_caja, mismo criterio que
 // FormularioAbrirCaja.tsx: una sola tabla, sin invariante que proteger
 // más allá de los checks de la columna (monto > 0, tipo válido).
-export function FormularioMovimientoCaja({ turnoId }: { turnoId: string }) {
+// usuarioId viaja como prop en vez de pedirlo acá con auth.getUser():
+// el turno abierto ya lo tiene (turno.usuarioId), es el mismo usuario
+// por construcción (buscarTurnoAbierto filtra por él).
+export function FormularioMovimientoCaja({ turnoId, usuarioId }: { turnoId: string; usuarioId: string }) {
   const router = useRouter();
   const [abierto, setAbierto] = useState(false);
   const [tipo, setTipo] = useState<MovimientoCaja["tipo"]>("egreso");
@@ -50,7 +53,7 @@ export function FormularioMovimientoCaja({ turnoId }: { turnoId: string }) {
     const supabase = crearClienteNavegador();
     const { error: errorInsert } = await supabase
       .from("movimientos_caja")
-      .insert({ turno_id: turnoId, tipo, monto: montoNumero, motivo: motivo.trim() });
+      .insert({ turno_id: turnoId, tipo, monto: montoNumero, motivo: motivo.trim(), usuario_id: usuarioId });
     setGuardando(false);
 
     if (errorInsert) {

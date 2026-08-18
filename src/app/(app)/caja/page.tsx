@@ -80,7 +80,7 @@ async function TurnoAbierto({
 
       <ListaMovimientosCaja
         movimientos={movimientos}
-        accion={<FormularioMovimientoCaja turnoId={turno.id} />}
+        accion={<FormularioMovimientoCaja turnoId={turno.id} usuarioId={turno.usuarioId} />}
       />
     </div>
   );

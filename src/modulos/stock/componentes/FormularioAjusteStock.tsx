@@ -56,6 +56,11 @@ export function FormularioAjusteStock({ producto }: { producto: Producto }) {
       return;
     }
 
+    if (tipo === "salida" && !motivo.trim()) {
+      setError("Contá el motivo de la salida (rotura, vencido, corrección de conteo)");
+      return;
+    }
+
     let precioNumero: number | null = null;
     if (tipo === "entrada") {
       precioNumero = Number(precioVenta);
@@ -152,7 +157,7 @@ export function FormularioAjusteStock({ producto }: { producto: Producto }) {
           )}
 
           <Campo
-            etiqueta="Motivo (opcional)"
+            etiqueta={tipo === "salida" ? "Motivo" : "Motivo (opcional)"}
             id={`motivo-${producto.id}`}
             placeholder={tipo === "entrada" ? "Ej: compra a proveedor" : "Ej: rotura, vencido, conteo físico"}
             value={motivo}
