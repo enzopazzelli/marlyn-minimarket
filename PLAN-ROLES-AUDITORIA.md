@@ -206,6 +206,19 @@ sin sesión no se puede leer nada.
 navegador** (mismo límite de siempre — no puedo manejar un navegador
 desde acá). El server de desarrollo sigue corriendo en `localhost:3000`.
 
+**Agregado post-Fase 4** (pedido explícito de Enzo, 2026-08-18):
+`BotonExportarAuditoria.tsx` — exporta exactamente lo que está filtrado
+en pantalla (Usuario/Tipo, no todo el rango de fechas), con
+`filaSegura()` porque `descripcion` lleva texto libre de usuario
+(motivo, nota) — mismo hueco de CSV/Formula Injection que ya se había
+resuelto en el backup, no en este export nuevo, así que se aplicó desde
+el día 1 acá. Además, `BotonDescargarBackup.tsx` suma dos hojas:
+`auditoria_movimientos` (entra en el loop genérico, es una vista, se
+comporta como cualquier tabla) y `perfiles` (aparte, con columnas
+explícitas — sin esto `usuario_id` en el resto de las hojas del backup
+es un uuid sin nombre; se excluye `token_pantalla`, que sigue siendo
+sensible, mismo motivo por el que `perfiles` quedaba afuera antes).
+
 ## Fase 5 — Ocultar/gatear lo que ya existe
 
 - [ ] Stock: ocultar "Nuevo producto", "Editar", "Eliminar", "Rubros",

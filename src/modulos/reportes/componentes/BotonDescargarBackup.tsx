@@ -11,8 +11,10 @@ import { traerTodasLasFilas } from "@/lib/supabase/paginado";
 // guardadas — a diferencia de los otros exports (Stock, Caja, cuenta
 // corriente, Reportes del día), esto es un respaldo para archivar, no
 // un reporte para leer, así que no se cura ni se traduce nada (salvo
-// `filaSegura`, ver más abajo). `perfiles` queda afuera: son cuentas de
-// operador, no datos del negocio, y tiene `token_pantalla` (sensible).
+// `filaSegura`, ver más abajo). auditoria_movimientos entra igual que
+// cualquier tabla (es una vista, PostgREST no distingue) — junta lo de
+// las cinco tablas de abajo ya legible, así que queda como hoja de
+// consulta rápida sin tener que cruzar usuario_id a mano.
 const TABLAS = [
   "categorias",
   "productos",
@@ -26,7 +28,15 @@ const TABLAS = [
   "movimientos_stock",
   "movimientos_cuenta_corriente",
   "notas",
+  "auditoria_movimientos",
 ] as const;
+
+// perfiles aparte, con columnas explícitas en vez de "*": tiene
+// token_pantalla (el link de emparejamiento de la TV del mostrador,
+// sensible — cualquiera con ese link puede mirar la venta en curso) que
+// no tiene por qué viajar en un archivo que se puede compartir. Sin
+// esto, usuario_id en el resto de las hojas es un uuid sin nombre.
+const COLUMNAS_PERFILES = "id, nombre, rol, activo, creado_en";
 
 export function BotonDescargarBackup() {
   const [generando, setGenerando] = useState(false);
@@ -48,6 +58,17 @@ export function BotonDescargarBackup() {
           hoja.columns = Object.keys(filas[0]).map((columna) => ({ header: columna, key: columna, width: 22 }));
           hoja.addRows(filas.map(filaSegura));
         }
+      }
+
+      const perfiles = await traerTodasLasFilas<Record<string, unknown>>(supabase, "perfiles", COLUMNAS_PERFILES);
+      const hojaPerfiles = libro.addWorksheet("perfiles");
+      if (perfiles.length > 0) {
+        hojaPerfiles.columns = Object.keys(perfiles[0]).map((columna) => ({
+          header: columna,
+          key: columna,
+          width: 22,
+        }));
+        hojaPerfiles.addRows(perfiles.map(filaSegura));
       }
 
       const buffer = await libro.xlsx.writeBuffer();

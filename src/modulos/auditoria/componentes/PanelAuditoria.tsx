@@ -7,25 +7,12 @@ import { crearClienteNavegador } from "@/lib/supabase/cliente";
 import { formatearFechaHora } from "@/lib/formato";
 import { hoyISO } from "@/modulos/reportes/consultas/calculos";
 import { hace30Dias, listarAuditoria } from "../consultas/auditoria";
+import { INFO_TIPO_AUDITORIA } from "../tipos";
 import type { MovimientoAuditoria, TipoMovimientoAuditoria, UsuarioParaFiltro } from "../tipos";
+import { BotonExportarAuditoria } from "./BotonExportarAuditoria";
 
 const platita = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" });
 const numero = new Intl.NumberFormat("es-AR");
-
-const INFO_TIPO: Record<TipoMovimientoAuditoria, { etiqueta: string; variante: "ok" | "alerta" }> = {
-  stock_venta: { etiqueta: "Venta", variante: "ok" },
-  stock_entrada: { etiqueta: "Entrada de stock", variante: "ok" },
-  stock_salida: { etiqueta: "Salida de stock", variante: "alerta" },
-  stock_anulacion: { etiqueta: "Devolución por anulación", variante: "alerta" },
-  stock_merma: { etiqueta: "Merma", variante: "alerta" },
-  cta_cte_recargo: { etiqueta: "Recargo por atraso", variante: "alerta" },
-  cta_cte_pago: { etiqueta: "Pago cta. cte.", variante: "ok" },
-  cta_cte_fiado: { etiqueta: "Fiado", variante: "ok" },
-  caja_ingreso: { etiqueta: "Ingreso manual de caja", variante: "ok" },
-  caja_egreso: { etiqueta: "Retiro manual de caja", variante: "alerta" },
-  venta_anulada: { etiqueta: "Venta anulada", variante: "alerta" },
-  turno_cierre: { etiqueta: "Cierre de turno", variante: "ok" },
-};
 
 // Los movimientos de stock van en unidades del producto (kg, litro,
 // unidad — no plata); el resto va en pesos. turno_cierre es el único
@@ -41,7 +28,7 @@ function formatearMonto(movimiento: MovimientoAuditoria): string {
 
 function varianteDe(movimiento: MovimientoAuditoria): "ok" | "alerta" {
   if (movimiento.tipo === "turno_cierre") return movimiento.monto < 0 ? "alerta" : "ok";
-  return INFO_TIPO[movimiento.tipo].variante;
+  return INFO_TIPO_AUDITORIA[movimiento.tipo].variante;
 }
 
 export function PanelAuditoria({
@@ -127,13 +114,17 @@ export function PanelAuditoria({
             className="rounded-[var(--radius-base)] border border-linea bg-superficie px-3 py-2 text-texto outline-none focus-visible:border-acento focus-visible:ring-2 focus-visible:ring-acento/40"
           >
             <option value="todos">Todos</option>
-            {(Object.keys(INFO_TIPO) as TipoMovimientoAuditoria[]).map((tipo) => (
+            {(Object.keys(INFO_TIPO_AUDITORIA) as TipoMovimientoAuditoria[]).map((tipo) => (
               <option key={tipo} value={tipo}>
-                {INFO_TIPO[tipo].etiqueta}
+                {INFO_TIPO_AUDITORIA[tipo].etiqueta}
               </option>
             ))}
           </select>
         </label>
+
+        <div className="ml-auto">
+          <BotonExportarAuditoria movimientos={movimientosFiltrados} nombrePorId={nombrePorId} />
+        </div>
       </div>
 
       {error && (
@@ -173,7 +164,7 @@ export function PanelAuditoria({
                     {movimiento.usuarioId ? (nombrePorId.get(movimiento.usuarioId) ?? "—") : "—"}
                   </td>
                   <td className="px-2.5 py-1.5">
-                    <Insignia variante={varianteDe(movimiento)}>{INFO_TIPO[movimiento.tipo].etiqueta}</Insignia>
+                    <Insignia variante={varianteDe(movimiento)}>{INFO_TIPO_AUDITORIA[movimiento.tipo].etiqueta}</Insignia>
                   </td>
                   <td className="px-2.5 py-1.5 text-xs text-texto-suave">{movimiento.descripcion}</td>
                   <td className="numero px-2.5 py-1.5 text-right text-xs">{formatearMonto(movimiento)}</td>
