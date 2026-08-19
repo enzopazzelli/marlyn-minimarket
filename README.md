@@ -544,6 +544,21 @@ contra las columnas homónimas de `productos`/`ventas`/`clientes`. No se
 veía al crear la función, solo al ejecutarla. Corregido calificando
 cada referencia con su tabla.
 
+**Fiado parcial** (pedido explícito de Enzo, 2026-08-19: "no siempre se
+fía el monto total"; ampliado el mismo día a pedido suyo para admitir
+cualquier medio, no solo efectivo): en el flujo de "Fiado" de
+`/ventas`, un campo opcional "¿Cobrás algo ahora?" con su propio
+selector de medio (Efectivo/Transferencia/QR) — lo que se carga ahí se
+cobra en el momento, el resto queda en la cuenta corriente del cliente.
+Cambio solo de front (`PanelVentas.tsx`): `registrar_venta()` ya
+aceptaba varias filas de pago con cualquier combinación de medios (así
+arma "Mixto" desde el día 1), así que un pago
+`[{<medio elegido>, X}, {fiado, total-X}]` ya funcionaba en la base sin
+tocar nada — dejar el campo vacío sigue siendo fiar el 100%, exactamente
+como antes. El ticket lo deja explícito ("Transferencia + Fiado" en vez
+de "Fiado" a secas, más una línea "Queda fiado" con el monto) para que
+no se preste a confusión sobre cuánto quedó pendiente y en qué se cobró.
+
 **Supuesto de "Balance"**: es margen bruto (ventas − costo de
 mercadería vendida), calculado con el `precio_costo` ACTUAL de cada
 producto — no se guarda un histórico de costo por venta, así que si el

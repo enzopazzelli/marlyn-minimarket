@@ -55,7 +55,11 @@ calcula el vuelto solo.
 **Fiado**: si el cliente todavía no está cargado, se puede crear en
 el momento con solo el nombre, sin salir de la pantalla de venta. Los
 datos completos (teléfono, dirección) se cargan después desde
-Clientes.
+Clientes. **No hace falta fiar el total**: al lado del cliente hay un
+campo opcional "¿Cobrás algo ahora?" con su propio selector de medio
+(Efectivo, Transferencia o QR) — lo que se cobra ahí se descuenta, y
+solo el resto queda en la cuenta corriente. Si se deja vacío, se fía
+todo, como siempre.
 
 **El comprobante**: al confirmar la venta aparece el ticket en
 pantalla, con el detalle de lo que se compró, el total y cómo se

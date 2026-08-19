@@ -15,9 +15,13 @@ type PropsTicket = {
   total: number;
   medioTexto: string;
   vuelto?: number;
+  // Solo cuando el fiado es parcial (se cobró algo ahora y el resto
+  // queda en cuenta corriente) — un fiado completo no necesita esta
+  // línea aparte, "Fiado" + el Total ya lo dicen todo.
+  saldoFiado?: number;
 };
 
-function contenidoTicket({ encabezado, items, total, medioTexto, vuelto = 0 }: PropsTicket) {
+function contenidoTicket({ encabezado, items, total, medioTexto, vuelto = 0, saldoFiado }: PropsTicket) {
   return (
     <>
       {encabezado && <p className="mb-2 text-center text-texto-suave">{encabezado}</p>}
@@ -38,6 +42,12 @@ function contenidoTicket({ encabezado, items, total, medioTexto, vuelto = 0 }: P
         <span>{medioTexto}</span>
         {vuelto > 0 && <span>Vuelto {platita.format(vuelto)}</span>}
       </div>
+      {!!saldoFiado && (
+        <div className="flex justify-between font-semibold">
+          <span>Queda fiado</span>
+          <span>{platita.format(saldoFiado)}</span>
+        </div>
+      )}
       <p className="mt-2 text-center text-[10px] text-texto-suave">Documento no válido como factura</p>
     </>
   );

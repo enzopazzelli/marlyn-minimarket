@@ -49,6 +49,8 @@ type CarritoEnCurso = {
   montoMixtoEfectivo: string;
   clienteId: string;
   nombreClienteNuevo: string;
+  montoRecibidoFiado: string;
+  medioRecibidoFiado: Exclude<MedioPago, "fiado">;
 };
 
 type Comprobante = {
@@ -56,6 +58,7 @@ type Comprobante = {
   total: number;
   medioTexto: string;
   vuelto: number;
+  saldoFiado?: number;
 };
 
 function crearCarritoVacio(): CarritoEnCurso {
@@ -67,6 +70,8 @@ function crearCarritoVacio(): CarritoEnCurso {
     montoMixtoEfectivo: "",
     clienteId: "",
     nombreClienteNuevo: "",
+    montoRecibidoFiado: "",
+    medioRecibidoFiado: "efectivo",
   };
 }
 
@@ -327,7 +332,26 @@ export function PanelVentas({
         setError("Escribí el nombre del cliente");
         return;
       }
-      pagos = [{ medio: "fiado", monto: total, vuelto: 0 }];
+      // No siempre se fía el total: "¿Cobrás algo ahora?" es opcional,
+      // en el medio que se elija (efectivo/transferencia/QR) — lo que
+      // no se cobra ahí va fiado. Vacío o 0 es exactamente el
+      // comportamiento de siempre (todo fiado).
+      const montoRecibido = Number(carritoActivo.montoRecibidoFiado) || 0;
+      if (montoRecibido < 0) {
+        setError("El monto recibido no puede ser negativo");
+        return;
+      }
+      if (montoRecibido >= total) {
+        setError("Si cobrás todo, elegí Efectivo/Transferencia/QR en vez de Fiado");
+        return;
+      }
+      pagos =
+        montoRecibido > 0
+          ? [
+              { medio: carritoActivo.medioRecibidoFiado, monto: montoRecibido, vuelto: 0 },
+              { medio: "fiado", monto: total - montoRecibido, vuelto: 0 },
+            ]
+          : [{ medio: "fiado", monto: total, vuelto: 0 }];
     } else {
       pagos = [{ medio: carritoActivo.medioPago, monto: total, vuelto: 0 }];
     }
@@ -400,11 +424,18 @@ export function PanelVentas({
       mixto: "Mixto",
       fiado: "Fiado",
     };
+    // Fiado parcial: "Fiado" a secas en el ticket confundiría (parece
+    // que se fio todo). "<Medio real> + Fiado" + la línea de "Queda
+    // fiado" de más abajo dejan claro que se cobró una parte y en qué.
+    const esFiadoParcial = carritoActivo.medioPago === "fiado" && pagos.length > 1;
     setComprobante({
       items: carritoActivo.items,
       total,
-      medioTexto: medioTexto[carritoActivo.medioPago],
+      medioTexto: esFiadoParcial
+        ? `${medioTexto[carritoActivo.medioRecibidoFiado]} + Fiado`
+        : medioTexto[carritoActivo.medioPago],
       vuelto: pagos.reduce((suma, pago) => suma + pago.vuelto, 0),
+      saldoFiado: pagos.find((pago) => pago.medio === "fiado" && pago.monto < total)?.monto,
     });
 
     // Antes esto era un router.refresh(): recargaba toda /ventas para
@@ -695,6 +726,48 @@ export function PanelVentas({
                       }
                     />
                   )}
+
+                  <div className="flex flex-col gap-1.5">
+                    <label htmlFor="montoRecibidoFiado" className="text-xs text-texto-suave">
+                      ¿Cobrás algo ahora? (opcional — el resto queda fiado)
+                    </label>
+                    <div className="flex gap-1.5">
+                      <input
+                        id="montoRecibidoFiado"
+                        type="number"
+                        min={0}
+                        step="1"
+                        placeholder="Dejalo vacío si fiás todo"
+                        value={carritoActivo.montoRecibidoFiado}
+                        onChange={(evento) => actualizarCarritoActivo({ montoRecibidoFiado: evento.target.value })}
+                        onFocus={(evento) => evento.currentTarget.select()}
+                        className={`${clasesFiltro} numero flex-1`}
+                      />
+                      <select
+                        aria-label="Medio en que se cobra ahora"
+                        className={`${clasesSelect} py-1.5 text-sm`}
+                        value={carritoActivo.medioRecibidoFiado}
+                        onChange={(evento) =>
+                          actualizarCarritoActivo({
+                            medioRecibidoFiado: evento.target.value as Exclude<MedioPago, "fiado">,
+                          })
+                        }
+                      >
+                        <option value="efectivo">Efectivo</option>
+                        <option value="transferencia">Transferencia</option>
+                        <option value="qr">QR</option>
+                      </select>
+                    </div>
+                    {Number(carritoActivo.montoRecibidoFiado) > 0 &&
+                      Number(carritoActivo.montoRecibidoFiado) < total && (
+                        <div className="flex items-center justify-between rounded-[var(--radius-base)] bg-alerta-fondo px-3 py-2">
+                          <span className="text-xs font-semibold text-alerta">Queda fiado</span>
+                          <span className="numero text-sm font-semibold text-alerta">
+                            {platita.format(total - Number(carritoActivo.montoRecibidoFiado))}
+                          </span>
+                        </div>
+                      )}
+                  </div>
                 </div>
               )}
             </div>
@@ -712,7 +785,11 @@ export function PanelVentas({
               disabled={carritoActivo.items.length === 0 || guardando}
               onClick={confirmarVenta}
             >
-              {guardando ? "Cobrando…" : `Cobrar ${platita.format(total)}`}
+              {guardando
+                ? "Cobrando…"
+                : carritoActivo.medioPago === "fiado" && Number(carritoActivo.montoRecibidoFiado) > 0
+                  ? `Cobrar ${platita.format(Number(carritoActivo.montoRecibidoFiado))} y fiar el resto`
+                  : `Cobrar ${platita.format(total)}`}
             </Boton>
           </div>
         </div>
@@ -726,6 +803,7 @@ export function PanelVentas({
               total={comprobante.total}
               medioTexto={comprobante.medioTexto}
               vuelto={comprobante.vuelto}
+              saldoFiado={comprobante.saldoFiado}
             />
             <AccionesTicket />
             <Boton type="button" variante="confirmar" onClick={() => setComprobante(null)}>
