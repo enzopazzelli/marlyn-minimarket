@@ -25,10 +25,12 @@ export const clienteConfig = {
     // incluye alertas de vencimiento ni metas configurables, quedan
     // afuera hasta que haya dónde cargar esos datos.
     reportes: true,
+    // M9 Multiusuario: alta de operadores con menos acceso que el
+    // dueño, más la pantalla de Auditoría — ver PLAN-ROLES-AUDITORIA.md.
+    usuariosGranular: true,
     // Fase 2, fuera del alcance de esta entrega:
     panel: false,
     compras: false,
-    usuariosGranular: false,
     promociones: false,
   },
 

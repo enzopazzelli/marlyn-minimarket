@@ -128,19 +128,45 @@ lateral (nombre/rol/Cerrar sesión) se ve bien y que cerrar sesión
 funciona, mejor. Cuando termines, avisame o cerralo vos mismo
 (`Ctrl+C` en la terminal donde quedó corriendo, o pedime que lo mate).
 
-## Fase 3 — Pantalla "Usuarios" (dueño-only)
+## Fase 3 — Pantalla "Usuarios" (dueño-only) ✅ (2026-08-18)
 
-- [ ] `src/lib/supabase/admin.ts`: cliente con `service_role`, solo se
-      importa desde Server Actions/route handlers, nunca desde el navegador.
-- [ ] Alta de operador: nombre, email, contraseña inicial
-      (`admin.createUser`, con `rol = 'operador'` en `perfiles` después
-      del alta — el trigger de `gestionar_usuario_nuevo()` crea la fila
-      con `rol = 'dueño'` por defecto, hay que pisarlo).
-- [ ] Activar/desactivar (`perfiles.activo`) — ya alcanza para bloquear
-      todo el acceso, no hace falta nada nuevo en RLS para esto.
-- [ ] Restablecer contraseña (`admin.updateUserById`), útil sin tener
-      que mandar mail (no hay infraestructura de email en el proyecto).
-- [ ] Listado de usuarios existentes con su rol/estado.
+- [x] `src/lib/supabase/admin.ts`: cliente con `service_role`, detrás de
+      `server-only` (paquete nuevo, `npm install server-only` — hace
+      fallar el build si algún Client Component lo importa por error).
+- [x] Alta de operador (`FormularioNuevoOperador.tsx`): nombre, email,
+      contraseña inicial. **Primeras Server Actions del proyecto**
+      (`src/modulos/usuarios/consultas/acciones.ts`, `crearOperador` /
+      `restablecerContraseña`) — todo lo demás se resolvía con RLS o
+      funciones `security definer`, pero alta de usuario y reset de
+      contraseña son operaciones de `auth.admin`, no existen como
+      función SQL. Cada Server Action repite su propio chequeo de "sos
+      dueño" (`exigirSesionDeDueño()`, en `consultas/autorizacion.ts`,
+      función aparte y testeable — a diferencia de todo lo demás en
+      este proyecto, acá no hay una RLS de respaldo si este chequeo
+      tuviera un agujero: `auth.admin` bypasea todo).
+- [x] Activar/desactivar (`PanelUsuarios.tsx`): update directo a
+      `perfiles.activo`, no una Server Action — es una sola columna sin
+      `auth.admin` de por medio, la RLS de Fase 1 ya alcanza. No se
+      puede activar/desactivar ni resetear la propia cuenta desde acá
+      (fila "(vos)" sin acciones, para no poder auto-bloquearse).
+- [x] Restablecer contraseña (`BotonRestablecerContraseña.tsx`).
+- [x] Listado (`PanelUsuarios.tsx`): nombre, correo (vive en
+      `auth.users`, se trae con `admin.auth.admin.listUsers()`, no hay
+      forma de leerlo por la API de datos normal), rol, estado.
+- [x] Nav: "Usuarios" en `BarraLateral.tsx` (grupo Administración,
+      `soloDueño`). `config/cliente.ts`: `usuariosGranular: true`.
+
+Tests: `usuarios/consultas/autorizacion.test.ts` (con sesión real de
+operador rechaza, con sesión real de dueño no, sin sesión rechaza) — es
+la pieza más sensible de esta fase por no tener respaldo de RLS.
+`npm run build` sin errores (15 rutas). **Sin probar a mano el flujo de
+punta a punta en el navegador** (crear un empleado real desde el botón,
+ver que aparezca en la tabla, activar/desactivar, resetear contraseña)
+— seguí sin poder manejar un navegador desde acá. Esta fase además
+es la primera oportunidad real de confirmar lo que quedó pendiente de
+la Fase 2: creando un empleado de prueba y entrando con esa cuenta en
+otra ventana/incógnito deberías ver la barra lateral recortada (sin
+Reportes ni Usuarios) — vale la pena chequear los dos juntos.
 
 ## Fase 4 — Pantalla "Auditoría" (dueño-only)
 
