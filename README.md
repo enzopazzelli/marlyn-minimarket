@@ -40,7 +40,8 @@ Lo que ya existe: auth con Supabase (`/ingresar`), layout con barra
 lateral agrupada por frecuencia de uso, tokens de diseño y tres roles
 tipográficos, y migraciones de Núcleo + M1 Stock + M2 Clientes + M5 Caja
 + M3 Ventas + M6 Proveedores (catálogo) + Reportes + Pantalla al
-cliente + Notas, todas con RLS activa (funciones clave:
+cliente + Notas + M9 Multiusuario y Auditoría, todas con RLS activa
+diferenciada por rol de usuario (funciones clave:
 `registrar_venta`/`anular_venta`, `registrar_ingreso_stock`,
 `registrar_movimiento_cuenta_corriente`, `importar_catalogo`).
 
@@ -463,6 +464,86 @@ con una comilla cualquier celda que empiece con `=`, `+`, `-` o `@`
 cuenta corriente, Reportes) tienen el mismo hueco pendiente, sin
 resolver todavía.
 
+**M9 Multiusuario y Auditoría** (pedido explícito del dueño, vía Enzo,
+2026-08-18 — ver `perfiles.rol` en Núcleo, que ya venía preparado para
+esto sin reescribir nada): dos roles, `dueño` y `operador` ("Empleado"
+en pantalla). El motivador concreto: poder darle acceso a un empleado
+sin que vea cuánto gana el negocio por producto, y poder revisar
+después si algo raro pasó (un ajuste de stock con un motivo que no era
+cierto, un recargo aplicado sin que correspondiera).
+
+*Qué ve/hace un operador, a diferencia del dueño*: no ve `precio_costo`
+en ningún lado (Stock, calculadora, Excel — una vista,
+`productos_visibles`, se lo devuelve `null`, no es solo un recorte de
+la pantalla) ni tiene acceso a `/reportes`. No puede crear/editar/
+eliminar productos, rubros ni proveedores (sí puede "Ajustar stock" y
+"Carga rápida" — el día a día de reponer y corregir conteos — pero sin
+tocar el precio de venta desde ahí). No puede aplicar un recargo por
+atraso. Ve solo su propio turno de caja (actual y cierres pasados), no
+los de otro usuario. Puede vender, cobrar, cargar clientes, anular una
+venta del turno y usar Proveedores de solo lectura ("Productos y
+pedido") igual que el dueño — la anulación de venta no se restringió a
+propósito: ya exigía motivo y ya guardaba quién fue desde antes, así
+que auditar alcanza, no hacía falta bloquearla.
+
+*Cómo se armó, capa por capa* (`PLAN-ROLES-AUDITORIA.md`, borrado una
+vez que esto se escribió acá): la RLS de cada tabla es la barrera real
+(varias policies `for select`/`insert`/`update`/`delete` en vez de la
+única `for all` que alcanzaba cuando no había diferencia de rol —
+Postgres no deja combinar comandos en un mismo `for`), no las pantallas
+— eso es solo para no mostrarle a un operador un botón que le va a
+fallar al tocarlo (`PerfilContext.tsx`, `usePerfil()`/`useEsDueño()`,
+sembrado una vez en `(app)/layout.tsx` para que cualquier componente
+pregunte el rol sin prop-drilling manual a través de cada página).
+`movimientos_caja` no guardaba quién hacía un retiro/ingreso manual —
+se sumó `usuario_id`, con un `check` que impide que alguien lo grabe a
+nombre de otro usuario. **Primeras Server Actions del proyecto**
+(`crearOperador()`/`restablecerContraseña()`, en `/usuarios`): dar de
+alta un usuario o resetearle la contraseña son operaciones de
+`auth.admin`, que no existen como función SQL — necesitan la clave de
+servicio (`src/lib/supabase/admin.ts`, detrás del paquete `server-only`
+para que el build falle si algún componente de cliente la importa por
+error) y, a diferencia de todo lo demás en este proyecto, no tienen una
+RLS de respaldo si el chequeo de "sos dueño" tuviera un agujero.
+
+**Usuarios** (`/usuarios`, dueño-only): alta de un empleado (nombre,
+correo, contraseña inicial — se le pasa directo, no hay envío de mail),
+activar/desactivar (alcanza con `perfiles.activo`, que ya gatea todo el
+sistema desde Núcleo) y restablecer contraseña. No se puede tocar la
+propia cuenta desde acá, para no poder auto-bloquearse.
+
+**Auditoría** (`/auditoria`, dueño-only): una vista,
+`auditoria_movimientos`, une `movimientos_stock` +
+`movimientos_cuenta_corriente` + `movimientos_caja` + ventas anuladas +
+cierres de turno en una sola lista (fecha, usuario, tipo, detalle,
+monto), con su propio `where auth_rol() = 'dueño'` — ninguna de esas
+cinco tablas tiene una policy dueño-only en `select` (el operador las
+necesita para operar), así que sin ese filtro la vista se lo mostraría
+igual. Un cierre de turno con diferencia negativa (faltante) queda
+como su propio ítem, con el monto de la diferencia — no fue pedido
+puntualmente, pero es la señal más directa de un patrón sospechoso por
+usuario, y sale del mismo dato que ya se guardaba. Filtros por fecha
+(contra el servidor), usuario y tipo (en el cliente), insignia de color
+en lo que conviene revisar (salida de stock, recargo, retiro de caja,
+venta anulada, cierre con faltante), y export a Excel de lo que esté
+filtrado en pantalla — con `filaSegura()` desde el primer commit (no
+como deuda pendiente): la columna "Detalle" lleva motivos/notas de
+texto libre, mismo hueco de CSV/Formula Injection que las Notas ya
+habían encontrado en el backup. `BotonDescargarBackup.tsx` también suma
+`auditoria_movimientos` y `perfiles` (esta última con columnas
+explícitas, sin `token_pantalla`, que sigue siendo sensible).
+
+**Bug encontrado de paso, no relacionado a lo anterior** (reportado por
+Enzo al cobrar una venta real, 2026-08-18): `registrar_venta()` empezó
+a fallar con "column reference \"id\" is ambiguous" — la migración
+anterior (`20260817090000`) había cambiado su retorno a `returns
+table(id, numero, creado_en)`, y esas columnas de salida quedan
+declaradas como variables en toda la función; cualquier
+`id`/`numero`/`creado_en` sin calificar en el cuerpo pasó a ser ambiguo
+contra las columnas homónimas de `productos`/`ventas`/`clientes`. No se
+veía al crear la función, solo al ejecutarla. Corregido calificando
+cada referencia con su tabla.
+
 **Supuesto de "Balance"**: es margen bruto (ventas − costo de
 mercadería vendida), calculado con el `precio_costo` ACTUAL de cada
 producto — no se guarda un histórico de costo por venta, así que si el
@@ -511,10 +592,10 @@ reservado para esto desde el día 1.
 
 ## Supuestos tomados (a confirmar con el cliente)
 
-- Un solo local, un solo turno de trabajo por vez; los dos usuarios
-  (los dueños) comparten el mismo rol, sin permisos diferenciados
-  todavía — `config/cliente.ts` y la RLS ya están preparados para sumar
-  un rol `operador` más adelante sin reescribir nada (queda para M8).
+- Un solo local, un solo turno de trabajo por vez. Dos roles (`dueño` y
+  `operador`/"Empleado", M9 Multiusuario — ver más arriba): los dueños
+  siguen compartiendo el mismo acceso completo entre sí, un empleado
+  tiene acceso acotado.
 - Internet estable en el local → sin offline-first en esta etapa.
 - Fiado: se registra en la cuenta corriente del cliente, sin límite que
   bloquee la venta (`reglasNegocio.limiteFiadoDuroActivo = false`).

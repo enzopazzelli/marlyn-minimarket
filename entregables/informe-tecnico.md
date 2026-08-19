@@ -75,6 +75,8 @@ flowchart TD
     Reportes["Reportes"]
     Notas["Notas"]
     Pantalla["Pantalla al cliente"]
+    Usuarios["Usuarios (roles)"]
+    Auditoria["Auditoría"]
 
     Ventas --> Caja
     Ventas --> Stock
@@ -85,6 +87,11 @@ flowchart TD
     Ventas --> Reportes
     Stock --> Reportes
     Reportes --> Backup["Backup completo (.xlsx)"]
+    Usuarios -. "quién hizo qué" .-> Auditoria
+    Ventas --> Auditoria
+    Caja --> Auditoria
+    Stock --> Auditoria
+    Clientes --> Auditoria
 ```
 
 Cada módulo es independiente en el código (una carpeta propia), pero
@@ -122,6 +129,13 @@ dato real, sin duplicar información a mano.
   qué, aplicada por la base de datos misma — no depende únicamente de
   que la aplicación se comporte bien. Es una segunda barrera además
   del login.
+- **Dos niveles de acceso** (dueño y empleado): esas mismas reglas
+  diferencian qué puede ver y hacer cada rol — por ejemplo, un empleado
+  no puede ver el costo de los productos ni aplicar un recargo a un
+  cliente, sin importar qué haga en la pantalla, porque la regla vive
+  en la base de datos, no en la interfaz. Cada acción queda además
+  registrada con qué usuario la hizo, visible para el dueño en
+  Auditoría.
 - **Operaciones críticas como transacciones atómicas**: registrar una
   venta (descontar stock, guardar ítems, guardar pagos) o anularla
   pasan por una única operación en la base que se hace completa o no
@@ -189,7 +203,11 @@ productos seguidos, import/export Excel), Clientes (cuenta
 corriente, recargos, cobros), Proveedores (ficha, generación de
 pedidos), Reportes (panel del día, export, backup completo), Notas,
 Pantalla al cliente en vivo, tickets con impresión y descarga en
-imagen o PDF.
+imagen o PDF, Usuarios y permisos (alta de empleados con acceso
+acotado — sin ver costos ni Reportes, sin poder tocar el catálogo ni
+aplicar recargos —, activar/desactivar, restablecer contraseña) y
+Auditoría (registro de qué hizo cada usuario, filtrable por fecha,
+usuario y tipo, exportable a Excel).
 
 **Fuera de esta entrega** (quedan para una eventual segunda etapa, si
 el negocio lo necesita más adelante):
@@ -204,10 +222,6 @@ el negocio lo necesita más adelante):
   instaladas como impresora de Windows), no una integración de bajo
   nivel con el hardware de la impresora ni con una cajonera
   electrónica.
-- **Permisos diferenciados por usuario**: hoy cualquier usuario
-  logueado tiene el mismo nivel de acceso; un rol más limitado (por
-  ejemplo, para un empleado) es una extensión posible sin rehacer lo
-  existente.
 - **Alertas de vencimiento y metas de venta configurables**: no hay
   todavía dónde cargar fecha de vencimiento de un producto ni un
   objetivo de ventas — se pueden sumar cuando haga falta.

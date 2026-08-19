@@ -15,7 +15,10 @@ conviene guardarla como favorito en la PC del local. Ahí van a ver una
 pantalla para poner usuario y contraseña. Una vez adentro, a la
 izquierda (o arriba, si lo
 abren desde el celular) van a ver el menú con todas las secciones:
-**Ventas, Caja, Reportes, Stock, Clientes, Proveedores y Notas**.
+**Ventas, Caja, Reportes, Stock, Clientes, Proveedores, Notas,
+Usuarios y Auditoría**. Estas dos últimas, y Reportes, solo las ve
+quien entra con una cuenta de dueño — un empleado ve un menú más corto
+(ver "Usuarios y permisos" más abajo).
 
 Arriba de cada pantalla siempre aparece la fecha del día, para no
 tener dudas de en qué jornada están trabajando.
@@ -218,6 +221,57 @@ extra.
 
 ---
 
+## Usuarios y permisos
+
+Además de la cuenta del dueño, se pueden crear cuentas para empleados,
+con menos acceso — pensado para el mostrador, sin exponer información
+que no hace falta que un empleado vea.
+
+**Qué ve un empleado, a diferencia del dueño**: no ve el precio de
+costo de los productos ni el margen de ganancia (en Stock ve el precio
+de venta nada más), no tiene acceso a Reportes ni a esta pantalla de
+Usuarios ni a Auditoría, no puede dar de alta, editar ni borrar
+productos, rubros o proveedores (sí puede "Ajustar stock" y "Carga
+rápida" — sumar o restar cantidad, con motivo — pero sin tocar el
+precio de venta desde ahí), no puede aplicar un recargo por atraso a un
+cliente, y no puede exportar el catálogo, la cuenta corriente ni los
+reportes de caja. El resto del día a día funciona igual que para el
+dueño: vender, cobrar, abrir y cerrar su propio turno de caja, cargar
+clientes, anular una venta de su turno, y usar Proveedores para
+consultar y armar pedidos.
+
+**Crear una cuenta de empleado**: desde "Usuarios" (solo visible para
+el dueño, en el menú) — se carga el nombre, un correo y una contraseña
+inicial, que se le pasa al empleado directamente (el sistema no manda
+ningún mail). El empleado entra con ese correo y contraseña desde la
+misma pantalla de siempre.
+
+**Si un empleado deja de trabajar en el local**: no hace falta borrar
+la cuenta, alcanza con "Desactivar" desde la misma pantalla — deja de
+poder entrar al sistema al toque, y se puede volver a activar más
+adelante si hiciera falta.
+
+**Si un empleado olvida su contraseña**: el dueño se la puede resetear
+desde la misma pantalla ("Restablecer contraseña") y pasarle la nueva.
+
+---
+
+## Auditoría
+
+Un registro de quién hizo qué, visible solo para el dueño — para poder
+revisar después cualquier movimiento llamativo: un ajuste de stock, un
+recargo aplicado, un retiro de caja, una venta anulada, o un cierre de
+turno que no cerró justo.
+
+Cada fila muestra la fecha, quién lo hizo, de qué tipo es (en rojo los
+que conviene mirar más de cerca: salidas de stock, recargos, retiros de
+caja, ventas anuladas, cierres con faltante), el detalle (por ejemplo
+qué producto y qué motivo se escribió) y el monto. Se puede filtrar por
+rango de fechas, por usuario o por tipo de movimiento, y exportar a
+Excel exactamente lo que se esté mirando en ese momento.
+
+---
+
 ## Pantalla al cliente
 
 Si el mostrador tiene una segunda pantalla (TV o tablet mirando al
@@ -239,11 +293,9 @@ el vendedor.
 - **Sin stock cargado, no se puede vender** un producto — es una
   decisión a propósito, para que el stock del sistema siempre refleje
   la realidad.
-- Todos los usuarios con login tienen hoy el mismo nivel de acceso
-  completo, sin importar el nombre de la cuenta — no hay todavía un
-  rol limitado (por ejemplo, uno acotado solo a Ventas/Caja para un
-  empleado de mostrador, sin acceso a Reportes o a borrar productos).
-  Se puede sumar más adelante si hace falta.
+- Hay dos niveles de acceso: dueño y empleado. Ver "Usuarios y
+  permisos" más arriba para el detalle de qué diferencia a uno del
+  otro.
 
 Ante cualquier duda de uso, o si algo no se comporta como esperan,
 avisen y lo vemos juntos.
