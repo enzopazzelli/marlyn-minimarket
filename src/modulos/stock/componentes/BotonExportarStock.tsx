@@ -2,12 +2,16 @@
 
 import { useState } from "react";
 import { Boton } from "@/componentes/Boton";
+import { useEsDueño } from "@/lib/supabase/PerfilContext";
 import type { Categoria, Producto, Proveedor } from "../tipos";
 
 const ETIQUETA_UNIDAD: Record<Producto["unidad"], string> = { unidad: "Unidad", kg: "Kg", litro: "Litro" };
 
 // exceljs se importa dinámicamente, solo al hacer click — mismo
-// criterio que BotonExportarExcel.tsx en Reportes.
+// criterio que BotonExportarExcel.tsx en Reportes. Dueño-only (Fase 5
+// de PLAN-ROLES-AUDITORIA.md): esta planilla incluye precio_costo, que
+// productos_visibles ya le devuelve null al operador — el hueco real
+// está tapado, esto evita el botón que exportaría una columna vacía.
 export function BotonExportarStock({
   productos,
   categorias,
@@ -17,8 +21,11 @@ export function BotonExportarStock({
   categorias: Categoria[];
   proveedores: Proveedor[];
 }) {
+  const esDueño = useEsDueño();
   const [exportando, setExportando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  if (!esDueño) return null;
 
   async function exportar() {
     setError(null);

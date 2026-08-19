@@ -7,6 +7,7 @@ import { clienteConfig } from "@/config/cliente";
 import { Boton } from "@/componentes/Boton";
 import { Campo } from "@/componentes/Campo";
 import { Modal } from "@/componentes/Modal";
+import { useEsDueño } from "@/lib/supabase/PerfilContext";
 import { validarProducto, type ErroresProducto } from "../consultas/validacion";
 import { calcularGananciaDesdePrecioVenta, calcularPrecioVentaDesdeGanancia } from "../consultas/precios";
 import type { Categoria, Proveedor } from "../tipos";
@@ -51,6 +52,7 @@ export function FormularioNuevoProducto({
   categoriasIniciales: Categoria[];
   proveedoresIniciales: Proveedor[];
 }) {
+  const esDueño = useEsDueño();
   const router = useRouter();
   // "Adjusting state when a prop changes" (react.dev): setState durante
   // el render, no en un efecto. useState(categoriasIniciales) por sí
@@ -77,6 +79,8 @@ export function FormularioNuevoProducto({
   const [campos, setCampos] = useState(estadoInicial());
   const [errores, setErrores] = useState<ErroresProducto>({});
   const [errorGeneral, setErrorGeneral] = useState<string | null>(null);
+
+  if (!esDueño) return null;
 
   function abrir() {
     setCampos(estadoInicial());

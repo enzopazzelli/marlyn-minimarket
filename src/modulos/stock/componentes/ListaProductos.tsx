@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Boton } from "@/componentes/Boton";
 import { Insignia } from "@/componentes/Insignia";
 import { crearClienteNavegador } from "@/lib/supabase/cliente";
+import { useEsDueño } from "@/lib/supabase/PerfilContext";
 import { BotonEliminarProducto } from "./BotonEliminarProducto";
 import { eliminarProducto } from "../consultas/eliminarProducto";
 import { EtiquetasProductos } from "./EtiquetasProductos";
@@ -34,6 +35,7 @@ export function ListaProductos({
   categorias: Categoria[];
   proveedores: Proveedor[];
 }) {
+  const esDueño = useEsDueño();
   const router = useRouter();
   const [busqueda, setBusqueda] = useState("");
   const [rubroId, setRubroId] = useState("");
@@ -212,9 +214,16 @@ export function ListaProductos({
           <>
             <FormularioCargaRapida productos={productosActivos} />
             <EtiquetasProductos productos={productosActivos} />
-            <Boton type="button" variante="fantasma" className="px-2.5 py-1.5 text-xs" onClick={activarModoSeleccion}>
-              Eliminar productos
-            </Boton>
+            {esDueño && (
+              <Boton
+                type="button"
+                variante="fantasma"
+                className="px-2.5 py-1.5 text-xs"
+                onClick={activarModoSeleccion}
+              >
+                Eliminar productos
+              </Boton>
+            )}
           </>
         )}
         <span className="ml-auto whitespace-nowrap text-xs text-texto-suave">

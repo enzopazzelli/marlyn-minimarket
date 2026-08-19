@@ -219,20 +219,42 @@ explícitas — sin esto `usuario_id` en el resto de las hojas del backup
 es un uuid sin nombre; se excluye `token_pantalla`, que sigue siendo
 sensible, mismo motivo por el que `perfiles` quedaba afuera antes).
 
-## Fase 5 — Ocultar/gatear lo que ya existe
+## Fase 5 — Ocultar/gatear lo que ya existe ✅ (2026-08-18)
 
-- [ ] Stock: ocultar "Nuevo producto", "Editar", "Eliminar", "Rubros",
-      "Importar Excel", "Exportar Excel" para operador. Ocultar campo
-      "Precio de venta" en `FormularioAjusteStock.tsx` (único que lo
-      tiene — `FormularioCargaRapida.tsx` nunca lo pidió, revisado en
-      Fase 0). Motivo de salida ya quedó obligatorio para los dos roles
-      desde Fase 0, no hace falta nada más acá.
-- [ ] Clientes: ocultar el campo "% de recargo" y "Exportar" en
-      `PanelCuentaCorriente.tsx` para operador.
-- [ ] Caja: ocultar `HistorialCierres` completo salvo filas propias (o
-      confiar en que la policy de Fase 1 ya devuelve solo esas filas) y
-      ocultar `BotonExportarCaja`.
-- [ ] Proveedores: ocultar "Editar", "+ Nuevo proveedor", "Eliminar".
+Antes de tocar botones sueltos: `src/lib/supabase/PerfilContext.tsx`
+(nuevo, no estaba en el plan original) — `PerfilProvider`/`usePerfil`/
+`useEsDueño`, sembrado una vez en `(app)/layout.tsx`. Sin esto, cada
+botón a ocultar (repartidos en Stock/Clientes/Caja/Proveedores, varios
+niveles bajo su página) hubiera necesitado que la página los recibiera
+por prop y se los pasara a mano — con un Context, cualquier Client
+Component pregunta el rol directo. La barrera real sigue siendo la RLS
+de Fase 1; esto es solo para no mostrar un botón que va a fallar.
+
+- [x] Stock: `FormularioNuevoProducto`, `FormularioEditarProducto`,
+      `BotonEliminarProducto` (+ el toggle "Eliminar productos" del modo
+      de selección múltiple), `PanelRubros`, `FormularioImportarExcel`,
+      `BotonExportarStock` — dueño-only. Campo "Precio de venta" oculto
+      en `FormularioAjusteStock.tsx` (único que lo tiene, confirmado en
+      Fase 0). Motivo de salida ya era obligatorio para los dos roles
+      desde Fase 0.
+- [x] Clientes: "% de recargo" y `BotonExportarCuentaCorriente`
+      dueño-only en `PanelCuentaCorriente.tsx`.
+- [x] Caja: `HistorialCierres` sin tocar (la policy de Fase 1 ya le
+      devuelve al operador solo sus propios turnos cerrados — no hacía
+      falta nada más). `BotonExportarCaja` dueño-only.
+- [x] Proveedores: `FormularioNuevoProveedor`, `FormularioEditarProveedor`,
+      `BotonEliminarProveedor` dueño-only (`PanelPedidoProveedor` sigue
+      para los dos roles).
+
+`npm run lint` encontró un error real durante el trabajo (no cosmético):
+en `FormularioImportarExcel.tsx` había un `useMemo` más abajo en el
+archivo, después de donde puse el `if (!esDueño) return null` — hook
+llamado condicionalmente, rompe las Reglas de los Hooks. Corregido
+moviendo el `useMemo` arriba de todos los `return` tempranos, mismo
+criterio que ya seguían los `useState`.
+
+Build limpio (15 rutas), typecheck/lint/tests (77) verdes. **Sin
+probar a mano en el navegador** — mismo límite de siempre.
 
 ## Fase 6 — Cierre
 

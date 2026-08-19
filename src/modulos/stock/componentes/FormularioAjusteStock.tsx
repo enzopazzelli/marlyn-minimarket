@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { crearClienteNavegador } from "@/lib/supabase/cliente";
+import { useEsDueño } from "@/lib/supabase/PerfilContext";
 import { Boton } from "@/componentes/Boton";
 import { Campo } from "@/componentes/Campo";
 import { Modal } from "@/componentes/Modal";
@@ -19,6 +20,7 @@ function pasoDeStock(unidad: "unidad" | "kg" | "litro") {
 // — el signo lo decide el toggle, nunca hay que tipear un "-" (en
 // pantallas táctiles el teclado numérico con min=0 ni lo muestra).
 export function FormularioAjusteStock({ producto }: { producto: Producto }) {
+  const esDueño = useEsDueño();
   const router = useRouter();
   const [abierto, setAbierto] = useState(false);
   const [guardando, setGuardando] = useState(false);
@@ -61,8 +63,12 @@ export function FormularioAjusteStock({ producto }: { producto: Producto }) {
       return;
     }
 
+    // Cambiar el precio de venta acá es solo para dueño (Fase 5 de
+    // PLAN-ROLES-AUDITORIA.md) — registrar_ajuste_stock() ya lo
+    // ignora igual si no lo sos, esto evita mandar un valor que la
+    // base va a pisar de todos modos.
     let precioNumero: number | null = null;
-    if (tipo === "entrada") {
+    if (esDueño && tipo === "entrada") {
       precioNumero = Number(precioVenta);
       if (!Number.isFinite(precioNumero) || precioNumero < 0) {
         setError("El precio de venta tiene que ser mayor o igual a cero");
@@ -143,7 +149,7 @@ export function FormularioAjusteStock({ producto }: { producto: Producto }) {
             autoFocus
           />
 
-          {tipo === "entrada" && (
+          {esDueño && tipo === "entrada" && (
             <Campo
               etiqueta="Precio de venta"
               id={`precioVentaIngreso-${producto.id}`}

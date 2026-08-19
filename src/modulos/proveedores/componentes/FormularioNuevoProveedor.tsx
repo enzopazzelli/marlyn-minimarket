@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { crearClienteNavegador } from "@/lib/supabase/cliente";
+import { useEsDueño } from "@/lib/supabase/PerfilContext";
 import { Boton } from "@/componentes/Boton";
 import { Campo } from "@/componentes/Campo";
 import { Modal } from "@/componentes/Modal";
@@ -10,17 +11,23 @@ import { Modal } from "@/componentes/Modal";
 // Alta completa (nombre + contacto + teléfono), para usar acá en
 // /proveedores. La alta rápida por nombre solo, desde Stock al cargar
 // un producto, sigue existiendo aparte vía PanelListaSimple — no se
-// toca.
+// toca (igual queda inalcanzable para el operador: el alta de producto
+// que la contiene ya es dueño-only, Fase 5 de PLAN-ROLES-AUDITORIA.md).
 function estadoInicial() {
   return { nombre: "", contacto: "", telefono: "" };
 }
 
+// Dueño-only: Proveedores es solo lectura para el operador (+
+// "Productos y pedido", que no toca esto).
 export function FormularioNuevoProveedor() {
+  const esDueño = useEsDueño();
   const router = useRouter();
   const [abierto, setAbierto] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [campos, setCampos] = useState(estadoInicial());
   const [error, setError] = useState<string | null>(null);
+
+  if (!esDueño) return null;
 
   function abrir() {
     setCampos(estadoInicial());

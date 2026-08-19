@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { crearClienteNavegador } from "@/lib/supabase/cliente";
+import { useEsDueño } from "@/lib/supabase/PerfilContext";
 import { Boton } from "@/componentes/Boton";
 import { Campo } from "@/componentes/Campo";
 import { Modal } from "@/componentes/Modal";
@@ -16,12 +17,17 @@ function estadoDesdeProveedor(proveedor: Proveedor) {
   };
 }
 
+// Dueño-only (Fase 5 de PLAN-ROLES-AUDITORIA.md): el operador tiene
+// solo lectura + "Productos y pedido" en Proveedores.
 export function FormularioEditarProveedor({ proveedor }: { proveedor: Proveedor }) {
+  const esDueño = useEsDueño();
   const router = useRouter();
   const [abierto, setAbierto] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [campos, setCampos] = useState(estadoDesdeProveedor(proveedor));
   const [error, setError] = useState<string | null>(null);
+
+  if (!esDueño) return null;
 
   function abrir() {
     setCampos(estadoDesdeProveedor(proveedor));

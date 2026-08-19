@@ -3,17 +3,22 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { crearClienteNavegador } from "@/lib/supabase/cliente";
+import { useEsDueño } from "@/lib/supabase/PerfilContext";
 import { eliminarProducto } from "../consultas/eliminarProducto";
 import type { Producto } from "../tipos";
 
 // Sin modal de confirmación. Si el producto ya tiene ventas o
 // movimientos de stock, eliminarProducto() lo marca "eliminado"
 // (activo = false) en vez de bloquear el borrado — desde acá se ve
-// igual, la fila desaparece de la lista en los dos casos.
+// igual, la fila desaparece de la lista en los dos casos. Dueño-only
+// (Fase 5 de PLAN-ROLES-AUDITORIA.md).
 export function BotonEliminarProducto({ producto }: { producto: Producto }) {
+  const esDueño = useEsDueño();
   const router = useRouter();
   const [ocupado, setOcupado] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  if (!esDueño) return null;
 
   async function eliminar() {
     setError(null);

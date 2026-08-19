@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Boton } from "@/componentes/Boton";
+import { useEsDueño } from "@/lib/supabase/PerfilContext";
 import type { MovimientoCuentaCorrienteDetallado } from "../consultas/clientes";
 import type { Cliente } from "../tipos";
 
@@ -24,8 +25,11 @@ export function BotonExportarCuentaCorriente({
   saldoActual: number;
   movimientos: MovimientoCuentaCorrienteDetallado[];
 }) {
+  const esDueño = useEsDueño();
   const [exportando, setExportando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  if (!esDueño) return null;
 
   async function exportar() {
     setError(null);

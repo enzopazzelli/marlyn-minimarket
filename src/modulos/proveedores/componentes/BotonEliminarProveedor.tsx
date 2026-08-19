@@ -3,15 +3,20 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { crearClienteNavegador } from "@/lib/supabase/cliente";
+import { useEsDueño } from "@/lib/supabase/PerfilContext";
 import type { Proveedor } from "../tipos";
 
 // Mismo criterio que BotonEliminarProducto.tsx / "Eliminar" en
 // PanelListaSimple.tsx: sin modal de confirmación, la guarda real es el
 // error de FK (23503) si todavía hay productos con este proveedor.
+// Dueño-only (Fase 5 de PLAN-ROLES-AUDITORIA.md).
 export function BotonEliminarProveedor({ proveedor }: { proveedor: Proveedor }) {
+  const esDueño = useEsDueño();
   const router = useRouter();
   const [ocupado, setOcupado] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  if (!esDueño) return null;
 
   async function eliminar() {
     setError(null);

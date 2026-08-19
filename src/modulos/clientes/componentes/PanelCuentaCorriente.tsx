@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { crearClienteNavegador } from "@/lib/supabase/cliente";
+import { useEsDueño } from "@/lib/supabase/PerfilContext";
 import { Boton } from "@/componentes/Boton";
 import { Campo } from "@/componentes/Campo";
 import { Modal } from "@/componentes/Modal";
@@ -29,6 +30,7 @@ export function PanelCuentaCorriente({
   cliente: Cliente;
   turnoCajaId: string | null;
 }) {
+  const esDueño = useEsDueño();
   const router = useRouter();
   // Saldo llevado en estado local, no leído directo de `cliente` en
   // cada render: aplicar recargo y registrar pago son dos acciones que
@@ -225,33 +227,36 @@ export function PanelCuentaCorriente({
             )}
           </div>
 
-          <div className="flex flex-col gap-2 rounded-[var(--radius-base)] border border-linea p-3">
-            <p className="text-xs font-medium uppercase tracking-wide text-texto-suave">
-              Aplicar recargo por atraso
-            </p>
-            <div className="flex items-end gap-2">
-              <div className="flex-1">
-                <Campo
-                  etiqueta="% de recargo"
-                  id="porcentajeRecargo"
-                  type="number"
-                  min={0}
-                  step="1"
-                  value={porcentajeRecargo}
-                  onChange={(evento) => setPorcentajeRecargo(evento.target.value)}
-                  className="font-[family-name:var(--font-numero)]"
-                />
-              </div>
-              <Boton type="button" variante="fantasma" disabled={ocupado !== null} onClick={aplicarRecargo}>
-                Aplicar
-              </Boton>
-            </div>
-            {totalConRecargo !== null && (
-              <p className="text-xs text-texto-suave">
-                Con recargo pasaría a deber <span className="numero font-semibold">{platita.format(totalConRecargo)}</span>
+          {esDueño && (
+            <div className="flex flex-col gap-2 rounded-[var(--radius-base)] border border-linea p-3">
+              <p className="text-xs font-medium uppercase tracking-wide text-texto-suave">
+                Aplicar recargo por atraso
               </p>
-            )}
-          </div>
+              <div className="flex items-end gap-2">
+                <div className="flex-1">
+                  <Campo
+                    etiqueta="% de recargo"
+                    id="porcentajeRecargo"
+                    type="number"
+                    min={0}
+                    step="1"
+                    value={porcentajeRecargo}
+                    onChange={(evento) => setPorcentajeRecargo(evento.target.value)}
+                    className="font-[family-name:var(--font-numero)]"
+                  />
+                </div>
+                <Boton type="button" variante="fantasma" disabled={ocupado !== null} onClick={aplicarRecargo}>
+                  Aplicar
+                </Boton>
+              </div>
+              {totalConRecargo !== null && (
+                <p className="text-xs text-texto-suave">
+                  Con recargo pasaría a deber{" "}
+                  <span className="numero font-semibold">{platita.format(totalConRecargo)}</span>
+                </p>
+              )}
+            </div>
+          )}
 
           <div className="flex flex-col gap-2 rounded-[var(--radius-base)] border border-linea p-3">
             <p className="text-xs font-medium uppercase tracking-wide text-texto-suave">Registrar pago</p>

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Boton } from "@/componentes/Boton";
+import { useEsDueño } from "@/lib/supabase/PerfilContext";
 import type { VentaResumen } from "@/modulos/ventas/consultas/ventas";
 import type { MovimientoCaja, TurnoCaja } from "../tipos";
 
@@ -12,7 +13,9 @@ const horaFormateador = new Intl.DateTimeFormat("es-AR", { hour: "2-digit", minu
 // criterio que BotonExportarExcel.tsx (Reportes) y BotonExportarStock.tsx.
 // Exporta lo mismo que ya se ve en la pantalla, a nivel turno (no día
 // como Reportes — un turno puede cruzar la medianoche, y un día puede
-// tener más de un turno).
+// tener más de un turno). Dueño-only (Fase 5 de
+// PLAN-ROLES-AUDITORIA.md): exportación de reportes de caja quedó
+// restringida aunque el turno sea del propio operador.
 export function BotonExportarCaja({
   turno,
   montoCalculado,
@@ -24,8 +27,11 @@ export function BotonExportarCaja({
   ventas: VentaResumen[];
   movimientos: MovimientoCaja[];
 }) {
+  const esDueño = useEsDueño();
   const [exportando, setExportando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  if (!esDueño) return null;
 
   async function exportar() {
     setError(null);

@@ -7,6 +7,7 @@ import { Campo } from "@/componentes/Campo";
 import { Modal } from "@/componentes/Modal";
 import { clienteConfig } from "@/config/cliente";
 import { crearClienteNavegador } from "@/lib/supabase/cliente";
+import { useEsDueño } from "@/lib/supabase/PerfilContext";
 import { calcularPrecioVentaDesdeGanancia } from "../consultas/precios";
 import { construirImportacion, type FilaExcelCatalogo } from "../consultas/importarExcel";
 import type { Categoria, Producto, Proveedor } from "../tipos";
@@ -16,6 +17,9 @@ const COLUMNAS_ESPERADAS = ["descripcion", "proveedor", "codigo de barra", "fami
 
 type Resultado = { productosCreados: number; categoriasCreadas: number; proveedoresCreados: number };
 
+// Dueño-only (Fase 5 de PLAN-ROLES-AUDITORIA.md): alta masiva es
+// catálogo, igual que el alta de a uno — importar_catalogo() ya lo
+// exige en la base, esto evita mostrar el botón.
 export function FormularioImportarExcel({
   categorias,
   proveedores,
@@ -25,6 +29,7 @@ export function FormularioImportarExcel({
   proveedores: Proveedor[];
   productos: Producto[];
 }) {
+  const esDueño = useEsDueño();
   const router = useRouter();
   const [abierto, setAbierto] = useState(false);
   const [cargando, setCargando] = useState(false);
@@ -34,6 +39,28 @@ export function FormularioImportarExcel({
   const [porcentajeGanancia, setPorcentajeGanancia] = useState("30");
   const [incluyeIva, setIncluyeIva] = useState(false);
   const [resultado, setResultado] = useState<Resultado | null>(null);
+
+  // useMemo acá arriba, no más abajo donde se usa: todos los hooks
+  // tienen que quedar antes del `if` de rol (react-hooks/rules-of-hooks
+  // — no pueden llamarse condicionalmente).
+  const resumen = useMemo(() => {
+    if (!filas) return null;
+    return construirImportacion(
+      filas,
+      {
+        categorias: categorias.map((categoria) => categoria.nombre),
+        proveedores: proveedores.map((proveedor) => proveedor.nombre),
+        codigosBarras: productos.map((producto) => producto.codigoBarras).filter((codigo) => !!codigo) as string[],
+      },
+      {
+        porcentajeGanancia: Number(porcentajeGanancia) || 0,
+        incluyeIva,
+        ivaPorcentaje: clienteConfig.reglasNegocio.ivaPorcentaje,
+      },
+    );
+  }, [filas, categorias, proveedores, productos, porcentajeGanancia, incluyeIva]);
+
+  if (!esDueño) return null;
 
   function abrir() {
     setNombreArchivo(null);
@@ -103,23 +130,6 @@ export function FormularioImportarExcel({
       setCargando(false);
     }
   }
-
-  const resumen = useMemo(() => {
-    if (!filas) return null;
-    return construirImportacion(
-      filas,
-      {
-        categorias: categorias.map((categoria) => categoria.nombre),
-        proveedores: proveedores.map((proveedor) => proveedor.nombre),
-        codigosBarras: productos.map((producto) => producto.codigoBarras).filter((codigo) => !!codigo) as string[],
-      },
-      {
-        porcentajeGanancia: Number(porcentajeGanancia) || 0,
-        incluyeIva,
-        ivaPorcentaje: clienteConfig.reglasNegocio.ivaPorcentaje,
-      },
-    );
-  }, [filas, categorias, proveedores, productos, porcentajeGanancia, incluyeIva]);
 
   const ejemploPrecioVenta = calcularPrecioVentaDesdeGanancia(
     1000,
