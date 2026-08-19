@@ -64,8 +64,14 @@ describe("exigirSesionDeDueño (Fase 3 de PLAN-ROLES-AUDITORIA.md)", () => {
   });
 
   afterAll(async () => {
-    if (operadorAuthId) await clienteServicio.auth.admin.deleteUser(operadorAuthId);
-    if (dueñoAuthId) await clienteServicio.auth.admin.deleteUser(dueñoAuthId);
+    if (operadorAuthId) {
+      const { error } = await clienteServicio.auth.admin.deleteUser(operadorAuthId);
+      if (error) throw error;
+    }
+    if (dueñoAuthId) {
+      const { error } = await clienteServicio.auth.admin.deleteUser(dueñoAuthId);
+      if (error) throw error;
+    }
   });
 
   it("sin sesión, rechaza", async () => {

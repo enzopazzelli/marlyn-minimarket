@@ -83,10 +83,25 @@ describe("Rol operador en Caja (Fase 1 de PLAN-ROLES-AUDITORIA.md)", () => {
 
   afterAll(async () => {
     // Cascada: borrar el turno se lleva puestos sus movimientos_caja.
-    if (turnoOperadorId) await clienteServicio.from("turnos_caja").delete().eq("id", turnoOperadorId);
-    if (turnoAjenoId) await clienteServicio.from("turnos_caja").delete().eq("id", turnoAjenoId);
-    if (operadorAuthId) await clienteServicio.auth.admin.deleteUser(operadorAuthId);
-    if (otroUsuarioAuthId) await clienteServicio.auth.admin.deleteUser(otroUsuarioAuthId);
+    // Errores chequeados a propósito (no un await suelto) — un delete
+    // que falla en silencio deja basura de prueba colgada en la base
+    // real, pasó de verdad en otros dos archivos de esta misma tanda.
+    if (turnoOperadorId) {
+      const { error } = await clienteServicio.from("turnos_caja").delete().eq("id", turnoOperadorId);
+      if (error) throw error;
+    }
+    if (turnoAjenoId) {
+      const { error } = await clienteServicio.from("turnos_caja").delete().eq("id", turnoAjenoId);
+      if (error) throw error;
+    }
+    if (operadorAuthId) {
+      const { error } = await clienteServicio.auth.admin.deleteUser(operadorAuthId);
+      if (error) throw error;
+    }
+    if (otroUsuarioAuthId) {
+      const { error } = await clienteServicio.auth.admin.deleteUser(otroUsuarioAuthId);
+      if (error) throw error;
+    }
   });
 
   it("el operador ve su propio turno cerrado", async () => {

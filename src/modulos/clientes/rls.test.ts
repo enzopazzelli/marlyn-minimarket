@@ -78,7 +78,21 @@ describe("Rol operador (Fase 1 de PLAN-ROLES-AUDITORIA.md)", () => {
   });
 
   afterAll(async () => {
-    if (operadorAuthId) await clienteServicio.auth.admin.deleteUser(operadorAuthId);
+    // El test de "sí puede registrar un pago" deja una fila real en
+    // movimientos_cuenta_corriente con creado_por = este operador (esa
+    // columna no tiene ON DELETE CASCADE) — sin borrarla antes, borrar
+    // el usuario falla en silencio si no se chequea el error, y la
+    // cuenta de prueba queda colgada en auth.users indefinidamente
+    // (pasó de verdad, ver el commit que agrega este comentario).
+    if (operadorAuthId) {
+      const { error } = await clienteServicio.from("movimientos_cuenta_corriente").delete().eq(
+        "creado_por",
+        operadorAuthId,
+      );
+      if (error) throw error;
+      const { error: errorUsuario } = await clienteServicio.auth.admin.deleteUser(operadorAuthId);
+      if (errorUsuario) throw errorUsuario;
+    }
   });
 
   // El chequeo de rol va antes de buscar el cliente (ver el comentario

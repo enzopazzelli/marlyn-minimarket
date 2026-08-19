@@ -95,10 +95,26 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  if (productoId) await clienteServicio.from("productos").delete().eq("id", productoId);
-  if (categoriaId) await clienteServicio.from("categorias").delete().eq("id", categoriaId);
-  if (operadorAuthId) await clienteServicio.auth.admin.deleteUser(operadorAuthId);
-  if (dueñoAuthId) await clienteServicio.auth.admin.deleteUser(dueñoAuthId);
+  // Errores chequeados a propósito, no un await suelto: un delete que
+  // falla en silencio por una FK inesperada deja basura de prueba
+  // colgada en la base real (pasó de verdad con auditoria/rls.test.ts
+  // y con el operador de clientes/rls.test.ts — ver esos commits).
+  if (productoId) {
+    const { error } = await clienteServicio.from("productos").delete().eq("id", productoId);
+    if (error) throw error;
+  }
+  if (categoriaId) {
+    const { error } = await clienteServicio.from("categorias").delete().eq("id", categoriaId);
+    if (error) throw error;
+  }
+  if (operadorAuthId) {
+    const { error } = await clienteServicio.auth.admin.deleteUser(operadorAuthId);
+    if (error) throw error;
+  }
+  if (dueñoAuthId) {
+    const { error } = await clienteServicio.auth.admin.deleteUser(dueñoAuthId);
+    if (error) throw error;
+  }
 });
 
 describe("RLS de productos y categorías (M1 Stock)", () => {

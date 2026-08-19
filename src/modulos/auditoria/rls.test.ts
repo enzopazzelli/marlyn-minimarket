@@ -92,7 +92,18 @@ describe("RLS de auditoria_movimientos (Fase 4 de PLAN-ROLES-AUDITORIA.md)", () 
   });
 
   afterAll(async () => {
-    if (productoId) await clienteServicio.from("productos").delete().eq("id", productoId);
+    // El ajuste de stock de arriba deja una fila real en movimientos_stock
+    // (sin ON DELETE CASCADE hacia productos) — hay que borrarla antes,
+    // si no el delete de productos falla en silencio (sin chequear el
+    // error acá no se nota, y el producto de prueba queda colgado y
+    // vendible en el catálogo real; pasó de verdad, ver el commit que
+    // agrega este comentario).
+    if (productoId) {
+      const { error } = await clienteServicio.from("movimientos_stock").delete().eq("producto_id", productoId);
+      if (error) throw error;
+      const { error: errorProducto } = await clienteServicio.from("productos").delete().eq("id", productoId);
+      if (errorProducto) throw errorProducto;
+    }
     if (categoriaId) await clienteServicio.from("categorias").delete().eq("id", categoriaId);
     if (operadorAuthId) await clienteServicio.auth.admin.deleteUser(operadorAuthId);
     if (dueñoAuthId) await clienteServicio.auth.admin.deleteUser(dueñoAuthId);
