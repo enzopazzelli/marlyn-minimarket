@@ -29,6 +29,9 @@ function construirGrupoAdministracion(): ItemNav[] {
     ...(clienteConfig.modulos.proveedores ? [{ href: "/proveedores", etiqueta: "Proveedores" }] : []),
     ...(clienteConfig.modulos.notas ? [{ href: "/notas", etiqueta: "Notas" }] : []),
     ...(clienteConfig.modulos.usuariosGranular ? [{ href: "/usuarios", etiqueta: "Usuarios", soloDueño: true }] : []),
+    ...(clienteConfig.modulos.usuariosGranular
+      ? [{ href: "/auditoria", etiqueta: "Auditoría", soloDueño: true }]
+      : []),
   ];
 }
 

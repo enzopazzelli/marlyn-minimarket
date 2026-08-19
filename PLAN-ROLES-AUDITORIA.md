@@ -168,16 +168,43 @@ la Fase 2: creando un empleado de prueba y entrando con esa cuenta en
 otra ventana/incógnito deberías ver la barra lateral recortada (sin
 Reportes ni Usuarios) — vale la pena chequear los dos juntos.
 
-## Fase 4 — Pantalla "Auditoría" (dueño-only)
+## Fase 4 — Pantalla "Auditoría" (dueño-only) ✅ (2026-08-18)
 
-- [ ] `src/modulos/auditoria/`: consulta que junta `movimientos_stock` +
-      `movimientos_cuenta_corriente` + `movimientos_caja` + anulaciones
-      de `ventas` (`anulada_por`/`motivo_anulacion`) + aperturas/cierres
-      de `turnos_caja`, normalizado a columnas comunes (fecha, usuario,
-      tipo, detalle, monto).
-- [ ] Filtros: usuario, rango de fecha, tipo de movimiento.
-- [ ] Insignia de color por tipo (salida de stock / recargo / anulación
-      en `--alerta`, igual que el resto del sistema de diseño).
+- [x] Vista `auditoria_movimientos` (SQL, `security_invoker` +
+      **su propio `where auth_rol() = 'dueño'`** — ninguna de las 5
+      tablas de abajo tiene una policy dueño-only en `select` hoy,
+      sin ese `where` el operador vería todo esto igual a través de la
+      vista): une `movimientos_stock` + `movimientos_cuenta_corriente` +
+      `movimientos_caja` + `ventas` anuladas + cierres de `turnos_caja`,
+      normalizado a `fecha, usuario_id, tipo, descripcion, monto`.
+      Turno cerrado con diferencia negativa (faltante) queda como su
+      propio "movimiento", con el monto de la diferencia — señal directa
+      de patrón sospechoso por usuario, no pedida explícitamente pero
+      se desprende del mismo dato que ya se guardaba.
+- [x] `PanelAuditoria.tsx`: filtros de fecha (Desde/Hasta, refetch al
+      servidor, igual que el selector de día de Reportes), Usuario y
+      Tipo (los dos últimos filtran en el cliente sobre lo ya traído).
+      Tope de 1000 filas por rango (mismo límite de PostgREST que el
+      resto del proyecto) — con volumen real un rango angosto no
+      debería acercarse a eso.
+- [x] Insignia por tipo: alerta para salida de stock, recargo, retiro de
+      caja, venta anulada y devolución por anulación; ok para lo
+      rutinario. Cierre de turno es el único caso dinámico: alerta si la
+      diferencia es negativa, ok si no.
+
+Migración `20260818130000_auditoria_vista.sql`, ya aplicada. Sumé
+`formatearFechaHora()` en `src/lib/formato.ts` (mismo mecanismo de
+`formatearHora()` para el bug de hidratación ya conocido, pero con
+fecha además de hora — esta tabla cruza varios días, no solo "hoy").
+
+Test: `auditoria/rls.test.ts` — un operador hace un ajuste de stock real
+(vía la función, no un insert directo) y se confirma que el propio
+operador no ve nada en la vista, el dueño sí lo ve con el motivo real, y
+sin sesión no se puede leer nada.
+
+`npm run build` sin errores (16 rutas). **Sin probar a mano en el
+navegador** (mismo límite de siempre — no puedo manejar un navegador
+desde acá). El server de desarrollo sigue corriendo en `localhost:3000`.
 
 ## Fase 5 — Ocultar/gatear lo que ya existe
 
