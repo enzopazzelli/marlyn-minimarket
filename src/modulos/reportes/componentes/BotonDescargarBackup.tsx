@@ -5,16 +5,27 @@ import { Boton } from "@/componentes/Boton";
 import { filaSegura } from "@/lib/excel";
 import { crearClienteNavegador } from "@/lib/supabase/cliente";
 import { traerTodasLasFilas } from "@/lib/supabase/paginado";
+import { etiquetaTurno, mapaIdNombre, resolverFilasLegibles, type MapasLegibles } from "../consultas/backupLegible";
 
 // Backup manual bajo pedido (no automático, no reemplaza un backup real
-// de la base): una hoja por tabla, con las columnas tal cual están
-// guardadas — a diferencia de los otros exports (Stock, Caja, cuenta
-// corriente, Reportes del día), esto es un respaldo para archivar, no
-// un reporte para leer, así que no se cura ni se traduce nada (salvo
-// `filaSegura`, ver más abajo). auditoria_movimientos entra igual que
-// cualquier tabla (es una vista, PostgREST no distingue) — junta lo de
-// las cinco tablas de abajo ya legible, así que queda como hoja de
-// consulta rápida sin tener que cruzar usuario_id a mano.
+// de la base): una hoja por tabla. A diferencia de los otros exports
+// (Stock, Caja, cuenta corriente, Reportes del día) esto es un respaldo
+// para archivar, no un reporte curado — pero desde 2026-08-19 sí se
+// traduce una cosa: toda columna que sea FK a otra tabla (categoria_id,
+// proveedor_id, cliente_id, usuario_id, venta_id, turno_id) se resuelve
+// a nombre/etiqueta legible (`backupLegible.ts`), en vez de quedar como
+// uuid crudo — el propio `id` de cada fila no se toca.
+//
+// Solo `categorias`, `proveedores`, `productos` y `clientes` son
+// reimportables (`FormularioReimportarBackup.tsx`, botón al lado). Las
+// tablas transaccionales/derivadas de abajo (ventas, pagos, movimientos
+// de stock/caja/cuenta corriente, turnos) siguen siendo de un solo
+// sentido — cada escritura ahí hoy pasa por una función `security
+// definer` (`registrar_venta`/`anular_venta`/`registrar_ajuste_stock`/
+// `registrar_movimiento_cuenta_corriente`) que mantiene consistentes
+// stock, caja y cuenta corriente en un solo paso atómico; reconstruir
+// esas 7 tablas desde un Excel editado a mano tiraría eso por la borda.
+// `notas` tampoco se reimporta: no hay demanda real de bulk-edit ahí.
 const TABLAS = [
   "categorias",
   "productos",
@@ -50,8 +61,38 @@ export function BotonDescargarBackup() {
       const { default: ExcelJS } = await import("exceljs");
       const libro = new ExcelJS.Workbook();
 
+      // 1) Traer todas las tablas antes de armar ninguna hoja: los mapas
+      // id → nombre necesitan los datos completos de categorias,
+      // proveedores, productos, clientes y ventas, y esos mismos datos
+      // son los que después se vuelcan a su propia hoja — una sola
+      // consulta por tabla, no una aparte para el mapa y otra para el
+      // export.
+      const datosPorTabla: Record<string, Record<string, unknown>[]> = {};
       for (const tabla of TABLAS) {
-        const filas = await traerTodasLasFilas<Record<string, unknown>>(supabase, tabla, "*");
+        datosPorTabla[tabla] = await traerTodasLasFilas<Record<string, unknown>>(supabase, tabla, "*");
+      }
+      const perfiles = await traerTodasLasFilas<Record<string, unknown>>(supabase, "perfiles", COLUMNAS_PERFILES);
+
+      // 2) Mapas de lookup id → texto legible.
+      const perfilesPorId = mapaIdNombre(perfiles);
+      const mapas: MapasLegibles = {
+        categorias: mapaIdNombre(datosPorTabla.categorias),
+        proveedores: mapaIdNombre(datosPorTabla.proveedores),
+        productos: mapaIdNombre(datosPorTabla.productos),
+        clientes: mapaIdNombre(datosPorTabla.clientes),
+        perfiles: perfilesPorId,
+        ventas: new Map(datosPorTabla.ventas.map((venta) => [String(venta.id), `Venta #${venta.numero}`])),
+        turnos: new Map(
+          datosPorTabla.turnos_caja.map((turno) => [
+            String(turno.id),
+            etiquetaTurno(perfilesPorId.get(String(turno.usuario_id)), turno.abierto_en),
+          ]),
+        ),
+      };
+
+      // 3) Una hoja por tabla, con las columnas FK ya resueltas.
+      for (const tabla of TABLAS) {
+        const filas = resolverFilasLegibles(tabla, datosPorTabla[tabla], mapas);
         const hoja = libro.addWorksheet(tabla);
 
         if (filas.length > 0) {
@@ -60,7 +101,6 @@ export function BotonDescargarBackup() {
         }
       }
 
-      const perfiles = await traerTodasLasFilas<Record<string, unknown>>(supabase, "perfiles", COLUMNAS_PERFILES);
       const hojaPerfiles = libro.addWorksheet("perfiles");
       if (perfiles.length > 0) {
         hojaPerfiles.columns = Object.keys(perfiles[0]).map((columna) => ({

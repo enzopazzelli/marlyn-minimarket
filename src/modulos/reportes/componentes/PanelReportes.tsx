@@ -3,13 +3,16 @@
 import { useState } from "react";
 import { Campo } from "@/componentes/Campo";
 import { crearClienteNavegador } from "@/lib/supabase/cliente";
-import type { Producto } from "@/modulos/stock/tipos";
+import type { Cliente } from "@/modulos/clientes/tipos";
+import type { Proveedor } from "@/modulos/proveedores/tipos";
+import type { Categoria, Producto } from "@/modulos/stock/tipos";
 import { calcularResumenDelDia, hoyISO } from "../consultas/calculos";
 import { obtenerVentasDelDia } from "../consultas/reportes";
 import type { ResumenDia, VentaReporte } from "../tipos";
 import { BotonDescargarBackup } from "./BotonDescargarBackup";
 import { BotonExportarExcel } from "./BotonExportarExcel";
 import { FilaKpis } from "./FilaKpis";
+import { FormularioReimportarBackup } from "./FormularioReimportarBackup";
 import { GraficoMedioPago } from "./GraficoMedioPago";
 import { GraficoVentasPorHora } from "./GraficoVentasPorHora";
 import { PanelAlertasStock } from "./PanelAlertasStock";
@@ -21,11 +24,17 @@ export function PanelReportes({
   resumenInicial,
   ventasIniciales,
   productos,
+  categorias,
+  proveedores,
+  clientes,
 }: {
   fechaInicial: string;
   resumenInicial: ResumenDia;
   ventasIniciales: VentaReporte[];
   productos: Producto[];
+  categorias: Categoria[];
+  proveedores: Proveedor[];
+  clientes: Cliente[];
 }) {
   // "Adjusting state when a prop changes" (mismo patrón que
   // FormularioEditarProducto.tsx / PanelCuentaCorriente.tsx): si la
@@ -76,6 +85,12 @@ export function PanelReportes({
         <div className="flex items-start gap-2">
           <BotonExportarExcel fecha={fecha} resumen={resumen} ventas={ventas} />
           <BotonDescargarBackup />
+          <FormularioReimportarBackup
+            categorias={categorias}
+            proveedores={proveedores}
+            productos={productos}
+            clientes={clientes}
+          />
         </div>
       </div>
 

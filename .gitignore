@@ -41,6 +41,7 @@ yarn-error.log*
 BACKUP.xlsx
 *.xlsx
 !**/ejemplo*.xlsx
+backup_pre_wipe_*.json
 
 # typescript
 *.tsbuildinfo

@@ -410,24 +410,56 @@ página).
 Excel", pedido explícito de Enzo, 2026-08-14): baja un `.xlsx` con una
 hoja por tabla (categorías, productos, proveedores, clientes, turnos y
 movimientos de caja, ventas + ítems + pagos, movimientos de stock y de
-cuenta corriente) tal cual está guardado, sin curar — a diferencia del
-resto de los exports, esto es un respaldo para archivar, no un reporte
-para leer. Pagina con `.range()` en vez de un `select("*")` directo:
-PostgREST corta cualquier consulta en 1000 filas (`max_rows` de
-`config.toml`) aunque no se pida un `.limit()`, así que sin eso el
-catálogo real del cliente (~2991 productos) se hubiera truncado a los
-primeros 1000 sin ningún error visible. Es manual y bajo demanda, no
-un backup automático recurrente — `perfiles` (cuentas de operador, no
-datos del negocio) queda afuera a propósito. **De un solo sentido a
-propósito**: no hay pantalla para volver a cargar ese `.xlsx` — restaurar
-12 tablas con relaciones por `id` (respetando orden de dependencias,
-qué hacer si un id ya existe, etc.) es mucho más riesgoso que
-exportarlas, y no fue lo que se pidió (decidido con Enzo, 2026-08-14).
-Es un archivo para tener guardado por las dudas, no una función de
-"deshacer". Si alguna vez hace falta restaurar de verdad, es trabajo
-puntual para hacer con cuidado en el momento — o, para un desastre real
-de la base, los backups del lado de Supabase (Point-in-Time Recovery,
-plan pago), no este archivo.
+cuenta corriente) — a diferencia del resto de los exports, esto es un
+respaldo para archivar, no un reporte curado. Pagina con `.range()` en
+vez de un `select("*")` directo: PostgREST corta cualquier consulta en
+1000 filas (`max_rows` de `config.toml`) aunque no se pida un
+`.limit()`, así que sin eso el catálogo real del cliente (~2991
+productos) se hubiera truncado a los primeros 1000 sin ningún error
+visible. Es manual y bajo demanda, no un backup automático recurrente —
+`perfiles` (cuentas de operador, no datos del negocio) queda afuera a
+propósito, salvo columnas explícitas sin `token_pantalla`.
+
+**Backup legible** (`backupLegible.ts`, pedido explícito de Enzo,
+2026-08-19): toda columna que sea FK a otra tabla (`categoria_id`,
+`proveedor_id`, `cliente_id`, `usuario_id`, `venta_id`, `turno_id`) se
+resuelve a nombre/etiqueta legible en vez de quedar como uuid crudo — el
+`id` propio de cada fila no se toca. Un id que no aparece en su mapa se
+marca `(no encontrado)` en vez de quedar en blanco silenciosamente.
+
+**Reimportar backup** (`FormularioReimportarBackup.tsx` +
+`reimportar_maestros()`, mismo pedido): botón dueño-only al lado del de
+descarga, para volver a subir el mismo Excel después de editarlo a mano.
+Solo `categorias`, `proveedores`, `productos` y `clientes` son
+reimportables (upsert por `id`: sin id da de alta, con id existente
+edita, con id que no existe es error explícito por fila — nunca borra lo
+que falte en la hoja). Las tablas transaccionales/derivadas (`ventas`,
+pagos, movimientos de stock/caja/cuenta corriente, turnos) y `notas`
+siguen siendo de un solo sentido — legibles pero no reimportables: cada
+escritura ahí hoy pasa por una función `security definer`
+(`registrar_venta`/`anular_venta`/`registrar_ajuste_stock`/
+`registrar_movimiento_cuenta_corriente`) que mantiene consistentes
+stock, caja y cuenta corriente en un solo paso atómico, y reconstruir
+esas tablas desde un Excel editado a mano tiraría eso por la borda — ni
+hay demanda real de "editar ventas históricas en Excel y resubirlas". La
+función nunca toca `productos.stock_actual` ni
+`clientes.saldo_cuenta_corriente` (estado derivado que solo mantienen
+las funciones de arriba, junto con su fila de auditoría) — ni siquiera
+lee esas claves del jsonb que recibe. `categorias`/`proveedores`
+necesitaron un `unique(lower(nombre))` nuevo para que el nombre resuelva
+sin ambigüedad al reimportar (migración
+`20260819140000_nombres_unicos_categorias_proveedores.sql`, fusiona
+duplicados existentes antes de agregar la restricción — no hizo falta
+fusionar nada en la base real). `productos.nombre`/`clientes.nombre`
+deliberadamente **no** llevan esa restricción: nada reimportable resuelve
+un FK a través de esos nombres (el upsert de esas dos tablas usa su
+propio `id`), y forzar unicidad sobre ~2400 productos reales sin
+beneficio real hubiera exigido un merge manual innecesario.
+
+Si alguna vez hace falta una restauración de desastre real (no edición
+en Excel) de las tablas transaccionales, eso es trabajo de backups
+nativos de Postgres (Supabase Point-in-Time Recovery, plan pago, o
+`pg_dump`/`pg_restore`), no de este botón.
 
 **Bug de hidratación al mostrar la hora, encontrado y corregido**
 (2026-08-14): React tiraba "Hydration failed" en `/reportes` (y latente
