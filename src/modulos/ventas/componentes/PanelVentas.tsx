@@ -148,7 +148,11 @@ export function PanelVentas({
 
   function cerrarVenta(id: string) {
     setCarritos((anteriores) => {
-      if (anteriores.length === 1) return [crearCarritoVacio()];
+      if (anteriores.length === 1) {
+        const nuevo = crearCarritoVacio();
+        setCarritoActivoId(nuevo.id);
+        return [nuevo];
+      }
       const restantes = anteriores.filter((carrito) => carrito.id !== id);
       if (id === carritoActivoId) setCarritoActivoId(restantes[0].id);
       return restantes;

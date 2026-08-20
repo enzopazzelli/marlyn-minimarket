@@ -591,6 +591,16 @@ como antes. El ticket lo deja explícito ("Transferencia + Fiado" en vez
 de "Fiado" a secas, más una línea "Queda fiado" con el monto) para que
 no se preste a confusión sobre cuánto quedó pendiente y en qué se cobró.
 
+**Bug encontrado y corregido: después de cobrar, había que clickear la
+pestaña "Venta 1" para poder seguir vendiendo** (reportado por Enzo,
+2026-08-19). Causa: `cerrarVenta()` (`PanelVentas.tsx`), al confirmar una
+venta con una sola pestaña abierta, creaba un carrito nuevo pero nunca
+actualizaba `carritoActivoId` para que apuntara a él — la pestaña
+quedaba pintada como inactiva, y `actualizarCarritoActivo()` (que filtra
+por ese id) no encontraba ningún carrito para actualizar, así que tocar
+un producto no hacía nada hasta clickear la pestaña a mano. Corregido
+llamando `setCarritoActivoId()` también en esa rama.
+
 **Supuesto de "Balance"**: es margen bruto (ventas − costo de
 mercadería vendida), calculado con el `precio_costo` ACTUAL de cada
 producto — no se guarda un histórico de costo por venta, así que si el
