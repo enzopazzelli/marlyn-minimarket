@@ -741,15 +741,15 @@ export function PanelVentas({
                         type="number"
                         min={0}
                         step="1"
-                        placeholder="Dejalo vacío si fiás todo"
+                        placeholder="Vacío = fía todo"
                         value={carritoActivo.montoRecibidoFiado}
                         onChange={(evento) => actualizarCarritoActivo({ montoRecibidoFiado: evento.target.value })}
                         onFocus={(evento) => evento.currentTarget.select()}
-                        className={`${clasesFiltro} numero flex-1`}
+                        className={`${clasesFiltro} numero min-w-0 flex-1`}
                       />
                       <select
                         aria-label="Medio en que se cobra ahora"
-                        className={`${clasesSelect} py-1.5 text-sm`}
+                        className={`${clasesSelect} w-32 shrink-0 py-1.5 text-sm`}
                         value={carritoActivo.medioRecibidoFiado}
                         onChange={(evento) =>
                           actualizarCarritoActivo({
