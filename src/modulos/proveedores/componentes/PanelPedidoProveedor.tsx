@@ -6,6 +6,18 @@ import { Modal } from "@/componentes/Modal";
 import type { Producto } from "@/modulos/stock/tipos";
 import type { Proveedor } from "../tipos";
 
+// Deja solo dígitos y antepone el código de país si no está — el
+// teléfono es texto libre sin formato validado (/proveedores), así que
+// esto es una normalización mínima, no una garantía. Un celular
+// argentino a veces necesita además un "9" después del 54
+// (5493511234567) que no se puede inferir de forma confiable desde un
+// número de 10 dígitos sin saber si es fijo o celular — si el link no
+// abre bien, hay que cargar el teléfono ya en formato completo.
+function numeroWhatsapp(telefono: string): string {
+  const digitos = telefono.replace(/\D/g, "");
+  return digitos.startsWith("54") ? digitos : `54${digitos}`;
+}
+
 // Filtra en el cliente sobre la misma lista de productos que ya trae
 // la página (sin consulta nueva): quedarse solo con los del proveedor.
 export function PanelPedidoProveedor({ proveedor, productos }: { proveedor: Proveedor; productos: Producto[] }) {
@@ -123,9 +135,21 @@ export function PanelPedidoProveedor({ proveedor, productos }: { proveedor: Prov
                     rows={Math.min(10, textoPedido.split("\n").length + 1)}
                     className="numero rounded-[var(--radius-base)] border border-linea bg-fondo px-3 py-2 text-xs text-texto"
                   />
-                  <Boton type="button" variante="confirmar" onClick={copiarPedido}>
-                    {copiado ? "¡Copiado!" : "Copiar"}
-                  </Boton>
+                  <div className="flex gap-2">
+                    <Boton type="button" variante="confirmar" className="flex-1" onClick={copiarPedido}>
+                      {copiado ? "¡Copiado!" : "Copiar"}
+                    </Boton>
+                    {proveedor.telefono && (
+                      <a
+                        href={`https://wa.me/${numeroWhatsapp(proveedor.telefono)}?text=${encodeURIComponent(textoPedido)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex flex-1 items-center justify-center rounded-[var(--radius-base)] border border-linea bg-superficie px-3 py-2 text-sm font-medium text-texto hover:border-marco"
+                      >
+                        Enviar por WhatsApp
+                      </a>
+                    )}
+                  </div>
                 </div>
               )}
             </>
