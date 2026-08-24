@@ -69,6 +69,18 @@ export function FilaCarritoItem({
     }
   }
 
+  // El monto tipeado casi nunca cae justo en un gramo exacto (ejemplo
+  // real: $1500 a $18000/kg son 83,333g). alCambiarMonto ya redondea la
+  // cantidad al gramo y actualiza el campo de gramos, pero dejaba el
+  // campo de monto mostrando el "1500" tipeado mientras el total ya
+  // reflejaba los 83g redondeados ($1494) — dos números distintos a la
+  // vista por el mismo ítem. Se corrige acá, al salir del campo, en vez
+  // de en cada tecla: si se hiciera en alCambiarMonto se autodestruiría
+  // a mitad de tipeo (escribir "1" ya redondea a $0 y borra lo tipeado).
+  function alSalirDeMonto() {
+    if (item.precioUnitario > 0) setTextoMonto(String(Math.round(item.cantidad * item.precioUnitario)));
+  }
+
   return (
     <div className="border-b border-linea px-4 py-2.5 last:border-b-0">
       <div className="flex items-start justify-between gap-2">
@@ -122,6 +134,7 @@ export function FilaCarritoItem({
             value={textoMonto}
             onChange={(evento) => alCambiarMonto(evento.target.value)}
             onFocus={(evento) => evento.currentTarget.select()}
+            onBlur={alSalirDeMonto}
             className="numero w-20 rounded border border-linea px-2 py-1 text-right text-sm outline-none focus-visible:border-acento"
           />
           <span className="text-xs text-texto-suave">o</span>
