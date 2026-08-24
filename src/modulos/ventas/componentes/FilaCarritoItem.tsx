@@ -20,6 +20,16 @@ function redondearAGramos(valor: number): number {
   return Math.round(valor * 1000) / 1000;
 }
 
+// Al vender por monto ($1500 de jamón a $18000/kg = 83,333g) redondear
+// al gramo cambiaba lo que efectivamente se cobraba (83g × $18000 =
+// $1494, no $1500). cantidad ahora guarda hasta 6 decimales de kg
+// (migración 20260824110000) — esto solo saca ruido de punto flotante,
+// no redondea al gramo, para que cantidad × precio reconstruya el
+// monto tipeado hasta el centavo.
+function redondearFino(valor: number): number {
+  return Math.round(valor * 1_000_000) / 1_000_000;
+}
+
 export function FilaCarritoItem({
   item,
   producto,
@@ -63,20 +73,20 @@ export function FilaCarritoItem({
     setTextoMonto(valor);
     const monto = Number(valor);
     if (valor.trim() !== "" && Number.isFinite(monto) && monto >= 0 && item.precioUnitario > 0) {
-      const cantidad = redondearAGramos(monto / item.precioUnitario);
+      // Sin redondear al gramo acá: la cantidad guarda la fracción real
+      // (83,333g), así que cantidad × precio reconstruye el monto
+      // tipeado hasta el centavo. El campo de gramos de al lado sigue
+      // mostrando el valor redondeado a entero, solo para lectura.
+      const cantidad = redondearFino(monto / item.precioUnitario);
       onCambiarCantidadExacta(cantidad);
       setTexto(String(Math.round(cantidad * factor)));
     }
   }
 
-  // El monto tipeado casi nunca cae justo en un gramo exacto (ejemplo
-  // real: $1500 a $18000/kg son 83,333g). alCambiarMonto ya redondea la
-  // cantidad al gramo y actualiza el campo de gramos, pero dejaba el
-  // campo de monto mostrando el "1500" tipeado mientras el total ya
-  // reflejaba los 83g redondeados ($1494) — dos números distintos a la
-  // vista por el mismo ítem. Se corrige acá, al salir del campo, en vez
-  // de en cada tecla: si se hiciera en alCambiarMonto se autodestruiría
-  // a mitad de tipeo (escribir "1" ya redondea a $0 y borra lo tipeado).
+  // Red de seguridad: si por algún redondeo el campo de monto quedara
+  // un centavo desalineado del total real, se resincroniza al salir
+  // del campo (no en cada tecla, porque eso se autodestruiría a mitad
+  // de tipeo — escribir el primer "1" ya redondearía a $0).
   function alSalirDeMonto() {
     if (item.precioUnitario > 0) setTextoMonto(String(Math.round(item.cantidad * item.precioUnitario)));
   }
