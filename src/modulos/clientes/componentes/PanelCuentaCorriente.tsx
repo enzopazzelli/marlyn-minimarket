@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { formatearHora } from "@/lib/formato";
 import { crearClienteNavegador } from "@/lib/supabase/cliente";
 import { useEsDueño } from "@/lib/supabase/PerfilContext";
 import { Boton } from "@/componentes/Boton";
@@ -200,7 +201,10 @@ export function PanelCuentaCorriente({
                   <li key={movimiento.id} className="px-3 py-2 text-sm">
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-texto-suave">
-                        <span className="numero">{fechaFormateador.format(new Date(movimiento.creadoEn))}</span>{" "}
+                        <span className="numero">
+                          {fechaFormateador.format(new Date(movimiento.creadoEn))}{" "}
+                          {formatearHora(movimiento.creadoEn)}
+                        </span>{" "}
                         · {etiquetaTipo[movimiento.tipo]}
                         {movimiento.nota ? ` (${movimiento.nota})` : ""}
                       </span>
