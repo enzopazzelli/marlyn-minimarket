@@ -19,9 +19,24 @@ type PropsTicket = {
   // queda en cuenta corriente) — un fiado completo no necesita esta
   // línea aparte, "Fiado" + el Total ya lo dicen todo.
   saldoFiado?: number;
+  // Recargo por débito/crédito (pedido explícito del cliente,
+  // 2026-08-24) — solo con recargo > 0 se muestra el desglose
+  // Subtotal/Recargo; sin esto, "Total" ya es el subtotal de siempre.
+  subtotal?: number;
+  recargoPorcentaje?: number;
 };
 
-function contenidoTicket({ encabezado, items, total, medioTexto, vuelto = 0, saldoFiado }: PropsTicket) {
+function contenidoTicket({
+  encabezado,
+  items,
+  total,
+  medioTexto,
+  vuelto = 0,
+  saldoFiado,
+  subtotal,
+  recargoPorcentaje,
+}: PropsTicket) {
+  const conRecargo = !!recargoPorcentaje && recargoPorcentaje > 0 && subtotal !== undefined;
   return (
     <>
       {encabezado && <p className="mb-2 text-center text-texto-suave">{encabezado}</p>}
@@ -34,6 +49,18 @@ function contenidoTicket({ encabezado, items, total, medioTexto, vuelto = 0, sal
         </div>
       ))}
       <div className="my-2 border-t border-dashed border-linea" />
+      {conRecargo && (
+        <>
+          <div className="flex justify-between">
+            <span>Subtotal</span>
+            <span>{platita.format(subtotal!)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Recargo ({recargoPorcentaje}%)</span>
+            <span>{platita.format(total - subtotal!)}</span>
+          </div>
+        </>
+      )}
       <div className="flex justify-between text-sm font-semibold">
         <span>Total</span>
         <span>{platita.format(total)}</span>

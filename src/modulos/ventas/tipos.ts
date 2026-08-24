@@ -1,4 +1,4 @@
-export type MedioPago = "efectivo" | "transferencia" | "qr" | "fiado";
+export type MedioPago = "efectivo" | "transferencia" | "debito" | "credito" | "fiado";
 
 export type ItemCarrito = {
   productoId: string;

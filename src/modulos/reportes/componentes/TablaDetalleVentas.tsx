@@ -12,12 +12,29 @@ const platita = new Intl.NumberFormat("es-AR", { style: "currency", currency: "A
 const ETIQUETA_MEDIO: Record<string, string> = {
   efectivo: "Efectivo",
   transferencia: "Transferencia",
-  qr: "QR",
+  debito: "Débito",
+  credito: "Crédito",
   fiado: "Fiado",
 };
 
+// Para el ticket (80mm, angosto): solo la etiqueta, sin montos — "Vuelto"
+// y "Queda fiado" ya dan el detalle que hace falta ahí.
 function medioTexto(venta: VentaReporte): string {
   return [...new Set(venta.pagos.map((pago) => ETIQUETA_MEDIO[pago.medio] ?? pago.medio))].join(" + ");
+}
+
+// Para la tabla (pedido explícito del cliente): en una venta mixta o un
+// fiado parcial, cuánto fue de cada medio — "Efectivo $2.000 +
+// Transferencia $1.500" en vez de solo "Efectivo + Transferencia". Neto
+// de vuelto (mismo criterio que calcularDistribucionMedioPago en
+// consultas/calculos.ts): lo que la venta hace con cuánto se acredita a
+// cada medio, no lo que el cliente entregó en mano. Con un solo pago no
+// hace falta el monto acá — ya está en la columna "Total" de al lado.
+function medioTextoConMontos(venta: VentaReporte): string {
+  if (venta.pagos.length <= 1) return medioTexto(venta);
+  return venta.pagos
+    .map((pago) => `${ETIQUETA_MEDIO[pago.medio] ?? pago.medio} ${platita.format(pago.monto - pago.vuelto)}`)
+    .join(" + ");
 }
 
 function productosTexto(venta: VentaReporte): string {
@@ -64,7 +81,7 @@ export function TablaDetalleVentas({ ventas }: { ventas: VentaReporte[] }) {
                   <td className="numero px-3 py-2 text-xs text-texto-suave">{formatearHora(venta.creadoEn)}</td>
                   <td className="px-3 py-2 text-xs text-texto">{venta.clienteNombre ?? "—"}</td>
                   <td className="px-3 py-2 text-xs text-texto-suave">{productosTexto(venta)}</td>
-                  <td className="px-3 py-2 text-xs text-texto">{medioTexto(venta)}</td>
+                  <td className="px-3 py-2 text-xs text-texto">{medioTextoConMontos(venta)}</td>
                   <td className="numero px-3 py-2 text-right text-xs font-semibold text-texto">
                     {platita.format(venta.total)}
                   </td>

@@ -6,10 +6,13 @@ export type VentaResumen = Venta & {
   clienteNombre: string | null;
 };
 
+const PLATITA = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" });
+
 const ETIQUETA_MEDIO: Record<string, string> = {
   efectivo: "Efectivo",
   transferencia: "Transferencia",
-  qr: "QR",
+  debito: "Débito",
+  credito: "Crédito",
   fiado: "Fiado",
 };
 
@@ -23,9 +26,27 @@ type FilaVenta = {
   total: number | string;
   estado: Venta["estado"];
   creado_en: string;
-  ventas_pagos: { medio: string }[];
+  ventas_pagos: { medio: string; monto: number | string; vuelto: number | string }[];
   clientes: { nombre: string } | null;
 };
+
+// Con más de un pago (mixta, o fiado parcial), cuánto fue de cada medio
+// — pedido explícito del cliente, 2026-08-24, mismo criterio que
+// medioTextoConMontos() en reportes/componentes/TablaDetalleVentas.tsx:
+// "Efectivo $2.000 + Transferencia $1.500" en vez de solo las
+// etiquetas. Neto de vuelto (lo que efectivamente queda acreditado a
+// ese medio, no lo que el cliente entregó en mano).
+function medioTexto(pagos: FilaVenta["ventas_pagos"]): string {
+  if (pagos.length <= 1) {
+    return pagos.map((pago) => ETIQUETA_MEDIO[pago.medio] ?? pago.medio).join(" + ");
+  }
+  return pagos
+    .map((pago) => {
+      const neto = Number(pago.monto) - Number(pago.vuelto);
+      return `${ETIQUETA_MEDIO[pago.medio] ?? pago.medio} ${PLATITA.format(neto)}`;
+    })
+    .join(" + ");
+}
 
 // Solo lectura: número, hora, medio(s) de pago y cliente si fue fiado.
 // Se usa en /ventas (para ver lo que se va vendiendo) y en /caja (para
@@ -37,7 +58,7 @@ export async function listarVentasDelTurno(
   const { data, error } = await supabase
     .from("ventas")
     .select(
-      "id, numero, turno_caja_id, cliente_id, usuario_id, subtotal, total, estado, creado_en, ventas_pagos(medio), clientes(nombre)",
+      "id, numero, turno_caja_id, cliente_id, usuario_id, subtotal, total, estado, creado_en, ventas_pagos(medio, monto, vuelto), clientes(nombre)",
     )
     .eq("turno_caja_id", turnoCajaId)
     .order("creado_en", { ascending: false });
@@ -45,8 +66,6 @@ export async function listarVentasDelTurno(
   if (error) throw error;
 
   return ((data ?? []) as unknown as FilaVenta[]).map((fila) => {
-    const medios = [...new Set(fila.ventas_pagos.map((pago) => ETIQUETA_MEDIO[pago.medio] ?? pago.medio))];
-
     return {
       id: fila.id,
       numero: fila.numero,
@@ -57,7 +76,7 @@ export async function listarVentasDelTurno(
       total: Number(fila.total),
       estado: fila.estado,
       creadoEn: fila.creado_en,
-      medioTexto: medios.join(" + "),
+      medioTexto: medioTexto(fila.ventas_pagos),
       clienteNombre: fila.clientes?.nombre ?? null,
     };
   });

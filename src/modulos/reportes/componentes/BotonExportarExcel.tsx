@@ -10,7 +10,8 @@ const horaFormateador = new Intl.DateTimeFormat("es-AR", { hour: "2-digit", minu
 const ETIQUETA_MEDIO: Record<string, string> = {
   efectivo: "Efectivo",
   transferencia: "Transferencia",
-  qr: "QR",
+  debito: "Débito",
+  credito: "Crédito",
   fiado: "Fiado",
 };
 

@@ -6,7 +6,8 @@ import type { ResumenDia, VentaReporte } from "../tipos";
 const ETIQUETA_MEDIO: Record<string, string> = {
   efectivo: "Efectivo",
   transferencia: "Transferencia",
-  qr: "QR",
+  debito: "Débito",
+  credito: "Crédito",
   fiado: "Fiado",
 };
 

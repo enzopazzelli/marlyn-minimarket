@@ -51,14 +51,21 @@ type CarritoEnCurso = {
   nombreClienteNuevo: string;
   montoRecibidoFiado: string;
   medioRecibidoFiado: Exclude<MedioPago, "fiado">;
+  // Recargo por débito/crédito (pedido explícito del cliente,
+  // 2026-08-24): varía según la tarjeta/plan de cuotas, así que el
+  // cajero lo tipea en cada venta — no es una tabla fija de
+  // porcentajes por tarjeta. Se traslada al cliente (sube el total).
+  porcentajeRecargoTarjeta: string;
 };
 
 type Comprobante = {
   items: ItemCarrito[];
+  subtotal: number;
   total: number;
   medioTexto: string;
   vuelto: number;
   saldoFiado?: number;
+  recargoPorcentaje?: number;
 };
 
 function crearCarritoVacio(): CarritoEnCurso {
@@ -72,6 +79,7 @@ function crearCarritoVacio(): CarritoEnCurso {
     nombreClienteNuevo: "",
     montoRecibidoFiado: "",
     medioRecibidoFiado: "efectivo",
+    porcentajeRecargoTarjeta: "",
   };
 }
 
@@ -160,6 +168,15 @@ export function PanelVentas({
   }
 
   const total = useMemo(() => calcularTotalCarrito(carritoActivo.items), [carritoActivo.items]);
+
+  // Recargo por débito/crédito: se traslada al cliente, así que el
+  // total a cobrar (y lo que se manda a registrar_venta) sube — el
+  // total del carrito en sí (arriba) sigue siendo el de los productos.
+  const esTarjeta = carritoActivo.medioPago === "debito" || carritoActivo.medioPago === "credito";
+  const recargoMonto = esTarjeta
+    ? Math.round(total * ((Number(carritoActivo.porcentajeRecargoTarjeta) || 0) / 100) * 100) / 100
+    : 0;
+  const totalConRecargo = total + recargoMonto;
 
   // Pantalla al cliente: la pestaña activa se emite por Realtime
   // Broadcast (sin tabla, el carrito en curso ya es puramente
@@ -337,7 +354,7 @@ export function PanelVentas({
         return;
       }
       // No siempre se fía el total: "¿Cobrás algo ahora?" es opcional,
-      // en el medio que se elija (efectivo/transferencia/QR) — lo que
+      // en el medio que se elija (efectivo/transferencia) — lo que
       // no se cobra ahí va fiado. Vacío o 0 es exactamente el
       // comportamiento de siempre (todo fiado).
       const montoRecibido = Number(carritoActivo.montoRecibidoFiado) || 0;
@@ -346,7 +363,7 @@ export function PanelVentas({
         return;
       }
       if (montoRecibido >= total) {
-        setError("Si cobrás todo, elegí Efectivo/Transferencia/QR en vez de Fiado");
+        setError("Si cobrás todo, elegí Efectivo/Transferencia en vez de Fiado");
         return;
       }
       pagos =
@@ -356,11 +373,13 @@ export function PanelVentas({
               { medio: "fiado", monto: total - montoRecibido, vuelto: 0 },
             ]
           : [{ medio: "fiado", monto: total, vuelto: 0 }];
+    } else if (esTarjeta) {
+      pagos = [{ medio: carritoActivo.medioPago, monto: totalConRecargo, vuelto: 0 }];
     } else {
       pagos = [{ medio: carritoActivo.medioPago, monto: total, vuelto: 0 }];
     }
 
-    if (!pagosCubrenElTotal(pagos, total)) {
+    if (!pagosCubrenElTotal(pagos, esTarjeta ? totalConRecargo : total)) {
       setError("Los pagos cargados no cubren el total de la venta");
       return;
     }
@@ -413,6 +432,7 @@ export function PanelVentas({
         precio_unitario: item.precioUnitario,
       })),
       p_pagos: pagos,
+      p_recargo_monto: recargoMonto,
     });
     setGuardando(false);
 
@@ -424,7 +444,8 @@ export function PanelVentas({
     const medioTexto: Record<MedioPagoUi, string> = {
       efectivo: "Efectivo",
       transferencia: "Transferencia",
-      qr: "QR",
+      debito: "Débito",
+      credito: "Crédito",
       mixto: "Mixto",
       fiado: "Fiado",
     };
@@ -434,12 +455,14 @@ export function PanelVentas({
     const esFiadoParcial = carritoActivo.medioPago === "fiado" && pagos.length > 1;
     setComprobante({
       items: carritoActivo.items,
-      total,
+      subtotal: total,
+      total: esTarjeta ? totalConRecargo : total,
       medioTexto: esFiadoParcial
         ? `${medioTexto[carritoActivo.medioRecibidoFiado]} + Fiado`
         : medioTexto[carritoActivo.medioPago],
       vuelto: pagos.reduce((suma, pago) => suma + pago.vuelto, 0),
       saldoFiado: pagos.find((pago) => pago.medio === "fiado" && pago.monto < total)?.monto,
+      recargoPorcentaje: esTarjeta ? Number(carritoActivo.porcentajeRecargoTarjeta) || 0 : undefined,
     });
 
     // Antes esto era un router.refresh(): recargaba toda /ventas para
@@ -460,12 +483,22 @@ export function PanelVentas({
     const etiquetaMedioReal: Record<string, string> = {
       efectivo: "Efectivo",
       transferencia: "Transferencia",
-      qr: "QR",
+      debito: "Débito",
+      credito: "Crédito",
       fiado: "Fiado",
     };
-    const medioTextoReal = [...new Set(pagos.map((pago) => etiquetaMedioReal[pago.medio] ?? pago.medio))].join(
-      " + ",
-    );
+    // Con más de un pago (mixta, o fiado parcial), cuánto fue de cada
+    // medio — pedido explícito del cliente, 2026-08-24, mismo criterio
+    // que medioTexto() en consultas/ventas.ts (que arma esto mismo para
+    // las filas que vienen de listarVentasDelTurno): si acá solo
+    // pusiera las etiquetas, la fila recién confirmada se vería distinta
+    // del resto hasta el próximo refetch real.
+    const medioTextoReal =
+      pagos.length <= 1
+        ? pagos.map((pago) => etiquetaMedioReal[pago.medio] ?? pago.medio).join(" + ")
+        : pagos
+            .map((pago) => `${etiquetaMedioReal[pago.medio] ?? pago.medio} ${platita.format(pago.monto - pago.vuelto)}`)
+            .join(" + ");
     const nombreClienteFiado =
       carritoActivo.medioPago === "fiado"
         ? listaClientes.find((c) => c.id === clienteId)?.nombre ?? (carritoActivo.nombreClienteNuevo.trim() || null)
@@ -479,7 +512,7 @@ export function PanelVentas({
         clienteId,
         usuarioId,
         subtotal: total,
-        total,
+        total: esTarjeta ? totalConRecargo : total,
         estado: "confirmada",
         creadoEn: filaVenta.creado_en,
         medioTexto: medioTextoReal,
@@ -631,7 +664,8 @@ export function PanelVentas({
                 [
                   ["efectivo", "Efectivo"],
                   ["transferencia", "Transferencia"],
-                  ["qr", "QR"],
+                  ["debito", "Débito"],
+                  ["credito", "Crédito"],
                   ["mixto", "Mixto"],
                   ["fiado", "Fiado"],
                 ] as [MedioPagoUi, string][]
@@ -692,6 +726,33 @@ export function PanelVentas({
                     onFocus={(evento) => evento.currentTarget.select()}
                     className={`${clasesFiltro} numero w-full`}
                   />
+                </div>
+              )}
+
+              {esTarjeta && (
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="porcentajeRecargoTarjeta" className="text-xs text-texto-suave">
+                    % de recargo (opcional, según la tarjeta/cuotas)
+                  </label>
+                  <input
+                    id="porcentajeRecargoTarjeta"
+                    type="number"
+                    min={0}
+                    step="1"
+                    placeholder="0"
+                    value={carritoActivo.porcentajeRecargoTarjeta}
+                    onChange={(evento) => actualizarCarritoActivo({ porcentajeRecargoTarjeta: evento.target.value })}
+                    onFocus={(evento) => evento.currentTarget.select()}
+                    className={`${clasesFiltro} numero w-full`}
+                  />
+                  {recargoMonto > 0 && (
+                    <div className="flex items-center justify-between rounded-[var(--radius-base)] bg-alerta-fondo px-3 py-2">
+                      <span className="text-xs font-semibold text-alerta">Total con recargo</span>
+                      <span className="numero text-sm font-semibold text-alerta">
+                        {platita.format(totalConRecargo)}
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -759,7 +820,6 @@ export function PanelVentas({
                       >
                         <option value="efectivo">Efectivo</option>
                         <option value="transferencia">Transferencia</option>
-                        <option value="qr">QR</option>
                       </select>
                     </div>
                     {Number(carritoActivo.montoRecibidoFiado) > 0 &&
@@ -793,7 +853,7 @@ export function PanelVentas({
                 ? "Cobrando…"
                 : carritoActivo.medioPago === "fiado" && Number(carritoActivo.montoRecibidoFiado) > 0
                   ? `Cobrar ${platita.format(Number(carritoActivo.montoRecibidoFiado))} y fiar el resto`
-                  : `Cobrar ${platita.format(total)}`}
+                  : `Cobrar ${platita.format(esTarjeta ? totalConRecargo : total)}`}
             </Boton>
           </div>
         </div>
@@ -808,6 +868,8 @@ export function PanelVentas({
               medioTexto={comprobante.medioTexto}
               vuelto={comprobante.vuelto}
               saldoFiado={comprobante.saldoFiado}
+              subtotal={comprobante.subtotal}
+              recargoPorcentaje={comprobante.recargoPorcentaje}
             />
             <AccionesTicket />
             <Boton type="button" variante="confirmar" onClick={() => setComprobante(null)}>
