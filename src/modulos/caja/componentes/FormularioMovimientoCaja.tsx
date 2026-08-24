@@ -13,9 +13,12 @@ import type { MovimientoCaja } from "../tipos";
 // etc.). Insert directo a movimientos_caja, mismo criterio que
 // FormularioAbrirCaja.tsx: una sola tabla, sin invariante que proteger
 // más allá de los checks de la columna (monto > 0, tipo válido).
-// usuarioId viaja como prop en vez de pedirlo acá con auth.getUser():
-// el turno abierto ya lo tiene (turno.usuarioId), es el mismo usuario
-// por construcción (buscarTurnoAbierto filtra por él).
+// usuarioId viaja como prop en vez de pedirlo acá con auth.getUser()
+// por simetría con el resto del módulo — pero desde que el turno pasó
+// a ser compartido (migración 20260824120000), el que llama tiene que
+// pasar el usuario de la SESIÓN ACTUAL (page.tsx), no el que abrió el
+// turno: son personas distintas si alguien más siguió el mismo turno,
+// y movimientos_caja_insert_propio exige usuario_id = auth.uid().
 export function FormularioMovimientoCaja({ turnoId, usuarioId }: { turnoId: string; usuarioId: string }) {
   const router = useRouter();
   const [abierto, setAbierto] = useState(false);

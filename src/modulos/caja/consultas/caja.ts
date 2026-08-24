@@ -25,19 +25,16 @@ function mapearTurno(fila: FilaTurno): TurnoCaja {
   };
 }
 
-// El índice único parcial (turno_abierto_unico_por_usuario, migración
-// de Caja) es la barrera real de "un usuario, un turno abierto a la
-// vez" — esto solo lee cuál es, si existe.
-export async function buscarTurnoAbierto(
-  supabase: SupabaseClient,
-  usuarioId: string,
-): Promise<TurnoCaja | null> {
+// El cajón es uno solo para todo el local: el índice único parcial
+// (turno_abierto_unico_global, migración 20260824120000) es la barrera
+// real de "como mucho un turno abierto a la vez, sin importar quién lo
+// abrió" — esto solo lee cuál es, si existe.
+export async function buscarTurnoAbierto(supabase: SupabaseClient): Promise<TurnoCaja | null> {
   const { data, error } = await supabase
     .from("turnos_caja")
     .select(
       "id, usuario_id, monto_apertura, monto_cierre_declarado, monto_cierre_calculado, estado, abierto_en, cerrado_en",
     )
-    .eq("usuario_id", usuarioId)
     .eq("estado", "abierto")
     .maybeSingle();
 

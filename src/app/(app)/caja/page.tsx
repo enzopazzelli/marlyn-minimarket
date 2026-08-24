@@ -24,7 +24,7 @@ export default async function PaginaCaja() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const turno = user ? await buscarTurnoAbierto(supabase, user.id) : null;
+  const turno = user ? await buscarTurnoAbierto(supabase) : null;
   const turnosCerrados = user ? await listarTurnosCerrados(supabase) : [];
 
   return (
@@ -33,8 +33,8 @@ export default async function PaginaCaja() {
         <ChipCaja abierta={!!turno} />
       </BarraSuperior>
       <main className="flex flex-1 flex-col gap-4 p-4 md:p-6">
-        {turno ? (
-          <TurnoAbierto supabase={supabase} turno={turno} />
+        {turno && user ? (
+          <TurnoAbierto supabase={supabase} turno={turno} usuarioActualId={user.id} />
         ) : user ? (
           <FormularioAbrirCaja usuarioId={user.id} />
         ) : null}
@@ -47,9 +47,11 @@ export default async function PaginaCaja() {
 async function TurnoAbierto({
   supabase,
   turno,
+  usuarioActualId,
 }: {
   supabase: Awaited<ReturnType<typeof crearClienteServidor>>;
   turno: NonNullable<Awaited<ReturnType<typeof buscarTurnoAbierto>>>;
+  usuarioActualId: string;
 }) {
   const [montoCalculado, ventas, movimientos] = await Promise.all([
     calcularEfectivoEsperado(supabase, turno.id, turno.montoApertura),
@@ -80,7 +82,7 @@ async function TurnoAbierto({
 
       <ListaMovimientosCaja
         movimientos={movimientos}
-        accion={<FormularioMovimientoCaja turnoId={turno.id} usuarioId={turno.usuarioId} />}
+        accion={<FormularioMovimientoCaja turnoId={turno.id} usuarioId={usuarioActualId} />}
       />
     </div>
   );

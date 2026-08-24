@@ -14,7 +14,7 @@ export default async function PaginaVentas() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const turno = user ? await buscarTurnoAbierto(supabase, user.id) : null;
+  const turno = user ? await buscarTurnoAbierto(supabase) : null;
 
   return (
     <>

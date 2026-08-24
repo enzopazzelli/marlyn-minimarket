@@ -31,7 +31,7 @@ export function FormularioAbrirCaja({ usuarioId }: { usuarioId: string }) {
 
     if (errorInsert) {
       if (errorInsert.code === "23505") {
-        setError("Ya tenés una caja abierta.");
+        setError("Ya hay una caja abierta.");
       } else {
         setError("No se pudo abrir la caja. Probá de nuevo.");
       }

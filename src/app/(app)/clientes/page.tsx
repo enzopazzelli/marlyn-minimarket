@@ -13,7 +13,7 @@ export default async function PaginaClientes() {
   } = await supabase.auth.getUser();
   const [clientes, turno] = await Promise.all([
     listarClientes(supabase),
-    user ? buscarTurnoAbierto(supabase, user.id) : Promise.resolve(null),
+    user ? buscarTurnoAbierto(supabase) : Promise.resolve(null),
   ]);
 
   return (
