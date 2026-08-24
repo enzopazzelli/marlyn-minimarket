@@ -7,6 +7,14 @@ import { Modal } from "@/componentes/Modal";
 import type { Producto } from "../tipos";
 
 const platita = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" });
+// Sin decimales acá (pedido explícito del cliente): en una etiqueta de
+// góndola ",00" no aporta nada y le saca lugar al número grande.
+const platitaEtiqueta = new Intl.NumberFormat("es-AR", {
+  style: "currency",
+  currency: "ARS",
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0,
+});
 
 // 2 columnas x 5 filas en A4 (10 por hoja) sobre papel/adhesivo liso,
 // para cortar después — decidido con Enzo, 2026-08-15: no depende de
@@ -25,8 +33,10 @@ function Etiqueta({ producto, saltoDePagina }: { producto: Producto; saltoDePagi
         saltoDePagina ? "[break-after:page]" : ""
       }`}
     >
-      <p className="text-sm font-semibold uppercase leading-tight text-texto">{producto.nombre}</p>
-      <p className="numero text-2xl font-bold leading-none text-texto">{platita.format(producto.precioVenta)}</p>
+      <p className="text-lg font-semibold uppercase leading-tight text-texto">{producto.nombre}</p>
+      <p className="numero text-5xl font-bold leading-none text-texto">
+        {platitaEtiqueta.format(producto.precioVenta)}
+      </p>
     </div>
   );
 }
