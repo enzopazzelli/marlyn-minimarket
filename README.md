@@ -405,6 +405,50 @@ en el camino monto→cantidad (`redondearFino()`, solo saca ruido de
 punto flotante) — el campo de gramos se sigue mostrando redondeado a
 entero para el cajero, pero la cantidad real guarda la fracción, así
 que el total reconstruye el monto tipeado hasta el centavo.
+
+**El bug seguía ahí después de ese fix** (mismo reporte, 2026-08-24
+más tarde): $1500 a $18000/kg pasó a mostrar $1.499,99 en vez de
+$1494 — mejor, pero seguía sin ser exacto, porque 1500/18000 =
+83,333...g es una fracción periódica: ninguna precisión finita de
+`cantidad` la resuelve justo. La causa de fondo no era el redondeo,
+era DERIVAR el subtotal de la línea desde `cantidad × precioUnitario`
+en primer lugar. Fix real (migración `20260825100000...`): el monto
+tipeado pasa a ser la fuente de verdad de esa línea, no algo derivado.
+`ItemCarrito`/`ItemTicket`/`ItemVentaReporte` suman un campo
+`subtotal` opcional (obligatorio y ya poblado en `ventas_items.subtotal`,
+que siempre existió como columna propia); `alCambiarMonto()` lo manda
+como override exacto, `alCambiarTexto()` (tipear los gramos a mano) lo
+limpia. `registrar_venta()` deja de recalcular el subtotal de cada
+ítem — usa el que manda el front tal cual, mismo nivel de confianza
+que ya existía para `precio_unitario` (tampoco se revalida contra el
+catálogo). Se propagó a todo lo que antes recalculaba
+`cantidad × precioUnitario` en vez de leer el subtotal real: el total
+del carrito, el ticket (inmediato y el reconstruido en Reportes),
+`margenBruto`, `calcularTopProductos` y la hoja "Detalle de ventas"
+del Excel. De paso, se encontró y corrigió un bug de la migración
+anterior (`20260824140000`, la del recargo): `create or replace
+function` no reemplaza una función cuando cambia la lista de
+parámetros — quedaron dos sobrecargas de `registrar_venta()`
+conviviendo en la base, y cualquier llamada sin `p_recargo_monto`
+explícito (como los tests) quedaba ambigua entre las dos.
+
+**Anular una venta fiada con actividad posterior dejaba la cuenta en
+negativo** (reportado por el cliente: fiado → dos recargos → un pago →
+anular la venta, la cuenta terminó en -$3.770 "como si el negocio le
+debiera al cliente"). Causa: `saldo_cuenta_corriente` es un número
+corrido, no un historial por venta — `anular_venta()` restaba el monto
+original del fiado del saldo ACTUAL sin importar qué pasó en el medio,
+y un recargo calculado sobre una deuda que incluía esa venta no se
+revierte proporcionalmente al anularla. Confirmado con Enzo: en vez de
+arriesgar un cálculo automático sin sentido, `anular_venta()` (migración
+`20260825110000...`) ahora BLOQUEA la anulación si hubo cualquier
+movimiento de cuenta corriente (recargo, pago, u otro fiado) después
+del fiado de esa venta — el ajuste queda para hacerlo a mano, con
+criterio, desde Clientes. De paso, un bug de visualización relacionado:
+un saldo negativo se mostraba como "Al día" en verde (`ListaClientes.tsx`
+y `PanelCuentaCorriente.tsx` solo chequeaban `> 0`), escondiendo la
+anomalía en vez de mostrarla — ahora dice "A favor $X".
+
 **Seguimiento de ventas del turno**: las ventas confirmadas no se veían
 en ningún lado después de cerrar el comprobante — `listarVentasDelTurno`
 (`src/modulos/ventas/consultas/ventas.ts`) trae las ventas del turno
@@ -474,7 +518,14 @@ formato validado y un celular argentino a veces necesita además un "9"
 después del 54 que no se puede inferir de forma confiable desde 10
 dígitos sin saber si es fijo o celular — documentado como límite
 conocido, no resuelto: si un número no abre bien, cargarlo ya en
-formato completo en `/proveedores`.
+formato completo en `/proveedores`. **Bug encontrado y corregido**
+(mismo día, reportado por el cliente): el mensaje de WhatsApp decía
+"Pedido para \<Proveedor\>" — tiene sentido al copiarlo (por ejemplo,
+para pegarlo en una nota propia), pero no al mandárselo al proveedor
+mismo, que ya sabe que el pedido es para él. El texto de WhatsApp pasó
+a ser propio (`textoWhatsapp`, separado de `textoPedido`) con
+"Pedido de {clienteConfig.comercio.nombre}" en vez de "Pedido para
+\<Proveedor\>" — "Copiar" no cambió.
 
 **Reportes, dashboard del día**: `/reportes` (pedido explícito del
 cliente, con un mockup propio como referencia) muestra 4 KPIs (Ventas,
