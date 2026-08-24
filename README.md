@@ -142,7 +142,14 @@ referencia. Pensada para papel o adhesivo liso que se corta después
 puntual) — border dashed como guía de corte. Por ahora una etiqueta
 por producto elegido, sin cantidad por producto — si hace falta
 repetir una porque hay varias góndolas con el mismo artículo, es una
-extensión chica para cuando se pida.
+extensión chica para cuando se pida. **Sin decimales y más grande**
+(pedido explícito del cliente, 2026-08-24): el precio usaba el mismo
+formateador con 2 decimales que el resto de la app — en una etiqueta
+",00" no suma nada y le sacaba lugar al número. `platitaEtiqueta` (sin
+`minimumFractionDigits`/`maximumFractionDigits`) solo para esta
+pantalla; nombre y precio subieron de tamaño (`text-lg`/`text-5xl`)
+para ocupar más del recuadro fijo de 95mm×55mm (ese tamaño y la grilla
+2×5 no se tocaron, ya acordados con el cliente el 2026-08-15).
 
 **Bug encontrado y corregido: las etiquetas no se apilaban en la
 hoja** (2026-08-15, reportado por Enzo con captura del diálogo de
@@ -250,6 +257,36 @@ nada como con el turno abierto. `listarTurnosCerrados()`
 (`consultas/caja.ts`) no filtra por usuario — los dos dueños comparten
 el mismo nivel de acceso, así que cualquiera ve el historial completo.
 
+**Bug encontrado y corregido: "se cerró la caja" al cambiar de usuario**
+(reportado por el cliente ya en uso, 2026-08-24). Causa real: el turno
+de caja era privado por usuario (`buscarTurnoAbierto()` filtraba por
+`usuario_id`) — si Admin abría la caja y después alguien entraba con
+otra cuenta, esa cuenta no veía el turno de Admin y parecía cerrada,
+aunque seguía abierta en la base. Confirmado con el cliente: el local
+tiene un solo cajón físico, así que el turno ABIERTO pasa a ser único
+para todo el local — cualquier usuario activo lo ve y lo opera, sin
+importar quién lo abrió, incluidos los movimientos que registró otro
+durante el mismo turno (si no, el arqueo daba mal). El historial de
+turnos CERRADOS sigue siendo privado (operador ve los suyos, dueño ve
+todos) — eso no cambió. Migración `20260824120000...`: el índice único
+pasó de `(usuario_id) where estado='abierto'` a `((true)) where
+estado='abierto'` (como mucho una fila en todo el local puede estar
+abierta, sin importar quién la abrió), y las policies de select de
+`turnos_caja`/`movimientos_caja` suman `estado='abierto'` (la segunda
+vía un `exists()` contra `turnos_caja`, no tiene columna `estado`
+propia) como condición que sola ya habilita ver el turno compartido.
+De paso, un bug relacionado encontrado al mismo tiempo:
+`FormularioMovimientoCaja` recibía `usuarioId={turno.usuarioId}` (quien
+ABRIÓ el turno) en vez del usuario de la sesión actual — con la caja
+compartida, un segundo usuario registrando un movimiento hubiera
+insertado la fila a nombre de otro (choca con
+`movimientos_caja_insert_propio`, que exige `usuario_id = auth.uid()`).
+Al aplicar la migración había dos turnos abiertos en simultáneo en la
+base real (el síntoma del bug, reproducido sin querer) — se cerró el
+más nuevo con su propio monto calculado como declarado (sin fabricar
+ningún sobrante/faltante), confirmado con Enzo cuál de los dos era la
+caja real antes de tocarlo.
+
 **Clientes**: `/clientes` tiene ficha (nombre, teléfono, dirección),
 buscador, y por cliente "Ver cuenta" abre el historial de cuenta
 corriente — cada `fiado` muestra los productos de la venta que lo
@@ -278,13 +315,47 @@ pago posterior ahora se ve al lado, en "Movimientos de caja". Dentro de
 (`BotonExportarCuentaCorriente.tsx`) arma un `.xlsx` de 2 hojas
 (resumen del cliente, historial de movimientos con el detalle de
 productos de cada fiado) — mismo criterio que el resto de los exports
-ya construidos, `exceljs` cargado solo al hacer click.
+ya construidos, `exceljs` cargado solo al hacer click. **Hora en el
+historial de movimientos** (pedido del cliente, 2026-08-24): el listado
+de "Ver cuenta" solo mostraba día/mes (`fechaFormateador`) — se sumó
+`formatearHora()` al lado, mismo que ya usaban Ventas/Reportes.
 
 **Ventas (TPV)**: `/ventas` — lector de código de barras con foco fijo,
 buscador con grilla de productos, carrito, y cobro en
-efectivo/transferencia/QR/mixto/fiado (los medios reales de
-`ventas_pagos.medio`; "débito" del mockup no está soportado por el
-esquema, "mixto" arma dos filas de pago en vez de ser un medio propio).
+efectivo/transferencia/débito/crédito/mixto/fiado (los medios reales de
+`ventas_pagos.medio`; "mixto" arma dos filas de pago en vez de ser un
+medio propio). **Débito y Crédito en vez de QR** (pedido explícito del
+cliente, 2026-08-24, reemplazo total): como la base ya estaba vacía
+(limpiada para la entrega) no había ningún `ventas_pagos.medio='qr'`
+viejo que migrar — migración `20260824130000...` recrea el `check` de
+`ventas_pagos.medio`. El select de "¿Cobrás algo ahora?" en fiado
+parcial se dejó en Efectivo/Transferencia nomás, no se sumó débito/
+crédito ahí todavía.
+
+**Recargo por débito/crédito** (pedido explícito del cliente,
+2026-08-24: "maneja algunos porcentajes de interés dependiendo las
+tarjetas"). Confirmado con Enzo: se traslada al cliente (el total
+sube) y es un % que el cajero tipea a mano en cada venta —no una tabla
+fija por tarjeta/cantidad de cuotas, eso puede sumarse después si hace
+falta—, mismo criterio que el recargo por atraso en cuenta corriente
+(`PanelCuentaCorriente.tsx`). Al elegir Débito o Crédito en "Cómo paga"
+aparece un campo "% de recargo" opcional; con algo cargado, "Cobrar"
+pasa a mostrar el total con recargo y el ticket suma una línea
+"Subtotal"/"Recargo X%" antes del Total (`TicketVenta.tsx`, props
+nuevas `subtotal`/`recargoPorcentaje`, sin efecto si no hay recargo).
+`ventas.subtotal`/`ventas.total` ya eran dos columnas separadas pero
+siempre iguales — en vez de sumar una columna nueva, se usa la que
+sobraba: `subtotal` = lo que valen los productos, `total` = lo que
+efectivamente se cobró (`subtotal + recargo`). `registrar_venta()`
+(migración `20260824140000...`) suma el parámetro `p_recargo_monto`
+(default 0, ya calculado por el front) y valida los pagos contra
+`total` en vez de `subtotal`. `margenBruto` en Reportes no se afecta
+—se calcula solo de `ventas_items`, nunca de `total`— pero "Ventas"
+(la suma de `total`) sí incluye el recargo, que es plata real cobrada
+ese día. La fila de "Detalle de ventas"/"Ventas de este turno" ya
+muestra el monto real por medio (ver más abajo), así que un pago con
+recargo aparece con su monto ya incluido sin ningún cambio aparte.
+
 Reusa tal cual las funciones puras ya testeadas de
 `src/modulos/ventas/consultas/calculos.ts`. **Pedido del cliente:
 varias ventas en curso a la vez** ("se le olvida un producto y hay que
@@ -319,6 +390,21 @@ Ahora, para kg/litro, el paso queda acotado a lo que realmente hay
 (`Math.min(1, disponible)`): con 0.906 kg carga los 906 g de una, y el
 cajero ajusta fino después con los mismos campos de gramos/monto. Por
 unidad no cambia — ahí un paso de 1 siempre tuvo sentido.
+**Bug encontrado y corregido (reportado por el cliente ya en uso,
+2026-08-24): vender por monto no cargaba el monto exacto** — $1500 de
+jamón a $18000/kg mostraba $1494. Causa real: `cantidad` se guardaba con
+3 decimales de kg (`numeric(12,3)` = gramo entero); 1500/18000 = 83,333g
+redondeaba a 83g × $18000 = $1494. Se ensanchó la precisión a
+`numeric(14,6)` en `productos.stock_actual`/`stock_minimo`,
+`ventas_items.cantidad` y `movimientos_stock.cantidad` (migración
+`20260824110000...`, recreó también `registrar_venta()` —declaraba
+`v_stock_disponible numeric(12,3)`— y las vistas `productos_visibles`/
+`auditoria_movimientos`, que dependían del tipo de esas columnas) y
+`alCambiarMonto()` en `FilaCarritoItem.tsx` dejó de redondear al gramo
+en el camino monto→cantidad (`redondearFino()`, solo saca ruido de
+punto flotante) — el campo de gramos se sigue mostrando redondeado a
+entero para el cajero, pero la cantidad real guarda la fracción, así
+que el total reconstruye el monto tipeado hasta el centavo.
 **Seguimiento de ventas del turno**: las ventas confirmadas no se veían
 en ningún lado después de cerrar el comprobante — `listarVentasDelTurno`
 (`src/modulos/ventas/consultas/ventas.ts`) trae las ventas del turno
@@ -379,6 +465,16 @@ nueva) por `proveedor_id`, y arma un texto plano ("2 x Coca Cola 2L" o
 es catálogo de proveedores, no **M6 Compras** completo (orden de
 compra/recepción formal), que sigue en `compras: false` en
 `config/cliente.ts` ("Fase 2, fuera del alcance de esta entrega").
+**Botón "Enviar por WhatsApp"** (pedido explícito del cliente,
+2026-08-24, al lado de "Copiar"): abre `wa.me/<numero>?text=<pedido>`
+con `proveedor.telefono` — oculto si el proveedor no tiene teléfono
+cargado. Normalización mínima del número (`numeroWhatsapp()`): solo
+dígitos, antepone "54" si no lo tiene. `telefono` es texto libre sin
+formato validado y un celular argentino a veces necesita además un "9"
+después del 54 que no se puede inferir de forma confiable desde 10
+dígitos sin saber si es fijo o celular — documentado como límite
+conocido, no resuelto: si un número no abre bien, cargarlo ya en
+formato completo en `/proveedores`.
 
 **Reportes, dashboard del día**: `/reportes` (pedido explícito del
 cliente, con un mockup propio como referencia) muestra 4 KPIs (Ventas,
@@ -405,6 +501,26 @@ hasta el final de la pantalla. Ahora se muestran de a 8, con
 en el cliente que ya usa el resto de este panel (los datos del día ya
 vienen completos desde el servidor, no hay una consulta nueva por
 página).
+**Desglose de montos por medio en "Detalle de ventas"** (pedido
+explícito del cliente, 2026-08-24): una venta mixta o un fiado parcial
+mostraban solo las etiquetas ("Efectivo + Transferencia"), sin decir
+cuánto fue de cada una. `medioTextoConMontos()`
+(`TablaDetalleVentas.tsx`) arma "Efectivo $2.000 + Transferencia
+$1.500" con más de un pago (neto de vuelto, mismo criterio que
+`calcularDistribucionMedioPago`); con un solo pago no suma nada, ya está
+en la columna "Total" de al lado. No hizo falta ninguna consulta nueva:
+`VentaReporte.pagos` ya traía monto por pago. El ticket reconstruido
+(mismo modal, "Ver ticket") se dejó con la etiqueta simple nomás —80mm
+es angosto y "Vuelto"/"Queda fiado" ya dan el detalle que hace falta ahí.
+**El mismo desglose se pidió también para "Ventas de este turno"**
+(`/ventas` y `/caja`, mismo componente `ListaVentasDelTurno.tsx`) — a
+diferencia de Reportes, `listarVentasDelTurno()` solo traía `medio` de
+`ventas_pagos`, no `monto`/`vuelto`; se sumaron a la consulta. La venta
+recién confirmada (antes de cualquier refetch) arma este texto en el
+propio `PanelVentas.tsx` con los mismos `pagos` que se acaban de
+mandar a `registrar_venta()` — tiene su propia copia de la lógica
+(comentario ahí explica por qué: si mostrara solo las etiquetas, la
+fila se vería distinta apenas hubiera un refetch real).
 
 **Backup manual** (`BotonDescargarBackup.tsx`, al lado de "Exportar a
 Excel", pedido explícito de Enzo, 2026-08-14): baja un `.xlsx` con una
@@ -511,8 +627,10 @@ la pantalla) ni tiene acceso a `/reportes`. No puede crear/editar/
 eliminar productos, rubros ni proveedores (sí puede "Ajustar stock" y
 "Carga rápida" — el día a día de reponer y corregir conteos — pero sin
 tocar el precio de venta desde ahí). No puede aplicar un recargo por
-atraso. Ve solo su propio turno de caja (actual y cierres pasados), no
-los de otro usuario. Puede vender, cobrar, cargar clientes, anular una
+atraso. Ve el turno de caja ABIERTO igual que el dueño (es un solo
+cajón físico compartido por todo el local, ver más abajo) — de los
+CERRADOS (historial), solo los que abrió/cerró él mismo, no los de otro
+usuario. Puede vender, cobrar, cargar clientes, anular una
 venta del turno y usar Proveedores de solo lectura ("Productos y
 pedido") igual que el dueño — la anulación de venta no se restringió a
 propósito: ya exigía motivo y ya guardaba quién fue desde antes, así
