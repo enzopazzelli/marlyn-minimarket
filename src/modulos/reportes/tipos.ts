@@ -4,6 +4,10 @@ export type ItemVentaReporte = {
   cantidad: number;
   precioUnitario: number;
   precioCosto: number;
+  // Monto real cobrado por esta línea (columna ventas_items.subtotal) —
+  // con peso fraccionario vendido por monto, cantidad × precioUnitario
+  // no siempre reconstruye el monto exacto que se cobró.
+  subtotal: number;
   // El producto ya no existe en el catálogo activo (borrado con ventas
   // encima, ver eliminarProducto.ts) — el nombre se conserva igual,
   // esto solo marca que ya no se puede volver a vender.

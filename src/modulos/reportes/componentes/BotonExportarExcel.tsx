@@ -94,7 +94,7 @@ export function BotonExportarExcel({
             producto: `${item.nombre}${item.eliminado ? " [Eliminado]" : ""}`,
             cantidad: item.cantidad,
             precioUnitario: item.precioUnitario,
-            subtotal: item.cantidad * item.precioUnitario,
+            subtotal: item.subtotal,
             medio: medioTexto(venta),
           });
         }

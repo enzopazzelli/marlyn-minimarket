@@ -4,7 +4,7 @@ import type { ItemCarrito, PagoCarrito } from "../tipos";
  *  con Vitest solo (prompt-base sección 7, punto 2). */
 
 export function calcularSubtotalItem(item: ItemCarrito): number {
-  return redondearMonto(item.cantidad * item.precioUnitario);
+  return redondearMonto(item.subtotal ?? item.cantidad * item.precioUnitario);
 }
 
 export function calcularTotalCarrito(items: ItemCarrito[]): number {

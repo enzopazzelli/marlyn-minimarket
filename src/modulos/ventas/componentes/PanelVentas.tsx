@@ -10,6 +10,7 @@ import { Modal } from "@/componentes/Modal";
 import { TicketVenta } from "@/componentes/TicketVenta";
 import { CANAL_EVENTO_CARRITO, nombreCanalPantalla } from "@/modulos/pantalla/tipos";
 import {
+  calcularSubtotalItem,
   calcularTotalCarrito,
   calcularVuelto,
   pagosCubrenElTotal,
@@ -270,7 +271,7 @@ export function PanelVentas({
   // Para productos por kg/litro: la cantidad se edita directa (no hay
   // un "−" natural que llegue a 0), así que sacar la fila es una acción
   // aparte (quitarProducto) en vez de decrementar hasta cero.
-  function cambiarCantidadExacta(productoId: string, cantidad: number) {
+  function cambiarCantidadExacta(productoId: string, cantidad: number, subtotalExacto?: number) {
     const producto = productos.find((p) => p.id === productoId);
     if (!producto) return;
 
@@ -280,7 +281,7 @@ export function PanelVentas({
     }
 
     const items = carritoActivo.items.map((item) =>
-      item.productoId === productoId ? { ...item, cantidad } : item,
+      item.productoId === productoId ? { ...item, cantidad, subtotal: subtotalExacto } : item,
     );
     actualizarCarritoActivo({ items });
   }
@@ -430,6 +431,7 @@ export function PanelVentas({
         producto_id: item.productoId,
         cantidad: item.cantidad,
         precio_unitario: item.precioUnitario,
+        subtotal: calcularSubtotalItem(item),
       })),
       p_pagos: pagos,
       p_recargo_monto: recargoMonto,
@@ -643,7 +645,9 @@ export function PanelVentas({
                     item={item}
                     producto={productos.find((producto) => producto.id === item.productoId)}
                     onCambiarPaso={(delta) => cambiarCantidad(item.productoId, delta)}
-                    onCambiarCantidadExacta={(cantidad) => cambiarCantidadExacta(item.productoId, cantidad)}
+                    onCambiarCantidadExacta={(cantidad, subtotalExacto) =>
+                      cambiarCantidadExacta(item.productoId, cantidad, subtotalExacto)
+                    }
                     onQuitar={() => quitarProducto(item.productoId)}
                   />
                 ))

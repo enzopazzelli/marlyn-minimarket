@@ -132,6 +132,7 @@ export function TablaDetalleVentas({ ventas }: { ventas: VentaReporte[] }) {
                 nombre: item.eliminado ? `${item.nombre} [Eliminado]` : item.nombre,
                 cantidad: item.cantidad,
                 precioUnitario: item.precioUnitario,
+                subtotal: item.subtotal,
               }))}
               total={ventaSeleccionada.total}
               medioTexto={medioTexto(ventaSeleccionada)}

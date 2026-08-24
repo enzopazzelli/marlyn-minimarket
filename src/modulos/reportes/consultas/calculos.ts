@@ -38,12 +38,13 @@ export function calcularResumenDelDia(ventas: VentaReporte[]): ResumenDia {
   // Margen bruto con el precio_costo ACTUAL de cada producto: no hay un
   // histórico de costo por venta, así que si el costo cambió después de
   // vender, el balance de hoy ya refleja el costo nuevo (documentado en
-  // el README junto a los demás supuestos).
+  // el README junto a los demás supuestos). Ingreso = item.subtotal (lo
+  // que realmente se cobró esa línea), no cantidad × precioUnitario —
+  // con peso fraccionario vendido por monto no siempre coinciden.
   const margenBruto = redondear(
     ventas.reduce(
       (suma, venta) =>
-        suma +
-        venta.items.reduce((sub, item) => sub + (item.precioUnitario - item.precioCosto) * item.cantidad, 0),
+        suma + venta.items.reduce((sub, item) => sub + item.subtotal - item.precioCosto * item.cantidad, 0),
       0,
     ),
   );
@@ -108,7 +109,7 @@ function calcularTopProductos(ventas: VentaReporte[]): ResumenDia["topProductos"
         eliminado: item.eliminado,
       };
       acumulado.cantidad += item.cantidad;
-      acumulado.subtotal = redondear(acumulado.subtotal + item.cantidad * item.precioUnitario);
+      acumulado.subtotal = redondear(acumulado.subtotal + item.subtotal);
       porProducto.set(item.productoId, acumulado);
     }
   }

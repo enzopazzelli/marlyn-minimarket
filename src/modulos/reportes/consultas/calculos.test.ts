@@ -64,12 +64,28 @@ describe("calcularResumenDelDia", () => {
     const ventas = [
       venta({
         items: [
-          { productoId: "p1", nombre: "Yerba", cantidad: 2, precioUnitario: 5000, precioCosto: 3000, eliminado: false },
+          {
+            productoId: "p1",
+            nombre: "Yerba",
+            cantidad: 2,
+            precioUnitario: 5000,
+            precioCosto: 3000,
+            subtotal: 10000,
+            eliminado: false,
+          },
         ],
       }),
       venta({
         items: [
-          { productoId: "p1", nombre: "Yerba", cantidad: 3, precioUnitario: 5000, precioCosto: 3000, eliminado: false },
+          {
+            productoId: "p1",
+            nombre: "Yerba",
+            cantidad: 3,
+            precioUnitario: 5000,
+            precioCosto: 3000,
+            subtotal: 15000,
+            eliminado: false,
+          },
         ],
       }),
     ];
@@ -80,11 +96,40 @@ describe("calcularResumenDelDia", () => {
     expect(resumen.margenBruto).toBe(10000); // (5000-3000) * 5
   });
 
+  it("usa subtotal (lo realmente cobrado), no cantidad × precioUnitario — venta por monto con peso fraccionario", () => {
+    const ventas = [
+      venta({
+        items: [
+          {
+            productoId: "p3",
+            nombre: "Jamón crudo",
+            cantidad: 0.083333,
+            precioUnitario: 18000,
+            precioCosto: 12000,
+            subtotal: 1500, // cantidad × precioUnitario da 1499.994, no 1500
+            eliminado: false,
+          },
+        ],
+      }),
+    ];
+    const resumen = calcularResumenDelDia(ventas);
+    expect(resumen.topProductos[0].subtotal).toBe(1500);
+    expect(resumen.margenBruto).toBe(500); // 1500 - 12000×0.083333, redondeado
+  });
+
   it("arrastra 'eliminado' del producto al top", () => {
     const ventas = [
       venta({
         items: [
-          { productoId: "p2", nombre: "Mani suelto", cantidad: 1, precioUnitario: 100, precioCosto: 50, eliminado: true },
+          {
+            productoId: "p2",
+            nombre: "Mani suelto",
+            cantidad: 1,
+            precioUnitario: 100,
+            precioCosto: 50,
+            subtotal: 100,
+            eliminado: true,
+          },
         ],
       }),
     ];

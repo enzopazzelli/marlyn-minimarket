@@ -7,6 +7,11 @@ export type ItemTicket = {
   nombre: string;
   cantidad: number;
   precioUnitario: number;
+  // Monto exacto de esta línea cuando se vendió por monto (peso
+  // fraccionario) en vez de por cantidad — cantidad × precioUnitario no
+  // siempre reconstruye el monto tipeado exacto. Sin esto, se calcula
+  // como siempre.
+  subtotal?: number;
 };
 
 type PropsTicket = {
@@ -45,7 +50,7 @@ function contenidoTicket({
           <span>
             {item.cantidad} × {item.nombre}
           </span>
-          <span>{platita.format(item.cantidad * item.precioUnitario)}</span>
+          <span>{platita.format(item.subtotal ?? item.cantidad * item.precioUnitario)}</span>
         </div>
       ))}
       <div className="my-2 border-t border-dashed border-linea" />

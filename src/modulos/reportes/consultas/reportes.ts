@@ -13,6 +13,7 @@ type FilaVentaReporte = {
     producto_id: string;
     cantidad: number | string;
     precio_unitario: number | string;
+    subtotal: number | string;
     productos: { nombre: string; precio_costo: number | string; activo: boolean } | null;
   }[];
   ventas_pagos: { medio: string; monto: number | string; vuelto: number | string }[];
@@ -26,7 +27,7 @@ export async function obtenerVentasDelDia(supabase: SupabaseClient, fecha: strin
   const { data, error } = await supabase
     .from("ventas")
     .select(
-      "id, numero, total, creado_en, cliente_id, clientes(nombre), ventas_items(producto_id, cantidad, precio_unitario, productos(nombre, precio_costo, activo)), ventas_pagos(medio, monto, vuelto)",
+      "id, numero, total, creado_en, cliente_id, clientes(nombre), ventas_items(producto_id, cantidad, precio_unitario, subtotal, productos(nombre, precio_costo, activo)), ventas_pagos(medio, monto, vuelto)",
     )
     .eq("estado", "confirmada")
     .gte("creado_en", desde)
@@ -47,6 +48,7 @@ export async function obtenerVentasDelDia(supabase: SupabaseClient, fecha: strin
       nombre: item.productos?.nombre ?? "Producto eliminado",
       cantidad: Number(item.cantidad),
       precioUnitario: Number(item.precio_unitario),
+      subtotal: Number(item.subtotal),
       precioCosto: Number(item.productos?.precio_costo ?? 0),
       eliminado: item.productos === null || !item.productos.activo,
     })),
