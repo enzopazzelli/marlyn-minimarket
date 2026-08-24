@@ -184,7 +184,11 @@ export function PanelCuentaCorriente({
             <div>
               <p className="text-xs text-texto-suave">Debe</p>
               <p className={`numero text-xl font-semibold ${saldoActual > 0 ? "text-alerta" : "text-ok"}`}>
-                {saldoActual > 0 ? platita.format(saldoActual) : "Al día"}
+                {saldoActual > 0
+                  ? platita.format(saldoActual)
+                  : saldoActual < 0
+                    ? `A favor ${platita.format(Math.abs(saldoActual))}`
+                    : "Al día"}
               </p>
             </div>
             <BotonExportarCuentaCorriente cliente={cliente} saldoActual={saldoActual} movimientos={movimientos} />

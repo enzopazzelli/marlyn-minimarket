@@ -86,7 +86,11 @@ export function ListaClientes({
                       cliente.saldoCuentaCorriente > 0 ? "text-alerta" : "text-ok"
                     }`}
                   >
-                    {cliente.saldoCuentaCorriente > 0 ? platita.format(cliente.saldoCuentaCorriente) : "Al día"}
+                    {cliente.saldoCuentaCorriente > 0
+                      ? platita.format(cliente.saldoCuentaCorriente)
+                      : cliente.saldoCuentaCorriente < 0
+                        ? `A favor ${platita.format(Math.abs(cliente.saldoCuentaCorriente))}`
+                        : "Al día"}
                   </td>
                   <td className="px-2.5 py-1.5">
                     <div className="flex items-center justify-end gap-3">
