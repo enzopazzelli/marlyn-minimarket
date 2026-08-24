@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Boton } from "@/componentes/Boton";
 import { Modal } from "@/componentes/Modal";
+import { clienteConfig } from "@/config/cliente";
 import type { Producto } from "@/modulos/stock/tipos";
 import type { Proveedor } from "../tipos";
 
@@ -25,6 +26,7 @@ export function PanelPedidoProveedor({ proveedor, productos }: { proveedor: Prov
   const [seleccionados, setSeleccionados] = useState<Record<string, boolean>>({});
   const [cantidades, setCantidades] = useState<Record<string, string>>({});
   const [textoPedido, setTextoPedido] = useState<string | null>(null);
+  const [textoWhatsapp, setTextoWhatsapp] = useState<string | null>(null);
   const [copiado, setCopiado] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,6 +39,7 @@ export function PanelPedidoProveedor({ proveedor, productos }: { proveedor: Prov
     setSeleccionados({});
     setCantidades({});
     setTextoPedido(null);
+    setTextoWhatsapp(null);
     setCopiado(false);
     setError(null);
     setAbierto(true);
@@ -60,7 +63,12 @@ export function PanelPedidoProveedor({ proveedor, productos }: { proveedor: Prov
       return cantidad ? `${cantidad} x ${producto.nombre}` : `- ${producto.nombre}`;
     });
 
+    // "Pedido para <proveedor>" tiene sentido al copiarlo (por ejemplo,
+    // para pegarlo en una nota propia) pero no al mandárselo por
+    // WhatsApp al proveedor mismo — ahí sobra decirle a quién es el
+    // pedido, y suena raro. Reportado por el cliente, 2026-08-24.
     setTextoPedido(`Pedido para ${proveedor.nombre}:\n${lineas.join("\n")}`);
+    setTextoWhatsapp(`Pedido de ${clienteConfig.comercio.nombre}:\n${lineas.join("\n")}`);
     setCopiado(false);
   }
 
@@ -139,9 +147,9 @@ export function PanelPedidoProveedor({ proveedor, productos }: { proveedor: Prov
                     <Boton type="button" variante="confirmar" className="flex-1" onClick={copiarPedido}>
                       {copiado ? "¡Copiado!" : "Copiar"}
                     </Boton>
-                    {proveedor.telefono && (
+                    {proveedor.telefono && textoWhatsapp && (
                       <a
-                        href={`https://wa.me/${numeroWhatsapp(proveedor.telefono)}?text=${encodeURIComponent(textoPedido)}`}
+                        href={`https://wa.me/${numeroWhatsapp(proveedor.telefono)}?text=${encodeURIComponent(textoWhatsapp)}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex flex-1 items-center justify-center rounded-[var(--radius-base)] border border-linea bg-superficie px-3 py-2 text-sm font-medium text-texto hover:border-marco"
