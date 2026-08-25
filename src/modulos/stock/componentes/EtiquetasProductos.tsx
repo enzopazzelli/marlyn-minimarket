@@ -34,7 +34,7 @@ function Etiqueta({ producto, saltoDePagina }: { producto: Producto; saltoDePagi
         saltoDePagina ? "[break-after:page]" : ""
       }`}
     >
-      <p className="text-lg font-semibold uppercase leading-tight text-texto">{producto.nombre}</p>
+      <p className="text-xl font-semibold uppercase leading-tight text-texto">{producto.nombre}</p>
       <p className="numero text-5xl font-bold leading-none text-texto">
         {platitaEtiqueta.format(producto.precioVenta)}
       </p>

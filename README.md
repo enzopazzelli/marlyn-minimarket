@@ -147,9 +147,10 @@ extensión chica para cuando se pida. **Sin decimales y más grande**
 formateador con 2 decimales que el resto de la app — en una etiqueta
 ",00" no suma nada y le sacaba lugar al número. `platitaEtiqueta` (sin
 `minimumFractionDigits`/`maximumFractionDigits`) solo para esta
-pantalla; nombre y precio subieron de tamaño (`text-lg`/`text-5xl`)
-para ocupar más del recuadro fijo de 95mm×55mm (ese tamaño y la grilla
-2×5 no se tocaron, ya acordados con el cliente el 2026-08-15).
+pantalla; nombre y precio subieron de tamaño (`text-lg`/`text-5xl`,
+el nombre subió de nuevo a `text-xl` el 2026-08-26, pedido puntual del
+cliente) para ocupar más del recuadro fijo de 95mm×55mm (ese tamaño y
+la grilla 2×5 no se tocaron, ya acordados con el cliente el 2026-08-15).
 
 **Bug encontrado y corregido: las etiquetas no se apilaban en la
 hoja** (2026-08-15, reportado por Enzo con captura del diálogo de
