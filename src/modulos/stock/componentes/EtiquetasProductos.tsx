@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Boton } from "@/componentes/Boton";
 import { CapaImpresion } from "@/componentes/CapaImpresion";
 import { Modal } from "@/componentes/Modal";
+import { coincideBusqueda } from "@/lib/busqueda";
 import type { Producto } from "../tipos";
 
 const platita = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" });
@@ -53,9 +54,8 @@ export function EtiquetasProductos({ productos }: { productos: Producto[] }) {
   const activos = useMemo(() => productos.filter((producto) => producto.activo), [productos]);
 
   const filtrados = useMemo(() => {
-    const termino = busqueda.trim().toLowerCase();
-    if (!termino) return activos;
-    return activos.filter((producto) => producto.nombre.toLowerCase().includes(termino));
+    if (!busqueda.trim()) return activos;
+    return activos.filter((producto) => coincideBusqueda(producto.nombre, busqueda));
   }, [activos, busqueda]);
 
   const elegidos = useMemo(() => activos.filter((producto) => seleccionados.has(producto.id)), [activos, seleccionados]);

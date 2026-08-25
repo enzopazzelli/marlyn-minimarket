@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
+import { coincideBusqueda } from "@/lib/busqueda";
 import { crearClienteNavegador } from "@/lib/supabase/cliente";
 import { Boton } from "@/componentes/Boton";
 import { Campo } from "@/componentes/Campo";
@@ -311,9 +312,7 @@ export function PanelVentas({
       .filter(
         (producto) =>
           producto.activo &&
-          (!termino ||
-            producto.nombre.toLowerCase().includes(termino) ||
-            (producto.codigoBarras ?? "").includes(termino)),
+          (!termino || coincideBusqueda(producto.nombre, busqueda) || (producto.codigoBarras ?? "").includes(termino)),
       )
       .slice(0, 12);
   }, [productos, busqueda]);

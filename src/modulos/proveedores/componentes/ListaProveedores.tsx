@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { coincideBusqueda } from "@/lib/busqueda";
 import { BotonEliminarProveedor } from "./BotonEliminarProveedor";
 import { FormularioEditarProveedor } from "./FormularioEditarProveedor";
 import { PanelPedidoProveedor } from "./PanelPedidoProveedor";
@@ -23,12 +24,9 @@ export function ListaProveedores({ proveedores, productos }: { proveedores: Prov
   }, [productos]);
 
   const filtrados = useMemo(() => {
-    const termino = busqueda.trim().toLowerCase();
-    if (!termino) return proveedores;
+    if (!busqueda.trim()) return proveedores;
     return proveedores.filter(
-      (proveedor) =>
-        proveedor.nombre.toLowerCase().includes(termino) ||
-        (proveedor.contacto ?? "").toLowerCase().includes(termino),
+      (proveedor) => coincideBusqueda(proveedor.nombre, busqueda) || coincideBusqueda(proveedor.contacto ?? "", busqueda),
     );
   }, [proveedores, busqueda]);
 

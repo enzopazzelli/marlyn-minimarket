@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { coincideBusqueda } from "@/lib/busqueda";
 import { FormularioEditarCliente } from "./FormularioEditarCliente";
 import { PanelCuentaCorriente } from "./PanelCuentaCorriente";
 import type { Cliente } from "../tipos";
@@ -25,11 +26,9 @@ export function ListaClientes({
   );
 
   const filtrados = useMemo(() => {
-    const termino = busqueda.trim().toLowerCase();
-    if (!termino) return clientes;
+    if (!busqueda.trim()) return clientes;
     return clientes.filter(
-      (cliente) =>
-        cliente.nombre.toLowerCase().includes(termino) || (cliente.telefono ?? "").includes(termino),
+      (cliente) => coincideBusqueda(cliente.nombre, busqueda) || (cliente.telefono ?? "").includes(busqueda.trim()),
     );
   }, [clientes, busqueda]);
 

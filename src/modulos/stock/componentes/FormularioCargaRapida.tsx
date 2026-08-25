@@ -2,6 +2,7 @@
 
 import { useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { coincideBusqueda } from "@/lib/busqueda";
 import { crearClienteNavegador } from "@/lib/supabase/cliente";
 import { Boton } from "@/componentes/Boton";
 import { Campo } from "@/componentes/Campo";
@@ -65,11 +66,7 @@ export function FormularioCargaRapida({ productos }: { productos: Producto[] }) 
     const termino = busqueda.trim().toLowerCase();
     if (!termino) return [];
     return productos
-      .filter(
-        (producto) =>
-          producto.nombre.toLowerCase().includes(termino) ||
-          (producto.codigoBarras ?? "").includes(termino),
-      )
+      .filter((producto) => coincideBusqueda(producto.nombre, busqueda) || (producto.codigoBarras ?? "").includes(termino))
       .slice(0, 6);
   }, [productos, busqueda]);
 

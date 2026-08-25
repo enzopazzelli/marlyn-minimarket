@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Boton } from "@/componentes/Boton";
 import { Insignia } from "@/componentes/Insignia";
+import { coincideBusqueda } from "@/lib/busqueda";
 import { crearClienteNavegador } from "@/lib/supabase/cliente";
 import { useEsDueño } from "@/lib/supabase/PerfilContext";
 import { BotonEliminarProducto } from "./BotonEliminarProducto";
@@ -67,9 +68,9 @@ export function ListaProductos({
 
     return productosActivos.filter((producto) => {
       const rubro = producto.categoriaId ? (nombrePorCategoria.get(producto.categoriaId) ?? "") : "";
-      const coincideBusqueda =
+      const coincideTermino =
         !termino ||
-        producto.nombre.toLowerCase().includes(termino) ||
+        coincideBusqueda(producto.nombre, busqueda) ||
         (producto.codigoBarras ?? "").includes(termino) ||
         rubro.toLowerCase().includes(termino);
 
@@ -79,7 +80,7 @@ export function ListaProductos({
       const reponer = producto.stockActual <= producto.stockMinimo;
       const coincideEstado = estado === "todos" || (estado === "reponer" ? reponer : !reponer);
 
-      return coincideBusqueda && coincideRubro && coincideProveedor && coincideEstado;
+      return coincideTermino && coincideRubro && coincideProveedor && coincideEstado;
     });
   }, [productosActivos, busqueda, rubroId, proveedorId, estado, nombrePorCategoria]);
 
