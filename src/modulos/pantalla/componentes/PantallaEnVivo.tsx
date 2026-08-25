@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { crearClienteNavegador } from "@/lib/supabase/cliente";
 import { clienteConfig } from "@/config/cliente";
+import { tamañoTextoItem } from "../consultas/formato";
 import { CANAL_EVENTO_CARRITO, nombreCanalPantalla, type CarritoPantalla } from "../tipos";
 
 const platita = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" });
@@ -77,7 +78,10 @@ export function PantallaEnVivo({ token }: { token: string }) {
       <div className="flex-1 overflow-y-auto py-6">
         <ul className="flex flex-col gap-3">
           {carrito.items.map((item) => (
-            <li key={item.productoId} className="flex items-baseline justify-between gap-4 text-2xl">
+            <li
+              key={item.productoId}
+              className={`flex items-baseline justify-between gap-4 ${tamañoTextoItem(item.nombre)}`}
+            >
               <span>
                 <span className="numero text-white/60">{item.cantidad} ×</span> {item.nombre}
               </span>
