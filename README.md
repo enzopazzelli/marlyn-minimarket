@@ -814,7 +814,30 @@ de "Venta 1" a "Venta 2" — la pantalla sigue lo que el cajero tiene
 seleccionado, pedido explícito para cuando hay varias ventas en curso
 a la vez); `PantallaEnVivo.tsx` escucha y pinta la lista de productos +
 el total grande en `--acento`, el token que `tema.css` ya tenía
-reservado para esto desde el día 1.
+reservado para esto desde el día 1. **Bug encontrado y corregido**
+(reportado por el cliente con foto de la TV, 2026-08-26): un nombre
+largo ("CABALLA AL NATURAL /EN ACEITE Y EN AGUA CARACAS 380GR")
+envolvía a una segunda línea — como la fila es un flex con
+`items-baseline`, el precio quedaba alineado con la altura de la
+PRIMERA línea del nombre en vez de acompañarlo. `tamañoTextoItem()`
+(`pantalla/consultas/formato.ts`) achica la clase de Tailwind de la
+fila según la longitud del nombre, para que términos largos entren en
+una sola línea — cortes heurísticos por cantidad de caracteres, no una
+medición real del ancho renderizado (no hay forma barata de eso en
+este componente); si algún nombre real sigue sin entrar, ajustar esos
+números primero.
+
+**Buscador: "cualquier palabra, en cualquier orden"** (pedido
+explícito del cliente, 2026-08-26 — acostumbrado al sistema anterior,
+donde buscar "GOM ACID" encontraba "GOMITA MOGUL ACIDAS-DIENTE"; acá no
+encontraba nada). Los buscadores de Ventas, Stock, Etiquetas, Carga
+rápida, Proveedores y Clientes comparaban el término completo como una
+sola subcadena contra el nombre (`nombre.includes(termino)`) — ahora
+usan `coincideBusqueda()` (`src/lib/busqueda.ts`, función pura con
+tests): separa el término en palabras y exige que cada una aparezca en
+algún lado del texto, sin importar el orden ni que sean contiguas. Los
+campos que no son nombres (código de barras, teléfono) se dejaron con
+`includes()` simple — no tiene sentido tokenizar un número.
 
 ## Supuestos tomados (a confirmar con el cliente)
 
