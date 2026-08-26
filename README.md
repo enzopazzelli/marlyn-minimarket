@@ -959,6 +959,27 @@ campos que no son nombres (código de barras, teléfono) se dejaron con
 - ~~`codigo_barras` es `unique`...~~ resuelto — ver "Excel" abajo.
 - ~~`Familia` (511 valores...~~ resuelto — ver "Excel" abajo.
 
+## Operaciones puntuales sobre los datos (`supabase/operaciones/`)
+
+Scripts de una sola vez que borran o corrigen DATOS, no esquema. Van
+**fuera de `supabase/migrations/`** a propósito: una migración se
+reaplica sola en cualquier base nueva, y un borrado de datos no tiene
+que reaplicarse nunca. Se corren a mano desde el SQL Editor del
+dashboard de Supabase, siempre con un backup previo
+(`/reportes` → "Descargar backup completo").
+
+- `2026-08-26_limpiar_datos_de_prueba.sql` — fin de la etapa de prueba,
+  pedido del dueño: se vaciaron ventas (con ítems, pagos y movimientos
+  de stock), cuenta corriente, caja y turnos, productos, rubros,
+  proveedores y clientes. Quedaron solo `perfiles`/`auth.users` (sin
+  ellos nadie entra al sistema) y `notas`. El orden de los `delete`
+  respeta las FK y va todo en una transacción. Después de esto el
+  catálogo se reimporta desde Excel con datos reales.
+
+Hubo dos wipes anteriores (`backup_pre_wipe_2026-08-19.json` y
+`backup_pre_wipe_ventas_2026-08-24.json`, los dos gitignoreados) que no
+dejaron script ni registro de qué borraron — de ahí que ahora se guarde.
+
 ## Excel: import de catálogo y export de reportes (los dos construidos)
 
 Pedido del cliente, con `BACKUP.xlsx` (raíz del repo, no versionado) como

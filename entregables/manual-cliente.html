@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Manual Marlyn</title>
+<style>
+  :root {
+    --bg: #f1efe9;
+    --surface: #ffffff;
+    --surface-2: #fbf9f4;
+    --ink: #14231f;
+    --ink-soft: #5c6b66;
+    --line: #ddd8cd;
+    --accent: #ffd11a;
+    --accent-ink: #14231f;
+    --accent-deep: #8a5f00;
+    --ok: #1f7a5c;
+    --ok-bg: #e4f0ea;
+    --alerta: #c8452f;
+    --alerta-bg: #fceeea;
+
+    --font-display: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
+    --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --font-numero: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f1e1b;
+      --surface: #182b26;
+      --surface-2: #1f332d;
+      --ink: #f1efe9;
+      --ink-soft: #a3b3ad;
+      --line: #2b3d38;
+      --accent: #ffd11a;
+      --accent-ink: #14231f;
+      --accent-deep: #ffdd66;
+      --ok: #3fc293;
+      --ok-bg: rgba(63, 194, 147, 0.14);
+      --alerta: #ff8a6b;
+      --alerta-bg: rgba(255, 138, 107, 0.14);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #0f1e1b;
+    --surface: #182b26;
+    --surface-2: #1f332d;
+    --ink: #f1efe9;
+    --ink-soft: #a3b3ad;
+    --line: #2b3d38;
+    --accent: #ffd11a;
+    --accent-ink: #14231f;
+    --accent-deep: #ffdd66;
+    --ok: #3fc293;
+    --ok-bg: rgba(63, 194, 147, 0.14);
+    --alerta: #ff8a6b;
+    --alerta-bg: rgba(255, 138, 107, 0.14);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+    margin: 0;
+  }
+
+  .pagina { max-width: 780px; margin: 0 auto; padding: 0 24px 100px; }
+
+  a { color: var(--accent-deep); }
+  a:focus-visible, button:focus-visible { outline: 2px solid var(--accent-deep); outline-offset: 3px; }
+
+  .numero { font-family: var(--font-numero); font-variant-numeric: tabular-nums; }
+
+  /* ---------- Encabezado ---------- */
+  header.hero { padding: 60px 0 40px; text-align: center; }
+  .eyebrow {
+    font-family: var(--font-numero);
+    font-size: 0.75rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin: 0 0 16px;
+  }
+  h1 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 2.6rem;
+    line-height: 1.1;
+    margin: 0 0 16px;
+    text-wrap: balance;
+  }
+  .subhead {
+    font-size: 1.08rem;
+    color: var(--ink-soft);
+    max-width: 34em;
+    margin: 0 auto 30px;
+    text-wrap: balance;
+  }
+  /* ---------- Secciones ---------- */
+  section { margin-bottom: 52px; }
+  .titulo-seccion {
+    font-family: var(--font-display);
+    font-size: 1.55rem;
+    font-weight: 600;
+    margin: 0 0 8px;
+    text-wrap: balance;
+  }
+  .dek { color: var(--ink-soft); font-size: 0.96rem; margin: 0 0 26px; max-width: 42em; }
+  p { margin: 0 0 14px; }
+
+  /* ---------- Módulos ---------- */
+  .modulo {
+    border-left: 3px solid var(--accent);
+    padding-left: 20px;
+    margin-bottom: 30px;
+  }
+  .modulo:last-child { margin-bottom: 0; }
+  .modulo h3 {
+    font-family: var(--font-display);
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin: 0 0 8px;
+  }
+  .modulo p { font-size: 0.96rem; margin: 0 0 10px; }
+  .modulo p:last-child { margin-bottom: 0; }
+  .modulo .alcance {
+    font-size: 0.9rem;
+    color: var(--ink-soft);
+  }
+  .modulo .alcance strong {
+    color: var(--ink);
+    font-weight: 600;
+  }
+  .insignia-alcance {
+    display: inline-block;
+    font-family: var(--font-numero);
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 999px;
+    margin-left: 8px;
+    vertical-align: middle;
+    position: relative;
+    top: -2px;
+    background: var(--surface-2);
+    color: var(--ink-soft);
+    border: 1px solid var(--line);
+  }
+
+  /* ---------- Panel de límites generales ---------- */
+  .panel-avisos {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 6px 22px;
+  }
+  .aviso {
+    display: flex;
+    gap: 14px;
+    padding: 18px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .aviso:last-child { border-bottom: none; }
+  .aviso .marca {
+    flex-shrink: 0;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    margin-top: 8px;
+  }
+  .aviso strong { display: block; font-size: 0.96rem; margin-bottom: 3px; }
+  .aviso span { font-size: 0.9rem; color: var(--ink-soft); }
+
+  hr.corte { border: none; border-top: 1px solid var(--line); margin: 48px 0 40px; }
+
+  footer { text-align: center; color: var(--ink-soft); font-size: 0.85rem; }
+</style>
+</head>
+<body>
+
+<div class="pagina">
+
+  <header class="hero">
+    <p class="eyebrow">Guía del sistema</p>
+    <h1>Mini Market Marlyn</h1>
+    <p class="subhead">
+      Referencia completa de los módulos del sistema: qué incluye cada
+      uno, su alcance, y cómo se usa.
+    </p>
+  </header>
+
+  <section>
+    <p class="titulo-seccion">Módulos</p>
+    <p class="dek">Once piezas conectadas entre sí: una venta descuenta el stock y afecta la caja sin pasos manuales entre pantallas.</p>
+
+    <div class="modulo">
+      <h3>Stock</h3>
+      <p>Alta, edición y baja de productos, con calculadora de precio de venta (costo, margen de ganancia, IVA opcional). Alerta automática cuando el stock de un producto baja del mínimo definido, con filtros por rubro. El stock se ajusta con "Entrada" (llegó mercadería) o "Salida" (rotura, vencido, corrección de conteo), siempre con motivo y sin pisar el número a mano — "Carga rápida" permite reponer varios productos seguidos sin cerrar la ventana entre uno y otro. Incluye importación y exportación del catálogo en Excel.</p>
+      <p class="alcance"><strong>Alcance:</strong> cada sabor, tamaño o variante de un producto es un ítem distinto, con su propio código de barras — no hay una noción de "un producto con variantes" que comparta stock.</p>
+    </div>
+
+    <div class="modulo">
+      <h3>Clientes</h3>
+      <p>Ficha por cliente (nombre, teléfono, dirección) con cuenta corriente: historial de fiados y pagos, con el detalle de los productos de cada venta fiada. El recargo por atraso se carga a mano con el porcentaje que corresponda; el sistema calcula el total, no decide el porcentaje. Exportación a Excel del historial por cliente.</p>
+      <p class="alcance"><strong>Alcance:</strong> no hay un límite de fiado que bloquee la venta — el sistema registra la deuda, no la limita de forma automática.</p>
+    </div>
+
+    <div class="modulo">
+      <h3>Ventas</h3>
+      <p>Lector de código de barras con foco fijo, buscador, y varias ventas en curso a la vez en pestañas independientes (para atender más de un cliente desde la misma computadora sin perder lo cargado). Cobro en efectivo, transferencia, tarjeta, mixto o fiado. Venta por unidad o por peso/volumen (kg, litro). Anulación de venta con reversión automática de stock y, si correspondía, de caja.</p>
+      <p class="alcance"><strong>Alcance:</strong> sin stock cargado, un producto no se puede vender — es intencional, para que el stock del sistema siempre refleje la realidad del local.</p>
+    </div>
+
+    <div class="modulo">
+      <h3>Caja</h3>
+      <p>Apertura de turno con monto inicial. Cierre con arqueo: el sistema calcula cuánto debería haber (apertura más movimientos) y lo compara contra lo que efectivamente se cuenta. Movimientos manuales de caja (retiros o ingresos) con motivo obligatorio. Historial de los últimos cierres, con la diferencia de cada uno. Exportación a Excel por turno.</p>
+      <p class="alcance"><strong>Alcance:</strong> un movimiento manual no valida el efectivo disponible en el momento — cualquier diferencia queda reflejada al cerrar, que es el momento real de arqueo.</p>
+    </div>
+
+    <div class="modulo">
+      <h3>Comprobantes</h3>
+      <p>Cada venta genera un ticket con el detalle de productos, total y medio de pago. Se puede imprimir (ajustado a impresora térmica de 80mm) o descargar en PDF o imagen.</p>
+      <p class="alcance"><strong>Alcance:</strong> es un comprobante interno del negocio, aclarado en el propio ticket — no reemplaza la facturación electrónica fiscal ante ARCA.</p>
+    </div>
+
+    <div class="modulo">
+      <h3>Compras</h3>
+      <p>Registro de entrada de mercadería (suma stock con motivo, por ejemplo "compra a proveedor") y de salida por corrección (rotura, vencido, conteo). Todo movimiento queda en el historial de stock, trazable por producto.</p>
+      <p class="alcance"><strong>Alcance:</strong> no es un circuito formal de orden de compra con recepción — es control y ajuste de stock, no gestión de pedidos a proveedores con seguimiento de estado.</p>
+    </div>
+
+    <div class="modulo">
+      <h3>Reportes</h3>
+      <p>Panel de un día elegido (por defecto, hoy): ventas totales, ticket promedio, cantidad de transacciones, balance, ventas por hora, distribución por medio de pago, top de productos más vendidos y alertas de stock bajo. Exportación a Excel.</p>
+      <p class="alcance"><strong>Alcance:</strong> no incluye alertas de vencimiento de producto ni una meta de ventas configurable — no hay todavía dónde cargar esos datos.</p>
+    </div>
+
+    <div class="modulo">
+      <h3>Pantalla para el TV<span class="insignia-alcance">Aparte de los planes</span></h3>
+      <p>Segunda pantalla (TV o tablet Android, sin necesidad de instalar nada) mirando al mostrador, sincronizada en vivo con la venta en curso — muestra los productos y el total a medida que se cargan.</p>
+      <p class="alcance"><strong>Alcance:</strong> se emparea una sola vez con un link; después queda funcionando solo, sin sesión en ese dispositivo.</p>
+    </div>
+
+    <div class="modulo">
+      <h3>Etiquetas</h3>
+      <p>Selección de productos e impresión de etiquetas de góndola en hoja A4 (nombre y precio, en grilla de 10 por hoja, con guía de corte).</p>
+      <p class="alcance"><strong>Alcance:</strong> una etiqueta por producto elegido — no hay todavía opción de repetir cantidad por producto en la misma hoja.</p>
+    </div>
+
+    <div class="modulo">
+      <h3>Notas</h3>
+      <p>Espacio de texto libre con fecha automática, sin categoría — por ejemplo, para registrar el pedido que se le mandó a un proveedor.</p>
+      <p class="alcance"><strong>Alcance:</strong> no depende de ningún otro módulo ni forma parte de los planes base; es de uso libre.</p>
+    </div>
+
+    <div class="modulo">
+      <h3>Multiusuario<span class="insignia-alcance">Preparado, no activo</span></h3>
+      <p>La base de datos ya tiene la estructura de roles (dueño / operador) por cuenta.</p>
+      <p class="alcance"><strong>Alcance:</strong> hoy todas las cuentas tienen el mismo nivel de acceso completo. La diferenciación de permisos por rol, las alertas automáticas y el recordatorio de cuentas corrientes sin movimiento quedan preparadas para activarse más adelante, no están operativas todavía.</p>
+    </div>
+  </section>
+
+  <section>
+    <p class="titulo-seccion">Límites generales del sistema</p>
+    <div class="panel-avisos">
+      <div class="aviso">
+        <span class="marca"></span>
+        <div><strong>Necesita internet</strong><span>El sistema vive en la nube — sin conexión no se pueden cargar ventas ni ningún otro dato.</span></div>
+      </div>
+      <div class="aviso">
+        <span class="marca"></span>
+        <div><strong>Sin facturación fiscal</strong><span>El comprobante es un ticket interno, no una factura electrónica ante ARCA.</span></div>
+      </div>
+      <div class="aviso">
+        <span class="marca"></span>
+        <div><strong>Un solo local, sin roles diferenciados activos</strong><span>Pensado para un local con los dos dueños operando — ver "Multiusuario" arriba para el estado de los permisos por rol.</span></div>
+      </div>
+      <div class="aviso">
+        <span class="marca"></span>
+        <div><strong>Base de datos en plan gratuito</strong><span>Se pausa sola después de más o menos una semana sin actividad (por ejemplo, vacaciones) — no es una falla, es el comportamiento del plan. Se reactiva sola y puede tardar un minuto la primera vez que se abre después de la pausa. No incluye backups automáticos.</span></div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="corte" />
+
+  <footer>
+    <p>Mini Market Marlyn — sistema de gestión comercial</p>
+  </footer>
+
+</div>
+</body>
+</html>
