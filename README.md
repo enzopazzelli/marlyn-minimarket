@@ -32,12 +32,24 @@ seguridad no negociables repasadas en cada función/vista nueva.
 4. `npm run dev` → http://localhost:3000
 
 Scripts útiles: `npm run lint`, `npm run typecheck`, `npm run test`
-(Vitest, todo) y `npm run test:unit` (todo menos los `rls.test.ts`).
+(Vitest, todo) y `npm run test:unit` (todo menos los `*rls.test.ts`).
 En CI (`.github/workflows/ci.yml`) corren los primeros dos más
-`test:unit`, en cada push a `master` y en cada pull request. Los
-`rls.test.ts` quedan afuera de CI a propósito: se conectan al Supabase
-hosteado con las claves de `.env.local`, que no están en el runner —
-hay que correrlos a mano después de aplicar una migración.
+`test:unit`, en cada push a `master`, en cada pull request y a mano con
+"Run workflow".
+
+**Convención de nombres de tests**: un archivo que termina en
+`*rls.test.ts` se conecta al Supabase hosteado con las claves de
+`.env.local` y crea datos reales; todo lo demás es puro y corre en
+cualquier lado. CI corre solo lo segundo, porque en el runner no hay
+claves — los `*rls.test.ts` van a mano después de aplicar una migración,
+que es cuando importan. Respetá el nombre al agregar uno: si un test que
+pega contra la base no lo lleva, CI lo corre y se pone rojo sin motivo
+(pasó con `usuarios/consultas/autorizacion.test.ts`, renombrado a
+`autorizacion.rls.test.ts` por eso).
+
+`typecheck` corre `next typegen` antes de `tsc`: los tipos globales de
+rutas que usa `app/layout.tsx` (`LayoutProps`) los genera Next dentro de
+`.next/`, que en un clon limpio no existe.
 
 ## Estado actual (Núcleo, primera entrega)
 
