@@ -321,6 +321,70 @@ historial de movimientos** (pedido del cliente, 2026-08-24): el listado
 de "Ver cuenta" solo mostraba día/mes (`fechaFormateador`) — se sumó
 `formatearHora()` al lado, mismo que ya usaban Ventas/Reportes.
 
+**Actualizar precios del fiado** (pedido del cliente, 2026-08-26,
+segunda opción "abajo del porcentaje" — textual: *"hay algunos clientes
+que son perennes, que vienen siempre y te sacan a la semana y te pagan a
+la semana; a esos ya no les ponemos porcentaje, sino que solamente le
+actualizamos el precio si es que sube"*). Dentro de "Ver cuenta", debajo
+del recargo por atraso, un panel "Actualizar precios": "Ver diferencias"
+lista producto por producto el precio al que se lo llevó contra el
+precio de hoy, y "Aplicar" suma la diferencia como un movimiento nuevo
+de tipo `actualizacion` (migración `20260826100000...`). Al lado,
+"Exportar comparación" (`BotonExportarComparacionPrecios.tsx`) baja el
+"otro Excel" que pidió: hoja de resumen + una fila por producto con
+precio que sacó / precio de hoy / diferencia / si se cobra o no.
+Tres decisiones, todas documentadas también en la migración:
+
+- **Solo suma lo que subió.** Un producto que bajó aparece en la lista y
+  en el Excel (marcado "No" en "Se cobra"), pero no descuenta del saldo
+  — literal a lo que pidió el dueño, y nunca cobra menos de lo pactado
+  al llevarse la mercadería. El Excel muestra igual la diferencia neta a
+  precio de hoy, por si algún día quiere el otro criterio.
+- **Qué fiados entran: los del ciclo abierto**, o sea los posteriores a
+  la última vez que la cuenta quedó en cero o a favor — exactamente el
+  ciclo del cliente perenne (saca toda la semana, paga el sábado,
+  arranca de nuevo). Como `saldo_cuenta_corriente` es un número corrido
+  y no un historial por venta (ver la anulación bloqueada más abajo), el
+  corte se reconstruye sumando los movimientos en orden; los fiados de
+  ventas anuladas se excluyen de esa suma porque `anular_venta()` baja
+  el saldo pero deja la fila del movimiento donde estaba.
+  Un pago parcial no cierra el ciclo: la actualización sigue tomando
+  todos los ítems de ese fiado, porque lo que se actualiza es el precio
+  de la mercadería que se llevó, no el saldo pendiente.
+- **No se cobra dos veces.** Cada actualización guarda en la columna
+  nueva `movimientos_cuenta_corriente.detalle` (jsonb) el precio al que
+  dejó cada producto, y la siguiente parte de ahí. Solo avanzan de base
+  las filas que efectivamente se cobraron: si un producto bajó y no se
+  cobró nada, su base sigue siendo la original.
+
+El monto no viaja desde el navegador: `registrar_actualizacion_precios_fiado()`
+vuelve a llamar a `calcular_actualizacion_precios_fiado()` en el momento
+de aplicar (mismo criterio que `registrar_venta()` con el total). Las
+dos funciones son dueño-only con su propio chequeo, no solo escondidas
+en la pantalla. En ventas mixtas se actualiza únicamente la fracción que
+quedó fiada (`monto del fiado / total de la venta`), y esa columna
+"Parte fiada" va en el Excel. La vista `auditoria_movimientos` se
+recreó para mapear el tipo nuevo (antes caía en el `else` y una
+actualización se habría listado como "Fiado").
+
+De paso, esto destapó un bug de build que ya estaba: `npm run build`
+fallaba con `Module not found: Can't resolve 'rimraf'` por la cadena
+`exceljs` → `unzipper` → `fstream` → `rimraf`. Los cuatro botones de
+export cargan `exceljs` con `await import()` adentro del handler de
+click, pero Turbopack igual lo seguía en el pase **Client Component
+SSR** —que apunta a Node, no al navegador— y ahí resuelve
+`exceljs.nodejs.js`, el build pesado. Venía rompiendo `/stock` en el
+build desde antes; el botón nuevo lo trajo también a `/clientes`, que es
+donde saltó. Arreglado con `serverExternalPackages: ["exceljs"]` en
+`next.config.ts`: del lado servidor queda como require externo en vez de
+bundlearse, y en el navegador se sigue usando el build de browser que
+declara el `browser` field del paquete (`dist/exceljs.min.js`, cargado
+en su propio chunk de ~930 KB solo al hacer click). Detalle de esta
+máquina que lo hizo visible: `node_modules/rimraf` quedó como carpeta
+vacía, una instalación a medias — pero aunque estuviera sana, meter
+`fstream`/`unzipper` en el bundle de SSR para un export que corre en un
+click era peso al pedo igual.
+
 **Ventas (TPV)**: `/ventas` — lector de código de barras con foco fijo,
 buscador con grilla de productos, carrito, y cobro en
 efectivo/transferencia/débito/crédito/mixto/fiado (los medios reales de

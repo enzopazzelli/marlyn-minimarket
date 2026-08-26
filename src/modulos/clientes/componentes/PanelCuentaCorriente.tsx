@@ -9,6 +9,13 @@ import { Boton } from "@/componentes/Boton";
 import { Campo } from "@/componentes/Campo";
 import { Modal } from "@/componentes/Modal";
 import { BotonExportarCuentaCorriente } from "./BotonExportarCuentaCorriente";
+import { BotonExportarComparacionPrecios } from "./BotonExportarComparacionPrecios";
+import {
+  calcularActualizacionPrecios,
+  registrarActualizacionPrecios,
+  resumirActualizacion,
+  type FilaComparacionPrecio,
+} from "../consultas/actualizacionPrecios";
 import {
   listarMovimientosCuentaCorriente,
   type MovimientoCuentaCorrienteDetallado,
@@ -22,6 +29,7 @@ const etiquetaTipo: Record<MovimientoCuentaCorrienteDetallado["tipo"], string> =
   fiado: "Fiado",
   pago: "Pago",
   recargo: "Recargo",
+  actualizacion: "Actualización de precios",
 };
 
 export function PanelCuentaCorriente({
@@ -54,8 +62,14 @@ export function PanelCuentaCorriente({
   const [porcentajeRecargo, setPorcentajeRecargo] = useState("0");
   const [montoPago, setMontoPago] = useState("");
   const [medioPago, setMedioPago] = useState<"efectivo" | "transferencia">("efectivo");
-  const [ocupado, setOcupado] = useState<"recargo" | "pago" | null>(null);
+  const [ocupado, setOcupado] = useState<"recargo" | "pago" | "actualizacion" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // null = todavía no se pidió la comparación (el botón "Ver
+  // diferencias" es explícito a propósito: es una consulta pesada
+  // contra todos los ítems del ciclo abierto, no hace falta pagarla
+  // cada vez que se abre la cuenta para cobrar y listo).
+  const [comparacion, setComparacion] = useState<FilaComparacionPrecio[] | null>(null);
+  const [cargandoComparacion, setCargandoComparacion] = useState(false);
 
   async function cargarMovimientos() {
     setCargando(true);
@@ -75,6 +89,7 @@ export function PanelCuentaCorriente({
     setPorcentajeRecargo("0");
     setMontoPago(cliente.saldoCuentaCorriente > 0 ? String(cliente.saldoCuentaCorriente) : "");
     setMedioPago("efectivo");
+    setComparacion(null);
     setError(null);
     setAbierto(true);
     cargarMovimientos();
@@ -124,6 +139,47 @@ export function PanelCuentaCorriente({
     router.refresh();
   }
 
+  async function verDiferenciasDePrecio() {
+    setError(null);
+    setCargandoComparacion(true);
+    const supabase = crearClienteNavegador();
+    try {
+      setComparacion(await calcularActualizacionPrecios(supabase, cliente.id));
+    } catch {
+      setError("No se pudo calcular la comparación de precios. Probá de nuevo.");
+    } finally {
+      setCargandoComparacion(false);
+    }
+  }
+
+  async function aplicarActualizacionPrecios() {
+    setError(null);
+    setOcupado("actualizacion");
+    const supabase = crearClienteNavegador();
+    let montoAplicado: number;
+    try {
+      montoAplicado = await registrarActualizacionPrecios(supabase, cliente.id);
+    } catch {
+      setError("No se pudo aplicar la actualización de precios. Probá de nuevo.");
+      setOcupado(null);
+      return;
+    }
+    setOcupado(null);
+
+    // Mismo motivo que en aplicarRecargo: "cobrar" puede pasar en el
+    // mismo gesto y tiene que validar contra el saldo ya actualizado.
+    const nuevoSaldo = saldoActual + montoAplicado;
+    setSaldoActual(nuevoSaldo);
+    setMontoPago(String(nuevoSaldo));
+    // Se vuelve a pedir en vez de vaciarla: después de aplicar, las
+    // diferencias que se cobraron pasan a valer cero (la base de cada
+    // producto avanzó), y así queda a la vista que ya no hay nada
+    // pendiente en vez de un panel en blanco.
+    await verDiferenciasDePrecio();
+    await cargarMovimientos();
+    router.refresh();
+  }
+
   async function registrarPago() {
     setError(null);
     const monto = Number(montoPago);
@@ -161,6 +217,8 @@ export function PanelCuentaCorriente({
     await cargarMovimientos();
     router.refresh();
   }
+
+  const resumenComparacion = comparacion ? resumirActualizacion(comparacion) : null;
 
   const totalConRecargo = (() => {
     const porcentaje = Number(porcentajeRecargo);
@@ -262,6 +320,106 @@ export function PanelCuentaCorriente({
                   Con recargo pasaría a deber{" "}
                   <span className="numero font-semibold">{platita.format(totalConRecargo)}</span>
                 </p>
+              )}
+            </div>
+          )}
+
+          {esDueño && (
+            <div className="flex flex-col gap-2 rounded-[var(--radius-base)] border border-linea p-3">
+              <p className="text-xs font-medium uppercase tracking-wide text-texto-suave">
+                Actualizar precios
+              </p>
+              <p className="text-xs text-texto-suave">
+                Compara la mercadería que se llevó fiada desde que la cuenta quedó al día contra el
+                precio de hoy. Suma solo lo que subió.
+              </p>
+
+              {comparacion === null ? (
+                <div>
+                  <Boton
+                    type="button"
+                    variante="fantasma"
+                    disabled={cargandoComparacion}
+                    onClick={verDiferenciasDePrecio}
+                  >
+                    {cargandoComparacion ? "Buscando…" : "Ver diferencias"}
+                  </Boton>
+                </div>
+              ) : comparacion.length === 0 ? (
+                <p className="text-xs text-texto-suave">
+                  No hay fiado abierto para comparar — la cuenta está al día.
+                </p>
+              ) : (
+                <>
+                  <div className="max-h-44 overflow-y-auto rounded-[var(--radius-base)] border border-linea">
+                    <ul className="divide-y divide-linea">
+                      {comparacion.map((fila) => (
+                        <li
+                          key={`${fila.ventaId}-${fila.productoId}`}
+                          className="flex items-center justify-between gap-3 px-3 py-2 text-xs"
+                        >
+                          <span className="text-texto-suave">
+                            <span className="numero">{fila.cantidad}</span> × {fila.producto}
+                            {fila.proporcionFiada < 1 && " (solo la parte fiada)"}
+                            <br />
+                            <span className="numero">
+                              {platita.format(fila.precioBase)} → {platita.format(fila.precioActual)}
+                            </span>
+                          </span>
+                          <span
+                            className={`numero font-semibold ${
+                              fila.diferencia > 0 ? "text-alerta" : "text-texto-suave"
+                            }`}
+                          >
+                            {fila.diferencia > 0
+                              ? `+${platita.format(fila.diferencia)}`
+                              : fila.diferencia < 0
+                                ? "bajó"
+                                : "igual"}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {resumenComparacion && (
+                    <p className="text-xs text-texto-suave">
+                      <span className="numero">{resumenComparacion.productosQueSubieron}</span> de{" "}
+                      <span className="numero">{comparacion.length}</span> subieron de precio
+                      {resumenComparacion.productosQueBajaron > 0 && (
+                        <>
+                          {" · "}
+                          <span className="numero">{resumenComparacion.productosQueBajaron}</span>{" "}
+                          bajaron (no descuentan)
+                        </>
+                      )}
+                      {resumenComparacion.totalAAplicar > 0 && (
+                        <>
+                          {" · "}pasaría a deber{" "}
+                          <span className="numero font-semibold">
+                            {platita.format(saldoActual + resumenComparacion.totalAAplicar)}
+                          </span>
+                        </>
+                      )}
+                    </p>
+                  )}
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Boton
+                      type="button"
+                      variante="fantasma"
+                      disabled={
+                        ocupado !== null || !resumenComparacion || resumenComparacion.totalAAplicar <= 0
+                      }
+                      onClick={aplicarActualizacionPrecios}
+                    >
+                      {resumenComparacion && resumenComparacion.totalAAplicar > 0
+                        ? `Aplicar +${platita.format(resumenComparacion.totalAAplicar)}`
+                        : "Nada para aplicar"}
+                    </Boton>
+                    <BotonExportarComparacionPrecios cliente={cliente} filas={comparacion} />
+                  </div>
+                </>
               )}
             </div>
           )}

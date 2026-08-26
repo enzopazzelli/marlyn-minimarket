@@ -12,6 +12,7 @@ const ETIQUETA_TIPO: Record<MovimientoCuentaCorrienteDetallado["tipo"], string> 
   fiado: "Fiado",
   pago: "Pago",
   recargo: "Recargo",
+  actualizacion: "Actualización de precios",
 };
 
 // exceljs se importa dinámicamente, solo al hacer click — mismo

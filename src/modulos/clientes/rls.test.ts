@@ -49,6 +49,27 @@ describe("RLS de clientes (M2 Clientes)", () => {
     expect(error).not.toBeNull();
     expect(error?.message).toMatch(/sesión activa/);
   });
+
+  it("sin sesión no se puede actualizar los precios de un fiado", async () => {
+    const { error } = await clienteAnonimo.rpc("registrar_actualizacion_precios_fiado", {
+      p_cliente_id: clienteId,
+    });
+
+    expect(error).not.toBeNull();
+    expect(error?.message).toMatch(/sesión activa/);
+  });
+
+  // calcular_...() es security definer y read-only: no tira error, se
+  // vacía. Igual que la vista auditoria_movimientos, el filtro va
+  // adentro de la consulta y no depende de que la pantalla la esconda.
+  it("sin sesión la comparación de precios vuelve vacía", async () => {
+    const { data, error } = await clienteAnonimo.rpc("calcular_actualizacion_precios_fiado", {
+      p_cliente_id: clienteId,
+    });
+
+    expect(error).toBeNull();
+    expect(data).toEqual([]);
+  });
 });
 
 describe("Rol operador (Fase 1 de PLAN-ROLES-AUDITORIA.md)", () => {
@@ -107,6 +128,24 @@ describe("Rol operador (Fase 1 de PLAN-ROLES-AUDITORIA.md)", () => {
 
     expect(error).not.toBeNull();
     expect(error?.message).toMatch(/solo el dueño/i);
+  });
+
+  it("el operador no puede actualizar los precios de un fiado", async () => {
+    const { error } = await clienteOperador.rpc("registrar_actualizacion_precios_fiado", {
+      p_cliente_id: clienteId,
+    });
+
+    expect(error).not.toBeNull();
+    expect(error?.message).toMatch(/solo el dueño/i);
+  });
+
+  it("al operador la comparación de precios le vuelve vacía", async () => {
+    const { data, error } = await clienteOperador.rpc("calcular_actualizacion_precios_fiado", {
+      p_cliente_id: clienteId,
+    });
+
+    expect(error).toBeNull();
+    expect(data).toEqual([]);
   });
 
   it("el operador sí puede registrar un pago", async () => {
