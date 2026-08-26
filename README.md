@@ -32,7 +32,12 @@ seguridad no negociables repasadas en cada función/vista nueva.
 4. `npm run dev` → http://localhost:3000
 
 Scripts útiles: `npm run lint`, `npm run typecheck`, `npm run test`
-(Vitest). Los tres corren en CI en cada push (`.github/workflows/ci.yml`).
+(Vitest, todo) y `npm run test:unit` (todo menos los `rls.test.ts`).
+En CI (`.github/workflows/ci.yml`) corren los primeros dos más
+`test:unit`, en cada push a `master` y en cada pull request. Los
+`rls.test.ts` quedan afuera de CI a propósito: se conectan al Supabase
+hosteado con las claves de `.env.local`, que no están en el runner —
+hay que correrlos a mano después de aplicar una migración.
 
 ## Estado actual (Núcleo, primera entrega)
 

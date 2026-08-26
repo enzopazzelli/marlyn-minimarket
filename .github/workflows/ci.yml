@@ -1,8 +1,10 @@
 name: CI
 
+# La rama del repo es master, no main: con [main] esto no corría en
+# ningún push y solo se habría disparado en un pull request.
 on:
   push:
-    branches: [main]
+    branches: [master]
   pull_request:
 
 jobs:
@@ -22,4 +24,6 @@ jobs:
 
       - run: npm run typecheck
 
-      - run: npm run test
+      # test:unit y no test: los *.rls.test.ts se conectan al Supabase
+      # hosteado con las claves de .env.local, que no existen acá.
+      - run: npm run test:unit
