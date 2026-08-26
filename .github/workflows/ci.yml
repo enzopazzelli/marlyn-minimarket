@@ -14,9 +14,9 @@ jobs:
   verificar:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -25,6 +25,10 @@ jobs:
 
       - run: npm run lint
 
+      # El script corre `next typegen` antes de tsc: los tipos globales
+      # que usa app/layout.tsx (LayoutProps) los genera Next dentro de
+      # .next/, que en un clon limpio no existe. Sin eso, tsc falla acá
+      # con "Cannot find name 'LayoutProps'" aunque localmente ande.
       - run: npm run typecheck
 
       # test:unit y no test: los *.rls.test.ts se conectan al Supabase

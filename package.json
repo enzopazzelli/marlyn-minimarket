@@ -9,7 +9,7 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:unit": "vitest run --exclude \"**/rls.test.ts\"",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "next typegen && tsc --noEmit"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",
