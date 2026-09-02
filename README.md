@@ -993,6 +993,64 @@ no se usa). Alcance pedido: import de catálogo (altas masivas a
 un `.xlsx` de 4 hojas (resumen, medios de pago, top productos, detalle
 de ventas) del día elegido.
 
+### Segundo formato aceptado: la plantilla del sistema (2026-09-02)
+
+El import ahora entiende **dos** formatos y elige solo según los
+encabezados de la primera fila (`detectarFormato()`):
+
+1. **El del sistema anterior** — `Descripcion, Proveedor, Codigo de
+   barra, Familia, Costo`. No trae precio de venta, así que se calcula
+   con el % de margen que se elige en el modal. Es el de `BACKUP.xlsx`.
+2. **La plantilla que exporta esta misma app** — `Código de barras,
+   Producto, Rubro, Proveedor, Precio costo, Precio venta, Stock
+   actual, Stock mínimo, Unidad`. Ya trae el precio de venta real, así
+   que no se pide margen, y suma dos datos que antes no llegaban:
+   `unidad` y `stock_minimo` (migración `20260902100000...`, que
+   mantiene los mismos 3 parámetros de `importar_catalogo()` a
+   propósito — cambiar la lista habría creado una sobrecarga nueva en
+   vez de reemplazar, el bug que documenta `20260825100000`).
+
+**Las celdas vacías quedan vacías**, no se inventan valores: sin código
+de barras → `null`; sin rubro o sin proveedor → las FK quedan en `null`
+(ya no se crea un rubro "Sin rubro"); precio costo y stock mínimo → 0;
+unidad → `unidad`.
+
+**El stock nunca se importa**, aunque la plantilla traiga la columna:
+es estado derivado que solo mueven `registrar_venta()`,
+`anular_venta()`, `registrar_ajuste_stock()` y
+`registrar_ingreso_stock()`, siempre junto a su fila en
+`movimientos_stock` — mismo criterio que ya había tomado
+`reimportar_maestros()`. El modal avisa cuántas filas del archivo
+traían stock para que no pase desapercibido.
+
+**Tabla de formato siempre visible, y filas rechazadas con nombre y
+número.** El cliente reportó dos veces el mismo problema (columnas con
+otro nombre, precios escritos como texto) porque el formato estaba en
+una línea chica *debajo* del input y el error solo aparecía después de
+subir el archivo. Ahora lo primero del modal es una tabla con las nueve
+columnas, su tipo de dato y qué pasa si la celda va vacía; y una celda
+con texto donde va un número no rompe el import: esa fila se rechaza
+mostrando "Fila 47 · COCA COLA 2L — Precio venta no es un número" y el
+resto entra igual.
+
+**`normalizarNombre()` ya no capitaliza los conectores.** Con el Title
+Case anterior, 11 de los 24 rubros del catálogo real quedaban
+"Golosinas Y Chocolates", "Bebidas Sin Alcohol", "Ferretería Y
+Electrónica". Se descubrió simulando el import del archivo real antes
+de tocar la base, no después de tener que renombrar 11 rubros a mano.
+
+**Normalización de rubros del catálogo real** (`BACK NUEVO.xlsx`, 1160
+productos): venía con **290 rubros distintos**, la mayoría de uno o dos
+productos, y bajarlos solo por mayúsculas/acentos daba 266 — el trabajo
+era semántico. Se mapearon los 290 a **24 rubros**, clasificando por los
+productos reales de cada uno y no por el nombre: había marcas usadas
+como rubro (`TIA MARUCA`, `Rex`, `Pringles` → Galletitas/Snacks) y
+nombres que engañan (`Pastilla` son pastillas de inodoro → Limpieza;
+`Papas` son papas fritas → Snacks). El archivo resultante lleva una
+columna `Rubro original` y una hoja "Mapa de rubros" con las 290
+equivalencias, para poder auditar y corregir. Los 126 productos que ya
+venían en "Varios" quedaron todos en un único rubro.
+
 **Import** (`/stock`, botón "Importar Excel",
 `FormularioImportarExcel.tsx`): sube cualquier `.xlsx` con esas mismas
 columnas (no hace falta que sea `BACKUP.xlsx` puntual — busca las
