@@ -993,6 +993,59 @@ no se usa). Alcance pedido: import de catálogo (altas masivas a
 un `.xlsx` de 4 hojas (resumen, medios de pago, top productos, detalle
 de ventas) del día elegido.
 
+### Hasta 6 códigos de barra por producto (2026-09-02)
+
+Pedido del dueño, con dos motivos distintos: *"la salsa lista que
+tengo, que son los de Arcor, todos van al mismo precio y mayormente
+todos salen a la vez... para ya no estar tanto tipeando salsa lista
+pomarola, salsa lista italiana"*, y *"hay algunos productos que también
+han cambiado el código de barra"*.
+
+En el alta y en la edición de producto, el campo de código de barras
+tiene abajo **"+ Otros códigos para este producto"**: un click despliega
+5 casillas más (`CamposCodigosBarras.tsx`, compartido por los dos
+formularios). Arranca desplegado si el producto ya tiene adicionales
+cargados. En el listado de Stock, un `+2` al lado del código principal
+marca los que tienen varios, con el detalle en el tooltip.
+
+**Consecuencia que hay que tener presente**: al ser un solo producto,
+las variantes comparten stock y salen con el mismo nombre en el ticket.
+Para cosas que van al mismo precio y "salen a la vez" es justo lo que se
+pidió; deja de poder saberse cuántas pomarola se vendieron contra
+cuántas italiana.
+
+**Dónde viven los códigos.** Decidido con Enzo:
+`productos.codigo_barras` **sigue siendo el principal** —el que se
+muestra en listados y el que viaja en el Excel de import/export, que no
+cambia— y los otros 5 van en la tabla nueva
+`productos_codigos_barras`. La alternativa era mover los 6 a una tabla
+única (una sola fuente de verdad, más prolijo) pero era mucho más
+invasivo justo antes de que el local abriera.
+
+La contra de esa decisión es que un código puede estar en dos tablas
+distintas, y `unique` por tabla no alcanza. Se cubre con **dos triggers
+de unicidad cruzada**, uno por cada lado, que además devuelven el nombre
+del producto que ya tiene ese código en vez de un error de constraint.
+Un tercer trigger (`constraint trigger`, deferrable) impone el tope de 5
+adicionales: va en la base y no solo en la pantalla, porque el front
+manda la lista completa de una sola vez.
+
+`guardar_codigos_barras_adicionales(producto_id, codigos[])` reemplaza
+el set completo de un producto (borra e inserta), que es lo que
+necesitan los formularios: muestran las 5 casillas juntas y no saben
+cuáles cambiaron. Es dueño-only. Como el alta y la edición escriben
+directo a `productos`, los adicionales van en una segunda llamada; si
+esa falla, el producto ya quedó guardado y se avisa explícitamente que
+los códigos no, para completarlos desde "Editar".
+
+**El escáner busca contra los 6.** `productos_visibles` suma una columna
+`codigos_adicionales` (array), así el front los recibe junto con el
+producto y no hace una segunda consulta — el lector del TPV matchea
+contra la lista que ya tiene en memoria. La lógica de matcheo vive en
+`stock/consultas/codigosBarras.ts` (funciones puras con tests), usada
+por el lector y el buscador de Ventas, la carga rápida y el buscador de
+Stock, en vez de repetir la comparación en cada pantalla.
+
 ### Segundo formato aceptado: la plantilla del sistema (2026-09-02)
 
 El import ahora entiende **dos** formatos y elige solo según los

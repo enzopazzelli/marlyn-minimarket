@@ -17,6 +17,7 @@ import {
   pagosCubrenElTotal,
 } from "../consultas/calculos";
 import type { Cliente } from "@/modulos/clientes/tipos";
+import { coincideCodigoExacto, contieneCodigo } from "@/modulos/stock/consultas/codigosBarras";
 import type { Producto } from "@/modulos/stock/tipos";
 import type { VentaResumen } from "../consultas/ventas";
 import type { ItemCarrito, MedioPago, PagoCarrito } from "../tipos";
@@ -297,7 +298,7 @@ export function PanelVentas({
     const codigo = codigoLector.trim();
     if (!codigo) return;
 
-    const producto = productos.find((p) => p.activo && p.codigoBarras === codigo);
+    const producto = productos.find((p) => p.activo && coincideCodigoExacto(p, codigo));
     if (!producto) {
       setError("No hay ningún producto con ese código");
       return;
@@ -312,7 +313,7 @@ export function PanelVentas({
       .filter(
         (producto) =>
           producto.activo &&
-          (!termino || coincideBusqueda(producto.nombre, busqueda) || (producto.codigoBarras ?? "").includes(termino)),
+          (!termino || coincideBusqueda(producto.nombre, busqueda) || contieneCodigo(producto, termino)),
       )
       .slice(0, 12);
   }, [productos, busqueda]);

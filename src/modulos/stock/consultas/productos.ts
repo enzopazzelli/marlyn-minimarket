@@ -8,6 +8,7 @@ type FilaProducto = {
   categoria_id: string | null;
   proveedor_id: string | null;
   codigo_barras: string | null;
+  codigos_adicionales: string[] | null;
   precio_costo: number | string | null;
   precio_venta: number | string;
   incluye_iva: boolean;
@@ -30,7 +31,7 @@ export async function listarProductos(supabase: SupabaseClient): Promise<Product
   const data = await traerTodasLasFilas<FilaProducto>(
     supabase,
     "productos_visibles",
-    "id, nombre, categoria_id, proveedor_id, codigo_barras, precio_costo, precio_venta, incluye_iva, porcentaje_ganancia, stock_actual, stock_minimo, unidad, activo",
+    "id, nombre, categoria_id, proveedor_id, codigo_barras, codigos_adicionales, precio_costo, precio_venta, incluye_iva, porcentaje_ganancia, stock_actual, stock_minimo, unidad, activo",
     [
       { columna: "creado_en", ascendente: false },
       { columna: "id", ascendente: true },
@@ -43,6 +44,7 @@ export async function listarProductos(supabase: SupabaseClient): Promise<Product
     categoriaId: fila.categoria_id,
     proveedorId: fila.proveedor_id,
     codigoBarras: fila.codigo_barras,
+    codigosAdicionales: fila.codigos_adicionales ?? [],
     precioCosto: fila.precio_costo === null ? null : Number(fila.precio_costo),
     precioVenta: Number(fila.precio_venta),
     incluyeIva: fila.incluye_iva,

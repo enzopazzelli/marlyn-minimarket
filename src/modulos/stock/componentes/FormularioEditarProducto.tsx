@@ -6,6 +6,8 @@ import { crearClienteNavegador } from "@/lib/supabase/cliente";
 import { clienteConfig } from "@/config/cliente";
 import { Boton } from "@/componentes/Boton";
 import { Campo } from "@/componentes/Campo";
+import { CamposCodigosBarras, casillasDesde } from "./CamposCodigosBarras";
+import { validarCodigosAdicionales } from "../consultas/codigosBarras";
 import { Modal } from "@/componentes/Modal";
 import { useEsDueño } from "@/lib/supabase/PerfilContext";
 import { validarProducto, type ErroresProducto } from "../consultas/validacion";
@@ -41,6 +43,7 @@ function estadoDesdeProducto(producto: Producto) {
     proveedorSeleccionado: producto.proveedorId ?? "",
     nombreProveedorNuevo: "",
     codigoBarras: producto.codigoBarras ?? "",
+    codigosAdicionales: casillasDesde(producto.codigosAdicionales),
     // producto.precioCosto llega null si lo abrió un operador (no
     // debería pasar, "Editar" queda oculto para ese rol — ver Fase 5 de
     // PLAN-ROLES-AUDITORIA.md), pero el campo tiene que arrancar vacío
@@ -225,6 +228,12 @@ export function FormularioEditarProducto({
         proveedorId = campos.proveedorSeleccionado;
       }
 
+      const validacion = validarCodigosAdicionales(campos.codigosAdicionales, campos.codigoBarras);
+      if (validacion.error) {
+        setErrorGeneral(validacion.error);
+        return;
+      }
+
       const { error: errorProducto } = await supabase
         .from("productos")
         .update({
@@ -247,6 +256,19 @@ export function FormularioEditarProducto({
         } else {
           setErrorGeneral("No se pudo guardar el producto. Probá de nuevo.");
         }
+        return;
+      }
+
+      // Siempre se llama, aunque la lista quede vacía: la función
+      // reemplaza el set completo, y así borrar un código adicional
+      // desde el formulario efectivamente lo borra.
+      const { error: errorCodigos } = await supabase.rpc("guardar_codigos_barras_adicionales", {
+        p_producto_id: producto.id,
+        p_codigos: validacion.codigos,
+      });
+      if (errorCodigos) {
+        setErrorGeneral("No se pudieron guardar los códigos adicionales: " + errorCodigos.message);
+        router.refresh();
         return;
       }
 
@@ -333,12 +355,12 @@ export function FormularioEditarProducto({
             />
           )}
 
-          <Campo
-            etiqueta="Código de barras (opcional)"
-            id={`codigoBarras-${producto.id}`}
-            value={campos.codigoBarras}
-            onChange={(evento) => setCampos({ ...campos, codigoBarras: evento.target.value })}
-            className="font-[family-name:var(--font-numero)]"
+          <CamposCodigosBarras
+            idPrefijo={producto.id}
+            principal={campos.codigoBarras}
+            adicionales={campos.codigosAdicionales}
+            onPrincipal={(valor) => setCampos({ ...campos, codigoBarras: valor })}
+            onAdicionales={(valores) => setCampos({ ...campos, codigosAdicionales: valores })}
           />
 
           <label htmlFor={`unidad-${producto.id}`} className="flex flex-col gap-1.5 text-sm">

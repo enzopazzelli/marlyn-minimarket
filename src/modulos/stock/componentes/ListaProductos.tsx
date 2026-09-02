@@ -13,6 +13,7 @@ import { EtiquetasProductos } from "./EtiquetasProductos";
 import { FormularioAjusteStock } from "./FormularioAjusteStock";
 import { FormularioCargaRapida } from "./FormularioCargaRapida";
 import { FormularioEditarProducto } from "./FormularioEditarProducto";
+import { contieneCodigo } from "../consultas/codigosBarras";
 import type { Categoria, Producto, Proveedor } from "../tipos";
 
 const platita = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" });
@@ -71,7 +72,7 @@ export function ListaProductos({
       const coincideTermino =
         !termino ||
         coincideBusqueda(producto.nombre, busqueda) ||
-        (producto.codigoBarras ?? "").includes(termino) ||
+        contieneCodigo(producto, termino) ||
         rubro.toLowerCase().includes(termino);
 
       const coincideRubro = !rubroId || producto.categoriaId === rubroId;
@@ -296,6 +297,14 @@ export function ListaProductos({
                   <tr key={producto.id} className="border-b border-linea last:border-b-0">
                     <td className="numero px-2.5 py-1.5 text-xs text-texto-suave">
                       {producto.codigoBarras ?? "—"}
+                      {producto.codigosAdicionales.length > 0 && (
+                        <span
+                          className="ml-1 text-[10px] text-texto-suave"
+                          title={`Códigos adicionales: ${producto.codigosAdicionales.join(", ")}`}
+                        >
+                          +{producto.codigosAdicionales.length}
+                        </span>
+                      )}
                     </td>
                     <td className="px-2.5 py-1.5 text-xs font-semibold text-texto">{producto.nombre}</td>
                     <td className="px-2.5 py-1.5 text-xs text-texto-suave">

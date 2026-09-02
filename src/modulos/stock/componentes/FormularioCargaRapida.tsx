@@ -7,6 +7,7 @@ import { crearClienteNavegador } from "@/lib/supabase/cliente";
 import { Boton } from "@/componentes/Boton";
 import { Campo } from "@/componentes/Campo";
 import { Modal } from "@/componentes/Modal";
+import { coincideCodigoExacto, contieneCodigo } from "../consultas/codigosBarras";
 import type { Producto } from "../tipos";
 
 type Tipo = "entrada" | "salida";
@@ -66,7 +67,7 @@ export function FormularioCargaRapida({ productos }: { productos: Producto[] }) 
     const termino = busqueda.trim().toLowerCase();
     if (!termino) return [];
     return productos
-      .filter((producto) => coincideBusqueda(producto.nombre, busqueda) || (producto.codigoBarras ?? "").includes(termino))
+      .filter((producto) => coincideBusqueda(producto.nombre, busqueda) || contieneCodigo(producto, termino))
       .slice(0, 6);
   }, [productos, busqueda]);
 
@@ -87,7 +88,7 @@ export function FormularioCargaRapida({ productos }: { productos: Producto[] }) 
     // Coincidencia exacta de código de barras entra directo, sin
     // obligar a clickear en la lista — mismo criterio que el lector de
     // /ventas, para cuando se escanea en vez de escribir el nombre.
-    const porCodigo = productos.find((producto) => producto.codigoBarras === termino);
+    const porCodigo = productos.find((producto) => coincideCodigoExacto(producto, termino));
     elegir(porCodigo ?? coincidencias[0]);
   }
 

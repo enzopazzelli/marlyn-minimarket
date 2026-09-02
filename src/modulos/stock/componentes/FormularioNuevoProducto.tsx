@@ -6,6 +6,8 @@ import { crearClienteNavegador } from "@/lib/supabase/cliente";
 import { clienteConfig } from "@/config/cliente";
 import { Boton } from "@/componentes/Boton";
 import { Campo } from "@/componentes/Campo";
+import { CamposCodigosBarras, casillasVacias } from "./CamposCodigosBarras";
+import { validarCodigosAdicionales } from "../consultas/codigosBarras";
 import { Modal } from "@/componentes/Modal";
 import { useEsDueño } from "@/lib/supabase/PerfilContext";
 import { validarProducto, type ErroresProducto } from "../consultas/validacion";
@@ -35,6 +37,7 @@ function estadoInicial() {
     proveedorSeleccionado: "",
     nombreProveedorNuevo: "",
     codigoBarras: "",
+    codigosAdicionales: casillasVacias(),
     precioCosto: "0",
     incluyeIva: false,
     porcentajeGanancia: "",
@@ -223,7 +226,15 @@ export function FormularioNuevoProducto({
         proveedorId = campos.proveedorSeleccionado;
       }
 
-      const { error: errorProducto } = await supabase.from("productos").insert({
+      const validacion = validarCodigosAdicionales(campos.codigosAdicionales, campos.codigoBarras);
+      if (validacion.error) {
+        setErrorGeneral(validacion.error);
+        return;
+      }
+
+      const { data: creado, error: errorProducto } = await supabase
+        .from("productos")
+        .insert({
         nombre: datos.nombre.trim(),
         categoria_id: categoriaId,
         proveedor_id: proveedorId,
@@ -235,7 +246,9 @@ export function FormularioNuevoProducto({
         stock_actual: datos.stockActual,
         stock_minimo: datos.stockMinimo,
         unidad: campos.unidad,
-      });
+        })
+        .select("id")
+        .single();
 
       if (errorProducto) {
         if (errorProducto.code === "23505") {
@@ -244,6 +257,25 @@ export function FormularioNuevoProducto({
           setErrorGeneral("No se pudo guardar el producto. Probá de nuevo.");
         }
         return;
+      }
+
+      // Los adicionales van en una segunda llamada porque el alta
+      // escribe directo a la tabla. Si esta falla, el producto ya
+      // quedó creado: se avisa y se puede completar desde "Editar",
+      // en vez de dejar la pantalla como si no hubiera pasado nada.
+      if (validacion.codigos.length > 0 && creado) {
+        const { error: errorCodigos } = await supabase.rpc("guardar_codigos_barras_adicionales", {
+          p_producto_id: creado.id,
+          p_codigos: validacion.codigos,
+        });
+        if (errorCodigos) {
+          setErrorGeneral(
+            "El producto se creó, pero los códigos adicionales no se pudieron guardar: " +
+              errorCodigos.message,
+          );
+          router.refresh();
+          return;
+        }
       }
 
       setAbierto(false);
@@ -326,12 +358,12 @@ export function FormularioNuevoProducto({
             />
           )}
 
-          <Campo
-            etiqueta="Código de barras (opcional)"
-            id="codigoBarras"
-            value={campos.codigoBarras}
-            onChange={(evento) => setCampos({ ...campos, codigoBarras: evento.target.value })}
-            className="font-[family-name:var(--font-numero)]"
+          <CamposCodigosBarras
+            idPrefijo="nuevo"
+            principal={campos.codigoBarras}
+            adicionales={campos.codigosAdicionales}
+            onPrincipal={(valor) => setCampos({ ...campos, codigoBarras: valor })}
+            onAdicionales={(valores) => setCampos({ ...campos, codigosAdicionales: valores })}
           />
 
           <label htmlFor="unidad" className="flex flex-col gap-1.5 text-sm">

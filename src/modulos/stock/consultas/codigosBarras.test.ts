@@ -1,0 +1,99 @@
+import { describe, expect, it } from "vitest";
+import {
+  coincideCodigoExacto,
+  contieneCodigo,
+  todosLosCodigos,
+  validarCodigosAdicionales,
+} from "./codigosBarras";
+
+const salsas = { codigoBarras: "7790001", codigosAdicionales: ["7790002", "7790003"] };
+
+describe("todosLosCodigos", () => {
+  it("pone el principal primero y después los adicionales", () => {
+    expect(todosLosCodigos(salsas)).toEqual(["7790001", "7790002", "7790003"]);
+  });
+
+  it("un producto sin código principal devuelve solo los adicionales", () => {
+    expect(todosLosCodigos({ codigoBarras: null, codigosAdicionales: ["7790002"] })).toEqual(["7790002"]);
+  });
+
+  it("sin ningún código devuelve lista vacía", () => {
+    expect(todosLosCodigos({ codigoBarras: null, codigosAdicionales: [] })).toEqual([]);
+  });
+
+  it("descarta vacíos y espacios sueltos", () => {
+    expect(todosLosCodigos({ codigoBarras: "  7790001 ", codigosAdicionales: ["", "  ", "7790002"] })).toEqual([
+      "7790001",
+      "7790002",
+    ]);
+  });
+});
+
+describe("coincideCodigoExacto", () => {
+  // El caso del pedido: escanear cualquiera de las salsas Arcor tiene
+  // que caer en el mismo producto.
+  it("encuentra el producto por cualquiera de sus códigos", () => {
+    expect(coincideCodigoExacto(salsas, "7790001")).toBe(true);
+    expect(coincideCodigoExacto(salsas, "7790003")).toBe(true);
+  });
+
+  it("no encuentra por un código que no tiene", () => {
+    expect(coincideCodigoExacto(salsas, "7790009")).toBe(false);
+  });
+
+  // El lector suele mandar el código con un salto de línea o espacios.
+  it("ignora los espacios alrededor del código escaneado", () => {
+    expect(coincideCodigoExacto(salsas, "  7790002  ")).toBe(true);
+  });
+
+  it("no matchea parcial: 779 no es 7790001", () => {
+    expect(coincideCodigoExacto(salsas, "779")).toBe(false);
+  });
+
+  it("un código vacío nunca coincide", () => {
+    expect(coincideCodigoExacto(salsas, "   ")).toBe(false);
+  });
+});
+
+describe("contieneCodigo", () => {
+  it("matchea parcial contra cualquiera de los códigos", () => {
+    expect(contieneCodigo(salsas, "0003")).toBe(true);
+    expect(contieneCodigo(salsas, "7790")).toBe(true);
+  });
+
+  it("no matchea contra un producto sin códigos", () => {
+    expect(contieneCodigo({ codigoBarras: null, codigosAdicionales: [] }, "7790")).toBe(false);
+  });
+});
+
+describe("validarCodigosAdicionales", () => {
+  it("limpia vacíos y espacios de las 5 casillas del formulario", () => {
+    expect(validarCodigosAdicionales([" 7790002 ", "", "  ", "7790003", ""], "7790001")).toEqual({
+      codigos: ["7790002", "7790003"],
+      error: null,
+    });
+  });
+
+  it("las cinco vacías es válido: el producto queda solo con el principal", () => {
+    expect(validarCodigosAdicionales(["", "", "", "", ""], "7790001")).toEqual({ codigos: [], error: null });
+  });
+
+  it("rechaza un adicional igual al principal", () => {
+    const resultado = validarCodigosAdicionales(["7790001"], "7790001");
+    expect(resultado.error).toMatch(/igual al principal/);
+  });
+
+  it("rechaza dos adicionales repetidos entre sí", () => {
+    const resultado = validarCodigosAdicionales(["7790002", "7790002"], "7790001");
+    expect(resultado.error).toMatch(/dos veces/);
+  });
+
+  it("rechaza más de cinco", () => {
+    const resultado = validarCodigosAdicionales(["1", "2", "3", "4", "5", "6"], null);
+    expect(resultado.error).toMatch(/hasta 5/);
+  });
+
+  it("sin código principal, los adicionales no chocan con nada", () => {
+    expect(validarCodigosAdicionales(["7790002"], null)).toEqual({ codigos: ["7790002"], error: null });
+  });
+});

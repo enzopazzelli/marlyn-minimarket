@@ -15,6 +15,11 @@ export type Producto = {
   categoriaId: string | null;
   proveedorId: string | null;
   codigoBarras: string | null;
+  /** Hasta 5 códigos extra, además del principal (pedido del dueño,
+   *  2026-09-02: las salsas Arcor que van al mismo precio, y los
+   *  productos a los que el fabricante les cambió el código).
+   *  Vienen de productos_codigos_barras vía la vista. */
+  codigosAdicionales: string[];
   // null cuando lo consulta un operador (Fase 1 de
   // PLAN-ROLES-AUDITORIA.md — productos_visibles lo oculta a nivel
   // base, no es un recorte de la UI). Nunca null para el dueño.
