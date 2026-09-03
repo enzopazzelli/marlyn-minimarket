@@ -41,10 +41,16 @@ body {
 
 /* Todo número comparable en vertical (precios, stock, saldos, horas)
    va con esta clase: cifras de ancho fijo para que las columnas de una
-   tabla alineen dígito con dígito, y porque un precio en mono se lee
-   como un ticket, el formato que el comerciante ya conoce. */
+   tabla alineen dígito con dígito.
+
+   Antes usaba la mono (Geist Mono), pero el cliente reportó que "el 0
+   con la línea en el medio es raro" — el cero tachado es el default de
+   esa familia. Se pasa a la tipografía de texto con tabular-nums: las
+   columnas siguen alineando dígito con dígito, y el cero es el redondo
+   de toda la vida. La mono queda para el ticket impreso, donde el look
+   de comprobante sí suma. */
 .numero {
-  font-family: var(--font-numero);
+  font-family: var(--font-texto);
   font-variant-numeric: tabular-nums;
 }
 

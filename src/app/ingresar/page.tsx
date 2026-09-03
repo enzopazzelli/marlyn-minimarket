@@ -6,6 +6,7 @@ import { crearClienteNavegador } from "@/lib/supabase/cliente";
 import { Boton } from "@/componentes/Boton";
 import { Campo } from "@/componentes/Campo";
 import { clienteConfig } from "@/config/cliente";
+import { credencialAEmail } from "@/modulos/usuarios/consultas/usuario";
 
 export default function PaginaIngresar() {
   const router = useRouter();
@@ -21,7 +22,10 @@ export default function PaginaIngresar() {
     const supabase = crearClienteNavegador();
 
     const { error: errorIngreso } = await supabase.auth.signInWithPassword({
-      email: String(datos.get("email")),
+      // Acepta las dos formas: los dueños entran con su correo real,
+      // los colaboradores con el usuario suelto (se le pega el dominio
+      // interno). Ver modulos/usuarios/consultas/usuario.ts.
+      email: credencialAEmail(String(datos.get("usuario"))),
       password: String(datos.get("password")),
     });
 
@@ -50,10 +54,10 @@ export default function PaginaIngresar() {
         </div>
 
         <Campo
-          etiqueta="Correo"
-          id="email"
-          name="email"
-          type="email"
+          etiqueta="Usuario"
+          id="usuario"
+          name="usuario"
+          type="text"
           required
           autoComplete="username"
         />

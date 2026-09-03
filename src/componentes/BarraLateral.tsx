@@ -43,7 +43,7 @@ function construirGrupoComplementos(): ItemNav[] {
   ];
 }
 
-const ETIQUETA_ROL: Record<Perfil["rol"], string> = { dueño: "Dueño", operador: "Empleado" };
+const ETIQUETA_ROL: Record<Perfil["rol"], string> = { dueño: "Dueño", operador: "Colaborador" };
 
 export function BarraLateral({ perfil }: { perfil: Perfil }) {
   const pathname = usePathname();

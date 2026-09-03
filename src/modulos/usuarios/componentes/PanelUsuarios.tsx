@@ -8,7 +8,9 @@ import { FormularioNuevoOperador } from "./FormularioNuevoOperador";
 import { BotonRestablecerContraseña } from "./BotonRestablecerContraseña";
 import type { Usuario } from "../tipos";
 
-const ETIQUETA_ROL: Record<Usuario["rol"], string> = { dueño: "Dueño", operador: "Empleado" };
+import { usuarioParaMostrar } from "../consultas/usuario";
+
+const ETIQUETA_ROL: Record<Usuario["rol"], string> = { dueño: "Dueño", operador: "Colaborador" };
 
 // Activar/desactivar es un update directo a perfiles.activo (no una
 // Server Action): es una sola columna sin lógica de auth.admin de por
@@ -58,7 +60,7 @@ export function PanelUsuarios({
         <table className="w-full border-collapse">
           <thead>
             <tr>
-              {["Nombre", "Correo", "Rol", "Estado", "Acciones"].map((columna) => (
+              {["Nombre", "Usuario", "Rol", "Estado", "Acciones"].map((columna) => (
                 <th
                   key={columna}
                   className="border-b border-linea px-2.5 py-1.5 text-left font-[family-name:var(--font-numero)] text-[10px] font-medium uppercase tracking-wider text-texto-suave"
@@ -77,7 +79,9 @@ export function PanelUsuarios({
                     {usuario.nombre}
                     {esUsuarioActual && <span className="ml-1.5 font-normal text-texto-suave">(vos)</span>}
                   </td>
-                  <td className="numero px-2.5 py-1.5 text-xs text-texto-suave">{usuario.email}</td>
+                  <td className="numero px-2.5 py-1.5 text-xs text-texto-suave">
+                    {usuarioParaMostrar(usuario.email)}
+                  </td>
                   <td className="px-2.5 py-1.5 text-xs text-texto-suave">{ETIQUETA_ROL[usuario.rol]}</td>
                   <td className="px-2.5 py-1.5">
                     <Insignia variante={usuario.activo ? "ok" : "alerta"}>

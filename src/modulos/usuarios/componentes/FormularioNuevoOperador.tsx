@@ -6,18 +6,23 @@ import { Boton } from "@/componentes/Boton";
 import { Campo } from "@/componentes/Campo";
 import { Modal } from "@/componentes/Modal";
 import { crearOperador } from "../consultas/acciones";
+import { validarUsuario } from "../consultas/usuario";
 
 function estadoInicial() {
-  return { nombre: "", email: "", password: "" };
+  return { nombre: "", usuario: "", password: "" };
 }
 
-// Alta de empleado: guarda con rol 'operador' fijo (no hay selector de
+// Alta de colaborador (rol 'operador' en la base): guarda con rol 'operador' fijo (no hay selector de
 // rol acá — para otro dueño, se crea directo en Supabase, esto es para
 // el caso que realmente motivó todo el módulo). Sin infraestructura de
-// email en el proyecto, la contraseña inicial se le pasa al empleado
-// directo (por teléfono, en persona) — puede cambiarla más adelante si
-// el sistema suma esa pantalla, y el dueño puede resetearla desde acá
-// mismo (ver BotonRestablecerContraseña.tsx) si la olvida.
+// email en el proyecto, la contraseña inicial se le pasa al
+// colaborador directo (por teléfono, en persona) — el dueño puede
+// resetearla desde acá mismo (ver BotonRestablecerContraseña.tsx) si la
+// olvida.
+//
+// Desde 2026-09-02 no se pide correo, a pedido del cliente: solo
+// usuario y clave. Auth igual necesita un email, así que se arma uno
+// interno a partir del usuario (usuario.ts) que nadie ve nunca.
 export function FormularioNuevoOperador() {
   const router = useRouter();
   const [abierto, setAbierto] = useState(false);
@@ -40,11 +45,12 @@ export function FormularioNuevoOperador() {
     setError(null);
 
     if (!campos.nombre.trim()) {
-      setError("Escribí el nombre del empleado");
+      setError("Escribí el nombre del colaborador");
       return;
     }
-    if (!campos.email.trim()) {
-      setError("Escribí un correo");
+    const errorUsuario = validarUsuario(campos.usuario);
+    if (errorUsuario) {
+      setError(errorUsuario);
       return;
     }
     if (campos.password.length < 6) {
@@ -66,9 +72,9 @@ export function FormularioNuevoOperador() {
 
   return (
     <>
-      <Boton onClick={abrir}>+ Nuevo empleado</Boton>
+      <Boton onClick={abrir}>+ Nuevo colaborador</Boton>
 
-      <Modal titulo="Nuevo empleado" abierto={abierto} onCerrar={cerrar}>
+      <Modal titulo="Nuevo colaborador" abierto={abierto} onCerrar={cerrar}>
         <form onSubmit={alGuardar} noValidate className="flex flex-col gap-4">
           <Campo
             etiqueta="Nombre"
@@ -78,12 +84,13 @@ export function FormularioNuevoOperador() {
             autoFocus
           />
           <Campo
-            etiqueta="Correo"
-            id="emailOperadorNuevo"
-            type="email"
+            etiqueta="Usuario"
+            id="usuarioOperadorNuevo"
+            type="text"
             autoComplete="off"
-            value={campos.email}
-            onChange={(evento) => setCampos({ ...campos, email: evento.target.value })}
+            placeholder="Por ejemplo: marcos"
+            value={campos.usuario}
+            onChange={(evento) => setCampos({ ...campos, usuario: evento.target.value })}
           />
           <Campo
             etiqueta="Contraseña inicial"
@@ -96,8 +103,8 @@ export function FormularioNuevoOperador() {
             className="font-[family-name:var(--font-numero)]"
           />
           <p className="text-xs text-texto-suave">
-            El empleado entra con este correo y contraseña — pasáselos vos. Va a ver menos que vos (sin costos,
-            sin Reportes, sin recargos por atraso) y todo lo que haga queda registrado con su usuario.
+            El colaborador entra con este usuario y contraseña — pasáselos vos. Va a ver menos que vos (sin
+            costos, sin Reportes, sin recargos por atraso) y todo lo que haga queda registrado con su usuario.
           </p>
 
           {error && (
@@ -109,7 +116,7 @@ export function FormularioNuevoOperador() {
               Cancelar
             </Boton>
             <Boton type="submit" variante="confirmar" disabled={guardando}>
-              {guardando ? "Creando…" : "Crear empleado"}
+              {guardando ? "Creando…" : "Crear colaborador"}
             </Boton>
           </div>
         </form>

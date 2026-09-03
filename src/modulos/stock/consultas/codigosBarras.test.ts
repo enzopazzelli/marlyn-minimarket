@@ -88,9 +88,14 @@ describe("validarCodigosAdicionales", () => {
     expect(resultado.error).toMatch(/dos veces/);
   });
 
-  it("rechaza más de cinco", () => {
-    const resultado = validarCodigosAdicionales(["1", "2", "3", "4", "5", "6"], null);
-    expect(resultado.error).toMatch(/hasta 5/);
+  it("acepta hasta 19 adicionales (20 con el principal)", () => {
+    const diecinueve = Array.from({ length: 19 }, (_, i) => String(i + 1));
+    expect(validarCodigosAdicionales(diecinueve, "0").error).toBeNull();
+  });
+
+  it("rechaza el número veinte", () => {
+    const veinte = Array.from({ length: 20 }, (_, i) => String(i + 1));
+    expect(validarCodigosAdicionales(veinte, "0").error).toMatch(/hasta 19/);
   });
 
   it("sin código principal, los adicionales no chocan con nada", () => {

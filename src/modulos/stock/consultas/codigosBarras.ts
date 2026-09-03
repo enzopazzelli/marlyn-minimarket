@@ -1,14 +1,17 @@
 /** Funciones puras (sin Supabase ni navegador) para el pedido del dueño
- *  de 2026-09-02: hasta 6 códigos de barra por producto. El escáner del
- *  TPV, la carga rápida y el buscador de Stock tienen que mirar los
- *  seis, no solo el principal — por eso la lógica vive acá y no repetida
+ *  de 2026-09-02: hasta 20 códigos de barra por producto. El escáner del
+ *  TPV, la carga rápida y el buscador de Stock tienen que mirar todos,
+ *  no solo el principal — por eso la lógica vive acá y no repetida
  *  en cada pantalla.
  *
- *  El código principal sigue siendo `productos.codigo_barras`; los otros
- *  cinco viven en `productos_codigos_barras` (migración 20260902110000).
+ *  El código principal sigue siendo `productos.codigo_barras`; el resto
+ *  vive en `productos_codigos_barras` (migración 20260902110000).
  */
 
-export const MAXIMO_CODIGOS_ADICIONALES = 5;
+// 20 códigos por producto (1 principal + 19 adicionales). Arrancó en
+// 6 y el dueño lo subió a 20 el mismo día: con las variantes de una
+// misma marca que van al mismo precio, 6 se le quedaban cortos.
+export const MAXIMO_CODIGOS_ADICIONALES = 19;
 
 type ConCodigos = {
   codigoBarras: string | null;

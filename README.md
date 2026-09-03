@@ -993,7 +993,50 @@ no se usa). Alcance pedido: import de catálogo (altas masivas a
 un `.xlsx` de 4 hojas (resumen, medios de pago, top productos, detalle
 de ventas) del día elegido.
 
-### Hasta 6 códigos de barra por producto (2026-09-02)
+### Segunda ronda de ajustes del cliente (2026-09-02)
+
+Cinco pedidos después de ver la primera versión funcionando:
+
+**El tope de códigos de barra pasó de 6 a 20** (1 principal + 19
+adicionales). Con las variantes de una misma marca que van al mismo
+precio, 6 se quedaban cortos. Cambió también la pantalla: con 19 ya no
+sirve mostrar todas las casillas juntas, así que se muestran las que
+tienen algo cargado más una vacía y se suman de a una con "+ Agregar
+otro código", cada una con su "Quitar". El tope está en los tres
+lugares: la constante del front, el `check` de
+`guardar_codigos_barras_adicionales()` y el trigger de la tabla.
+
+**Los números dejaron de usar la tipografía mono.** El cliente reportó
+que *"el 0 con la línea en el medio es raro"* — el cero tachado es el
+default de Geist Mono. La clase `.numero` pasa a la tipografía de texto
+con `tabular-nums`: las columnas siguen alineando dígito con dígito y el
+cero es el redondo de siempre. La mono queda solo donde se la pide
+explícitamente (ticket impreso y etiquetas de góndola), que es donde el
+look de comprobante suma. De paso, la tabla de `/stock` subió de
+`text-xs` a `text-sm`, y el precio quedó en `text-base` y negrita, que
+era el dato que más costaba leer de un vistazo.
+
+**Alta de colaborador sin correo**, solo usuario y clave. Supabase Auth
+necesita un email sí o sí, así que se arma uno interno a partir del
+usuario: `marcos` → `marcos@marlyn.local`. Ese correo no existe, nadie
+lo lee y no se muestra en ningún lado (la tabla de usuarios muestra
+`marcos`, ver `usuarioParaMostrar()`). El dominio es `.local` a
+propósito: por RFC 6762 nunca va a ser un dominio real, así que no puede
+colisionar con el correo de verdad de nadie. La pantalla de ingreso
+acepta las dos formas — si lo que escribieron tiene `@` va tal cual, si
+no se le pega el dominio interno — así que **los dueños que ya entraban
+con su correo real siguen entrando igual**. Todo eso vive en funciones
+puras con tests (`usuarios/consultas/usuario.ts`).
+
+**Eliminar producto pide confirmación.** Era un link chico al lado de
+"Editar" en cada fila de una tabla larga y borraba de una; ahora abre un
+modal que nombra el producto y explica que si tiene ventas se conserva
+en el historial.
+
+**"Empleado" pasó a llamarse "Colaborador"** en toda la interfaz. El rol
+en la base sigue siendo `operador`: es solo la etiqueta que se muestra.
+
+### Hasta 6 (después 20) códigos de barra por producto (2026-09-02)
 
 Pedido del dueño, con dos motivos distintos: *"la salsa lista que
 tengo, que son los de Arcor, todos van al mismo precio y mayormente

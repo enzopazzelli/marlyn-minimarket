@@ -268,7 +268,7 @@ export function ListaProductos({
                   (columna, indice) => (
                     <th
                       key={indice}
-                      className={`border-b border-linea px-2.5 py-1.5 font-[family-name:var(--font-numero)] text-[10px] font-medium uppercase tracking-wider text-texto-suave ${
+                      className={`border-b border-linea px-2.5 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-texto-suave ${
                         columna === "Precio" || columna === "Stock" || columna === "Estado" || indice === 6
                           ? "text-right"
                           : "text-left"
@@ -295,25 +295,25 @@ export function ListaProductos({
                 const reponer = producto.stockActual <= producto.stockMinimo;
                 return (
                   <tr key={producto.id} className="border-b border-linea last:border-b-0">
-                    <td className="numero px-2.5 py-1.5 text-xs text-texto-suave">
+                    <td className="numero px-2.5 py-2 text-sm text-texto-suave">
                       {producto.codigoBarras ?? "—"}
                       {producto.codigosAdicionales.length > 0 && (
                         <span
-                          className="ml-1 text-[10px] text-texto-suave"
+                          className="ml-1 text-xs text-texto-suave"
                           title={`Códigos adicionales: ${producto.codigosAdicionales.join(", ")}`}
                         >
                           +{producto.codigosAdicionales.length}
                         </span>
                       )}
                     </td>
-                    <td className="px-2.5 py-1.5 text-xs font-semibold text-texto">{producto.nombre}</td>
-                    <td className="px-2.5 py-1.5 text-xs text-texto-suave">
+                    <td className="px-2.5 py-2 text-sm font-semibold text-texto">{producto.nombre}</td>
+                    <td className="px-2.5 py-2 text-sm text-texto-suave">
                       {producto.categoriaId ? (nombrePorCategoria.get(producto.categoriaId) ?? "—") : "—"}
                     </td>
-                    <td className="numero px-2.5 py-1.5 text-right text-xs">
+                    <td className="numero px-2.5 py-2 text-right text-base font-bold text-texto">
                       {platita.format(producto.precioVenta)}
                     </td>
-                    <td className="numero px-2.5 py-1.5 text-right text-xs">{producto.stockActual}</td>
+                    <td className="numero px-2.5 py-2 text-right text-sm font-semibold">{producto.stockActual}</td>
                     <td className="px-2.5 py-1.5 text-right">
                       <Insignia variante={reponer ? "alerta" : "ok"}>{reponer ? "reponer" : "ok"}</Insignia>
                     </td>

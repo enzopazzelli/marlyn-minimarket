@@ -3,6 +3,7 @@
 import { crearClienteServidor } from "@/lib/supabase/servidor";
 import { crearClienteAdmin } from "@/lib/supabase/admin";
 import { exigirSesionDeDueño } from "./autorizacion";
+import { emailDesdeUsuario, validarUsuario } from "./usuario";
 
 // Primeras Server Actions de este proyecto: todo lo demás se resolvía
 // con RLS + funciones security definer en la base, pero dar de alta un
@@ -12,16 +13,20 @@ import { exigirSesionDeDueño } from "./autorizacion";
 // vive detrás de "server-only"). Cada acción repite su propio chequeo
 // de "sos dueño": una Server Action es un endpoint más, no hereda solo
 // por estar linkeada desde una pantalla dueño-only.
-export async function crearOperador(datos: { nombre: string; email: string; password: string }) {
+export async function crearOperador(datos: { nombre: string; usuario: string; password: string }) {
   const supabase = await crearClienteServidor();
   await exigirSesionDeDueño(supabase);
 
   const nombre = datos.nombre.trim();
-  const email = datos.email.trim();
 
-  if (!nombre) throw new Error("Escribí el nombre del empleado");
-  if (!email) throw new Error("Escribí un correo");
+  if (!nombre) throw new Error("Escribí el nombre del colaborador");
+
+  const errorUsuario = validarUsuario(datos.usuario);
+  if (errorUsuario) throw new Error(errorUsuario);
   if (datos.password.length < 6) throw new Error("La contraseña tiene que tener al menos 6 caracteres");
+
+  // Auth necesita un email; el colaborador nunca lo ve ni lo usa.
+  const email = emailDesdeUsuario(datos.usuario);
 
   const admin = crearClienteAdmin();
   const { data, error } = await admin.auth.admin.createUser({
@@ -31,7 +36,11 @@ export async function crearOperador(datos: { nombre: string; email: string; pass
   });
 
   if (error || !data.user) {
-    throw new Error(/registered/i.test(error?.message ?? "") ? "Ya existe un usuario con ese correo" : "No se pudo crear el usuario. Probá de nuevo.");
+    throw new Error(
+      /registered/i.test(error?.message ?? "")
+        ? "Ya existe un usuario con ese nombre"
+        : "No se pudo crear el usuario. Probá de nuevo.",
+    );
   }
 
   // gestionar_usuario_nuevo() (trigger de Núcleo) ya insertó la fila en
