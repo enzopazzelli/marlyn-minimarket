@@ -98,7 +98,6 @@ export function FormularioCerrarCaja({ turnoId, montoCalculado }: { turnoId: str
               step="1"
               value={montoContado}
               onChange={(evento) => setMontoContado(evento.target.value)}
-              className="font-[family-name:var(--font-numero)]"
             />
             {error && (
               <p className="rounded-[var(--radius-base)] bg-alerta-fondo px-3 py-2 text-sm text-alerta">{error}</p>

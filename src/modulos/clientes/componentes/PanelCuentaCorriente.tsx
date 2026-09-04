@@ -308,7 +308,6 @@ export function PanelCuentaCorriente({
                     step="1"
                     value={porcentajeRecargo}
                     onChange={(evento) => setPorcentajeRecargo(evento.target.value)}
-                    className="font-[family-name:var(--font-numero)]"
                   />
                 </div>
                 <Boton type="button" variante="fantasma" disabled={ocupado !== null} onClick={aplicarRecargo}>
@@ -455,7 +454,6 @@ export function PanelCuentaCorriente({
                   step="1"
                   value={montoPago}
                   onChange={(evento) => setMontoPago(evento.target.value)}
-                  className="font-[family-name:var(--font-numero)]"
                 />
               </div>
               <Boton

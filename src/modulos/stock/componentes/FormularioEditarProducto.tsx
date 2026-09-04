@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, type KeyboardEvent } from "react";
 import { useRouter } from "next/navigation";
 import { crearClienteNavegador } from "@/lib/supabase/cliente";
 import { clienteConfig } from "@/config/cliente";
 import { Boton } from "@/componentes/Boton";
 import { Campo } from "@/componentes/Campo";
+import { CampoPrecio } from "@/componentes/CampoPrecio";
 import { CamposCodigosBarras, casillasDesde } from "./CamposCodigosBarras";
 import { validarCodigosAdicionales } from "../consultas/codigosBarras";
 import { Modal } from "@/componentes/Modal";
@@ -33,6 +34,20 @@ const clasesSelect =
 
 function pasoDeStock(unidad: "unidad" | "kg" | "litro") {
   return unidad === "unidad" ? "1" : "0.1";
+}
+
+// Reportado por el cliente: el lector de código de barras manda un
+// Enter apenas termina de "tipear" el código. Sin esto, escanear en
+// cualquiera de los campos de código (el principal o los "otros
+// códigos") mandaba el formulario ENTERO antes de tiempo — quedaba
+// guardado con lo que hubiera en Precio de venta en ese momento y el
+// modal se cerraba solo. Enter no dispara nada salvo que el foco esté
+// en un botón de verdad (clickear "Guardar cambios" con Enter sigue
+// andando).
+function bloquearEnterComoSubmit(evento: KeyboardEvent<HTMLFormElement>) {
+  if (evento.key === "Enter" && (evento.target as HTMLElement).tagName !== "BUTTON") {
+    evento.preventDefault();
+  }
 }
 
 function estadoDesdeProducto(producto: Producto) {
@@ -290,7 +305,12 @@ export function FormularioEditarProducto({
       </button>
 
       <Modal titulo={`Editar ${producto.nombre}`} abierto={abierto} onCerrar={cerrar}>
-        <form onSubmit={alGuardar} noValidate className="flex flex-col gap-4">
+        <form
+          onSubmit={alGuardar}
+          onKeyDown={bloquearEnterComoSubmit}
+          noValidate
+          className="flex flex-col gap-4"
+        >
           <div className="flex flex-col gap-1.5">
             <Campo
               etiqueta="Nombre"
@@ -380,15 +400,11 @@ export function FormularioEditarProducto({
           </label>
 
           <div className="flex flex-col gap-1.5">
-            <Campo
+            <CampoPrecio
               etiqueta="Precio de costo"
               id={`precioCosto-${producto.id}`}
-              type="number"
-              min={0}
-              step="1"
               value={campos.precioCosto}
-              onChange={(evento) => alCambiarCosto(evento.target.value)}
-              className="font-[family-name:var(--font-numero)]"
+              onChange={alCambiarCosto}
             />
             {errores.precioCosto && <p className="text-sm text-alerta">{errores.precioCosto}</p>}
           </div>
@@ -413,18 +429,13 @@ export function FormularioEditarProducto({
               placeholder="Ej: 30"
               value={campos.porcentajeGanancia}
               onChange={(evento) => alCambiarGanancia(evento.target.value)}
-              className="font-[family-name:var(--font-numero)]"
             />
             <div className="flex flex-col gap-1.5">
-              <Campo
+              <CampoPrecio
                 etiqueta="Precio de venta"
                 id={`precioVenta-${producto.id}`}
-                type="number"
-                min={0}
-                step="1"
                 value={campos.precioVenta}
-                onChange={(evento) => alCambiarVentaManual(evento.target.value)}
-                className="font-[family-name:var(--font-numero)]"
+                onChange={alCambiarVentaManual}
               />
               {errores.precioVenta && <p className="text-sm text-alerta">{errores.precioVenta}</p>}
             </div>
@@ -439,7 +450,6 @@ export function FormularioEditarProducto({
               step={pasoDeStock(campos.unidad)}
               value={campos.stockMinimo}
               onChange={(evento) => setCampos({ ...campos, stockMinimo: evento.target.value })}
-              className="font-[family-name:var(--font-numero)]"
             />
             {errores.stockMinimo && <p className="text-sm text-alerta">{errores.stockMinimo}</p>}
           </div>

@@ -145,7 +145,6 @@ export function FormularioAjusteStock({ producto }: { producto: Producto }) {
             step={pasoDeStock(producto.unidad)}
             value={cantidad}
             onChange={(evento) => setCantidad(evento.target.value)}
-            className="font-[family-name:var(--font-numero)]"
             autoFocus
           />
 
@@ -158,7 +157,6 @@ export function FormularioAjusteStock({ producto }: { producto: Producto }) {
               step="1"
               value={precioVenta}
               onChange={(evento) => setPrecioVenta(evento.target.value)}
-              className="font-[family-name:var(--font-numero)]"
             />
           )}
 

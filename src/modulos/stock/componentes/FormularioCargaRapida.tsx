@@ -236,7 +236,6 @@ export function FormularioCargaRapida({ productos }: { productos: Producto[] }) 
                 step={pasoDeStock(seleccionado.unidad)}
                 value={cantidad}
                 onChange={(evento) => setCantidad(evento.target.value)}
-                className="font-[family-name:var(--font-numero)]"
                 autoFocus
               />
 
