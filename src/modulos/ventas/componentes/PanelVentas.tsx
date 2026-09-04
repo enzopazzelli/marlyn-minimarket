@@ -17,7 +17,11 @@ import {
   pagosCubrenElTotal,
 } from "../consultas/calculos";
 import type { Cliente } from "@/modulos/clientes/tipos";
-import { coincideCodigoExacto, contieneCodigo } from "@/modulos/stock/consultas/codigosBarras";
+import {
+  coincideCodigoExacto,
+  contieneCodigo,
+  pareceCodigoDeBarras,
+} from "@/modulos/stock/consultas/codigosBarras";
 import type { Producto } from "@/modulos/stock/tipos";
 import type { VentaResumen } from "../consultas/ventas";
 import type { ItemCarrito, MedioPago, PagoCarrito } from "../tipos";
@@ -126,8 +130,12 @@ export function PanelVentas({
 
   const [carritos, setCarritos] = useState<CarritoEnCurso[]>(cargarCarritosGuardados);
   const [carritoActivoId, setCarritoActivoId] = useState(() => carritos[0].id);
+  // Un solo campo para escanear Y para buscar por nombre (antes eran
+  // dos cajas apiladas: una de solo-código para el lector y otra de
+  // buscar-y-hacer-click — pedido del dueño: unificarlas). Escanear (o
+  // tipear un código exacto y Enter) agrega directo, igual que antes;
+  // tipear un nombre sigue filtrando la grilla de abajo en vivo.
   const [busqueda, setBusqueda] = useState("");
-  const [codigoLector, setCodigoLector] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
   const [comprobante, setComprobante] = useState<Comprobante | null>(null);
@@ -293,18 +301,29 @@ export function PanelVentas({
     actualizarCarritoActivo({ items });
   }
 
-  function leerCodigo(evento: FormEvent<HTMLFormElement>) {
+  // Enter (o el lector, que manda Enter solo) intenta un match EXACTO
+  // de código y agrega directo, como el viejo cuadro de "escanear". Si
+  // lo tipeado no matchea ningún código, la reacción depende de si
+  // "parece" un código escaneado (todo dígitos, varios caracteres) o
+  // un nombre: lo primero es un error real (se escaneó algo que no
+  // está en el catálogo) y hay que avisarlo; lo segundo es alguien
+  // buscando por nombre y apretando Enter por costumbre — no hay
+  // error, la grilla de abajo ya está filtrando en vivo y ahí se hace
+  // click.
+  function alEnviarBusqueda(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault();
-    const codigo = codigoLector.trim();
-    if (!codigo) return;
+    const termino = busqueda.trim();
+    if (!termino) return;
 
-    const producto = productos.find((p) => p.activo && coincideCodigoExacto(p, codigo));
+    const producto = productos.find((p) => p.activo && coincideCodigoExacto(p, termino));
     if (!producto) {
-      setError("No hay ningún producto con ese código");
+      if (pareceCodigoDeBarras(termino)) setError("No hay ningún producto con ese código");
       return;
     }
+
+    setError(null);
     agregarProducto(producto);
-    setCodigoLector("");
+    setBusqueda("");
   }
 
   const productosFiltrados = useMemo(() => {
@@ -566,26 +585,24 @@ export function PanelVentas({
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_360px]">
         <div className="flex flex-col gap-3">
-          <form onSubmit={leerCodigo} className="rounded-[var(--radius-base)] bg-marco p-4">
+          {/* Un solo campo para escanear y para buscar por nombre —
+              antes eran dos cajas apiladas (pedido del dueño: unificarlas).
+              Escanear o tipear un código exacto + Enter agrega directo;
+              tipear un nombre filtra la grilla de abajo en vivo, sin
+              tocar Enter. */}
+          <form onSubmit={alEnviarBusqueda} className="rounded-[var(--radius-base)] bg-marco p-4">
             <div className="flex gap-2">
               <input
                 autoFocus
                 autoComplete="off"
-                value={codigoLector}
-                onChange={(evento) => setCodigoLector(evento.target.value)}
-                placeholder="Escaneá o escribí el código de barras"
-                className="flex-1 rounded-[var(--radius-base)] border border-white/20 bg-marco-suave px-3 py-3 font-[family-name:var(--font-numero)] text-base text-white placeholder:text-white/40 outline-none"
+                value={busqueda}
+                onChange={(evento) => setBusqueda(evento.target.value)}
+                placeholder="Escaneá, buscá por nombre o código..."
+                className="flex-1 rounded-[var(--radius-base)] border border-white/20 bg-marco-suave px-3 py-3 text-base text-white placeholder:text-white/40 outline-none"
               />
               <Boton type="submit">Agregar</Boton>
             </div>
           </form>
-
-          <input
-            className={clasesFiltro}
-            placeholder="Buscar por nombre o código..."
-            value={busqueda}
-            onChange={(evento) => setBusqueda(evento.target.value)}
-          />
 
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {productosFiltrados.length === 0 ? (
@@ -601,13 +618,17 @@ export function PanelVentas({
                     type="button"
                     disabled={sinStock}
                     onClick={() => agregarProducto(producto)}
-                    className={`rounded-[var(--radius-base)] border border-linea bg-superficie p-3 text-left transition hover:border-marco disabled:cursor-not-allowed disabled:opacity-40`}
+                    className="rounded-[var(--radius-base)] border border-linea bg-superficie p-3 text-left transition hover:border-marco disabled:cursor-not-allowed"
                   >
+                    {/* Antes toda la tarjeta se atenuaba con opacity-40
+                        cuando no había stock, y el nombre quedaba difícil
+                        de leer — pedido del cliente: el aviso ya está en
+                        "sin stock", no hace falta además tapar el texto. */}
                     <p className="text-sm font-semibold text-texto">{producto.nombre}</p>
                     <p className="numero mt-1.5 text-sm font-semibold text-texto">
                       {platita.format(producto.precioVenta)}
                     </p>
-                    <p className="numero mt-0.5 text-xs text-texto-suave">
+                    <p className={`numero mt-0.5 text-xs ${sinStock ? "font-semibold text-alerta" : "text-texto-suave"}`}>
                       {sinStock ? "sin stock" : `${producto.stockActual} en góndola`}
                     </p>
                   </button>

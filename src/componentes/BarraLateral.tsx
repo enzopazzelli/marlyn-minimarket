@@ -38,7 +38,7 @@ function construirGrupoAdministracion(): ItemNav[] {
 function construirGrupoComplementos(): ItemNav[] {
   return [
     ...(clienteConfig.complementos.pantallaCliente
-      ? [{ href: "/pantalla-cliente", etiqueta: "Pantalla al cliente" }]
+      ? [{ href: "/pantalla-cliente", etiqueta: "Cliente" }]
       : []),
   ];
 }
@@ -51,11 +51,25 @@ export function BarraLateral({ perfil }: { perfil: Perfil }) {
 
   const filtrarPorRol = (items: ItemNav[]) => items.filter((item) => !item.soloDueño || esDueño);
 
+  // Pedido puntual del dueño ("gusto personal"): el nombre del comercio
+  // en dos líneas en vez de una — la última palabra sola abajo. Genérico
+  // a propósito (no hardcodea "Mini Market"/"Marlyn") para no romper si
+  // el nombre del comercio cambia en config/cliente.ts.
+  const palabrasNombre = clienteConfig.comercio.nombre.split(" ");
+  const ultimaPalabra = palabrasNombre.pop();
+  const primeraLinea = palabrasNombre.join(" ");
+
   return (
-    <aside className="flex w-full shrink-0 flex-row overflow-x-auto bg-marco text-white md:w-[212px] md:flex-col md:overflow-x-visible">
+    <aside className="flex w-full shrink-0 flex-row overflow-x-auto bg-marco text-white md:w-[176px] md:flex-col md:overflow-x-visible">
       <div className="flex shrink-0 items-center border-white/10 px-4 py-3 md:block md:border-b md:py-5">
         <p className="whitespace-nowrap font-[family-name:var(--font-display)] text-base leading-tight md:text-lg">
-          {clienteConfig.comercio.nombre}
+          {primeraLinea && (
+            <>
+              {primeraLinea}
+              <br />
+            </>
+          )}
+          {ultimaPalabra}
         </p>
       </div>
 

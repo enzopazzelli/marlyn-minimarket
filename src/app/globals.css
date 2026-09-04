@@ -54,6 +54,21 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+/* Saca las flechitas nativas de subir/bajar de <input type="number">.
+   Pedido del cliente ("elimina la opción de arrastrar"): esas flechas
+   invitan al click accidental, y sumadas al scroll del mouse sobre el
+   campo (ver el onWheel de Campo.tsx) eran la fuente de "se me cambian
+   los números solo". Las teclas de flecha del teclado siguen andando —
+   esto solo saca el control visual, no la funcionalidad. */
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     animation-duration: 0.01ms !important;

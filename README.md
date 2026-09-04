@@ -993,6 +993,99 @@ no se usa). Alcance pedido: import de catálogo (altas masivas a
 un `.xlsx` de 4 hojas (resumen, medios de pago, top productos, detalle
 de ventas) del día elegido.
 
+### Tercera ronda de ajustes del cliente (2026-09-02)
+
+**"Pantalla al cliente" pasa a llamarse "Cliente"** en el menú, y con eso
+—era el link más largo del menú— la barra lateral se angosta de 212px a
+176px, dejando más espacio a la grilla de "buscar productos" en Ventas.
+El nombre del comercio en el logo del menú pasa a dos líneas ("gusto
+personal" del dueño): se corta por la última palabra
+(`clienteConfig.comercio.nombre.split(" ")`), sin hardcodear "Mini
+Market"/"Marlyn", para no romper si el nombre cambia.
+
+**Se saca el bug de "arrastro sin querer y cambian los números".** Era
+el clásico de `<input type="number">`: con el campo enfocado, el scroll
+del mouse (o el deslizamiento de dos dedos en el trackpad) suma o resta
+al valor en vez de scrollear la página. `Campo.tsx` ahora le saca el
+foco al input apenas detecta un wheel sobre un campo numérico, y
+`globals.css` oculta las flechitas nativas de subir/bajar (quedan las
+teclas de flecha del teclado, que no son "arrastrar sin querer"). Antes
+del fix, cada número tipeado en un `<input type="number">` además usaba
+la mono directo (`font-[family-name:var(--font-numero)]`) en vez de la
+clase `.numero` — bypaseaba el fix del "0 raro" de la ronda anterior,
+que solo tocó esa clase. Se sacó de los doce inputs numéricos reales de
+la app (dejando intactos los headers/badges/ticket, que no muestran
+números tipeados).
+
+**Precio de costo y precio de venta muestran el separador de miles**
+("1000" se ve "1.000", pedido textual). Un `<input type="number">`
+nativo no puede mostrarlo — el punto se interpretaría como decimal — así
+que estos dos campos pasan a `CampoPrecio` (`componentes/CampoPrecio.tsx`
++ `lib/formatoPrecio.ts`, funciones puras con tests): mientras se edita
+se ve el número tal cual se tipeó, y el formato con miles aparece al
+salir del campo, para no pelear con la posición del cursor. Como deja de
+ser `type="number"`, de paso queda eliminado de raíz el bug de
+arrastre/scroll para estos dos campos específicamente (no solo tapado
+con el fix general).
+
+**La grilla de "buscar productos" en Ventas ya no atenúa el texto de los
+productos sin stock.** Antes `disabled:opacity-40` opacaba toda la
+tarjeta —nombre incluido— cuando no había stock; el aviso "sin stock" ya
+lo decía, así que ahora el nombre queda con la misma nitidez que
+cualquier otro producto, y "sin stock" pasa a rojo y en negrita en vez
+de depender de la opacidad para notarse.
+
+El pedido de alta de colaborador sin correo (solo usuario y clave) ya
+estaba resuelto desde la ronda anterior — no hizo falta ningún cambio
+nuevo, se confirmó que no queda ningún campo de tipo email en la app.
+**Bug encontrado al probar la ronda de arriba: escanear un código de
+barras adentro del alta o la edición de un producto guardaba el
+producto solo, con precio $0.** El lector manda un Enter automático
+apenas termina de "tipear" el código; como el campo de código vive
+dentro del mismo `<form>` que todo el resto (nombre, precios, stock),
+ese Enter mandaba el formulario ENTERO antes de tiempo — con lo que
+hubiera en "Precio de venta" en ese momento (0, si todavía no se llegó
+a esa parte), y el modal se cerraba solo, sin que nadie tocara "Crear
+producto"/"Guardar cambios". `validarProducto()` permite precio 0 a
+propósito (mismo `check >= 0` de la base), así que pasaba de largo sin
+error. Los dos formularios (`FormularioNuevoProducto.tsx`,
+`FormularioEditarProducto.tsx`) ahora bloquean el Enter como disparador
+de submit (`onKeyDown` en el `<form>`) salvo que el foco esté en un
+botón de verdad — clickear "Crear producto" con Enter en vez del mouse
+sigue andando, tipear/escanear en cualquier campo ya no. Los otros dos
+formularios con lectura de código (Carga rápida de stock, Ajuste de
+stock) no tenían este riesgo: ninguno arranca con el precio en 0 ni
+tiene el campo de código adentro del formulario que confirma.
+
+**El link de "Pantalla al cliente" pasa a ser uno solo para todo el
+comercio**, no uno distinto por persona. Hasta ahora
+`perfiles.token_pantalla` era un valor propio de cada fila —dueño y
+cada colaborador tenían el suyo—, y tanto la pantalla que arma el link
+como el broadcast al vender usaban el token de quien estuviera logueado
+en ese momento. En un local con más de una persona atendiendo la caja,
+la TV quedaba emparejada con el token de quien la emparejó, y se
+quedaba muda apenas otra persona (con otro usuario) hacía una venta —
+transmitía en un canal distinto. El token pasa a vivir en
+`configuracion_comercio` (migración `20260902130000...`), una tabla de
+una sola fila (patrón singleton: `boolean primary key` con `check`),
+para que sea "el token del comercio" y no "el token de tal perfil". Al
+aplicar la migración se hereda el token más viejo entre los perfiles
+existentes, para no romper un emparejamiento que ya esté en uso.
+
+**El cuadro de "Escaneá el código" y el buscador "por nombre o
+código..." se unifican en uno solo**, pedido explícito del dueño (antes
+eran dos cajas apiladas). Escanear (o tipear un código exacto y
+apretar Enter) agrega el producto directo, igual que antes; tipear un
+nombre sigue filtrando la grilla de productos en vivo, sin que Enter
+haga nada raro. La única sutileza: si lo tipeado no matchea ningún
+producto, ¿hay que avisar con un error o quedarse callado? Depende de
+si "parece" un código escaneado (todo dígitos, de varios caracteres) o
+un nombre — lo primero sigue mostrando "No hay ningún producto con ese
+código" (un error real: se escaneó algo que no está en el catálogo);
+lo segundo no muestra nada, porque es alguien buscando por nombre y
+apretando Enter por costumbre (`pareceCodigoDeBarras()` en
+`codigosBarras.ts`, con tests).
+
 ### Segunda ronda de ajustes del cliente (2026-09-02)
 
 Cinco pedidos después de ver la primera versión funcionando:
