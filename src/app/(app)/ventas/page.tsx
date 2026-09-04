@@ -51,11 +51,14 @@ async function PanelVentasConectado({
   turnoCajaId: string;
   usuarioId: string;
 }) {
-  const [productos, clientes, ventas, perfil] = await Promise.all([
+  // El token es del comercio, no de quien está vendiendo (pedido del
+  // dueño: la pantalla tiene que recibir la venta la haga el dueño o
+  // un colaborador) — mismo valor para cualquiera que esté logueado.
+  const [productos, clientes, ventas, configuracion] = await Promise.all([
     listarProductos(supabase),
     listarClientes(supabase),
     listarVentasDelTurno(supabase, turnoCajaId),
-    supabase.from("perfiles").select("token_pantalla").eq("id", usuarioId).single(),
+    supabase.from("configuracion_comercio").select("token_pantalla").single(),
   ]);
 
   return (
@@ -64,7 +67,7 @@ async function PanelVentasConectado({
       clientes={clientes}
       turnoCajaId={turnoCajaId}
       usuarioId={usuarioId}
-      tokenPantalla={perfil.data?.token_pantalla ?? ""}
+      tokenPantalla={configuracion.data?.token_pantalla ?? ""}
       ventasIniciales={ventas}
     />
   );

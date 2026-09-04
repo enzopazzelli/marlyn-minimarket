@@ -42,11 +42,13 @@ const TABLAS = [
   "auditoria_movimientos",
 ] as const;
 
-// perfiles aparte, con columnas explícitas en vez de "*": tiene
-// token_pantalla (el link de emparejamiento de la TV del mostrador,
-// sensible — cualquiera con ese link puede mirar la venta en curso) que
-// no tiene por qué viajar en un archivo que se puede compartir. Sin
-// esto, usuario_id en el resto de las hojas es un uuid sin nombre.
+// perfiles aparte, con columnas explícitas en vez de "*": así, si el
+// día de mañana se le agrega una columna sensible, no se cuela sola en
+// un archivo que se puede compartir — sin esto, usuario_id en el resto
+// de las hojas es un uuid sin nombre. (token_pantalla, el link de
+// emparejamiento de la TV, ya no vive acá — pasó a
+// configuracion_comercio, una tabla aparte que ni siquiera está en
+// TABLAS más abajo.)
 const COLUMNAS_PERFILES = "id, nombre, rol, activo, creado_en";
 
 export function BotonDescargarBackup() {

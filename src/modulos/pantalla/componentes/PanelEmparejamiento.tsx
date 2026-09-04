@@ -12,8 +12,10 @@ function origenActual(): string {
   return typeof window === "undefined" ? "" : window.location.origin;
 }
 
-// Emparejamiento fijo: el link no cambia (token_pantalla vive en el
-// perfil del dueño, no en el turno) — se escribe una vez en la TV del
+// Emparejamiento fijo: el link no cambia (token_pantalla vive en
+// configuracion_comercio, una fila única del comercio entero — no en
+// el turno ni en el perfil de quien lo mira, así que da lo mismo si lo
+// abre el dueño o un colaborador) — se escribe una vez en la TV del
 // mostrador y funciona todos los días. Mismo patrón de "Copiar" que
 // PanelPedidoProveedor.tsx.
 export function PanelEmparejamiento({ token }: { token: string }) {

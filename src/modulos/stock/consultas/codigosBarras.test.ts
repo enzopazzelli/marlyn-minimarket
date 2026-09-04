@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   coincideCodigoExacto,
   contieneCodigo,
+  pareceCodigoDeBarras,
   todosLosCodigos,
   validarCodigosAdicionales,
 } from "./codigosBarras";
@@ -100,5 +101,31 @@ describe("validarCodigosAdicionales", () => {
 
   it("sin código principal, los adicionales no chocan con nada", () => {
     expect(validarCodigosAdicionales(["7790002"], null)).toEqual({ codigos: ["7790002"], error: null });
+  });
+});
+
+describe("pareceCodigoDeBarras", () => {
+  it("una tira de dígitos larga parece un código escaneado", () => {
+    expect(pareceCodigoDeBarras("7790001234567")).toBe(true);
+    expect(pareceCodigoDeBarras("1234")).toBe(true);
+  });
+
+  it("un nombre de producto no parece un código", () => {
+    expect(pareceCodigoDeBarras("coca cola")).toBe(false);
+    expect(pareceCodigoDeBarras("Fideos")).toBe(false);
+  });
+
+  it("números cortos (como buscar '500g') tampoco cuentan como código", () => {
+    expect(pareceCodigoDeBarras("500")).toBe(false);
+    expect(pareceCodigoDeBarras("1")).toBe(false);
+  });
+
+  it("tolera espacios alrededor", () => {
+    expect(pareceCodigoDeBarras("  7790001  ")).toBe(true);
+  });
+
+  it("vacío no es un código", () => {
+    expect(pareceCodigoDeBarras("")).toBe(false);
+    expect(pareceCodigoDeBarras("   ")).toBe(false);
   });
 });

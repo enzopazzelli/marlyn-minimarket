@@ -29,7 +29,7 @@ export function todosLosCodigos(producto: ConCodigos): string[] {
 }
 
 /** Para el lector: el código escaneado tiene que dar exacto contra
- *  alguno de los seis. */
+ *  alguno de los que tenga cargados el producto. */
 export function coincideCodigoExacto(producto: ConCodigos, codigo: string): boolean {
   const buscado = codigo.trim();
   if (!buscado) return false;
@@ -42,6 +42,19 @@ export function contieneCodigo(producto: ConCodigos, termino: string): boolean {
   const buscado = termino.trim();
   if (!buscado) return false;
   return todosLosCodigos(producto).some((codigo) => codigo.includes(buscado));
+}
+
+/** El buscador de Ventas ahora es un solo campo para escanear Y para
+ *  buscar por nombre (antes eran dos cajas separadas). Cuando alguien
+ *  escanea un código que no existe en el catálogo, sigue mereciendo el
+ *  aviso de error de siempre; cuando alguien tipea un nombre y aprieta
+ *  Enter por costumbre sin haber elegido un producto de la grilla, no
+ *  — no hay forma de distinguir "vino del lector" de "lo tipeó una
+ *  persona" mirando solo el string, así que se corta por heurística:
+ *  un código de barras real es todo dígitos y de varios caracteres: un
+ *  nombre de producto, no. */
+export function pareceCodigoDeBarras(texto: string): boolean {
+  return /^\d{4,}$/.test(texto.trim());
 }
 
 export type ValidacionCodigos = {

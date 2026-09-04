@@ -1,8 +1,9 @@
 // Vista de solo lectura para la TV del mostrador (prompt-base sección
 // 2.1). A propósito NO vive bajo (app): no comparte la sesión del
 // operador, se autentica con su propio token de emparejamiento fijo
-// (perfiles.token_pantalla, resuelto por resolver_pantalla() — ver
-// PantallaEnVivo.tsx para la conexión en tiempo real).
+// (configuracion_comercio.token_pantalla, uno solo para todo el
+// comercio — resuelto por resolver_pantalla(), ver PantallaEnVivo.tsx
+// para la conexión en tiempo real).
 
 import { PantallaEnVivo } from "@/modulos/pantalla/componentes/PantallaEnVivo";
 
