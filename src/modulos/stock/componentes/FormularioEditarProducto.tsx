@@ -13,19 +13,21 @@ import { Modal } from "@/componentes/Modal";
 import { useEsDueño } from "@/lib/supabase/PerfilContext";
 import { validarProducto, type ErroresProducto } from "../consultas/validacion";
 import { calcularGananciaDesdePrecioVenta, calcularPrecioVentaDesdeGanancia } from "../consultas/precios";
-import type { Categoria, Producto, Proveedor } from "../tipos";
+import type { Producto, Proveedor } from "../tipos";
 
 // Mismo mecanismo que FormularioNuevoProducto.tsx (costo/%/IVA/venta
-// retroalimentándose, alta de rubro al vuelo) pero editando en vez de
-// insertar. Se duplica en vez de compartir un hook, misma decisión que
-// tomó miadmin con producto_dialog.py / producto_edit_dialog.py: son
-// archivos separados con la misma lógica repetida, no una base común.
+// retroalimentándose) pero editando en vez de insertar. Se duplica en
+// vez de compartir un hook, misma decisión que tomó miadmin con
+// producto_dialog.py / producto_edit_dialog.py: son archivos separados
+// con la misma lógica repetida, no una base común.
 //
 // A diferencia del alta, acá NO hay campo de stock inicial: el stock ya
 // cargado solo cambia por movimientos con motivo (ver
-// FormularioAjusteStock.tsx), nunca por una edición directa.
+// FormularioAjusteStock.tsx), nunca por una edición directa. Tampoco
+// hay campo de rubro (pedido del dueño, 2026-09-08): el rubro del
+// producto queda como estaba, se sigue asignando desde "Nuevo
+// producto" o el import, no se edita desde acá.
 
-const RUBRO_NUEVO = "__nuevo__";
 const PROVEEDOR_NUEVO = "__nuevo__";
 const IVA_PORCENTAJE = clienteConfig.reglasNegocio.ivaPorcentaje;
 
@@ -53,8 +55,6 @@ function bloquearEnterComoSubmit(evento: KeyboardEvent<HTMLFormElement>) {
 function estadoDesdeProducto(producto: Producto) {
   return {
     nombre: producto.nombre,
-    rubroSeleccionado: producto.categoriaId ?? "",
-    nombreRubroNuevo: "",
     proveedorSeleccionado: producto.proveedorId ?? "",
     nombreProveedorNuevo: "",
     codigoBarras: producto.codigoBarras ?? "",
@@ -74,11 +74,9 @@ function estadoDesdeProducto(producto: Producto) {
 
 export function FormularioEditarProducto({
   producto,
-  categoriasIniciales,
   proveedoresIniciales,
 }: {
   producto: Producto;
-  categoriasIniciales: Categoria[];
   proveedoresIniciales: Proveedor[];
 }) {
   const esDueño = useEsDueño();
@@ -86,12 +84,6 @@ export function FormularioEditarProducto({
   // "Adjusting state when a prop changes" (react.dev): setState durante
   // el render, no en un efecto — ver el mismo comentario en
   // FormularioNuevoProducto.tsx.
-  const [categoriasVistas, setCategoriasVistas] = useState(categoriasIniciales);
-  const [categorias, setCategorias] = useState(categoriasIniciales);
-  if (categoriasIniciales !== categoriasVistas) {
-    setCategoriasVistas(categoriasIniciales);
-    setCategorias(categoriasIniciales);
-  }
   const [proveedoresVistos, setProveedoresVistos] = useState(proveedoresIniciales);
   const [proveedores, setProveedores] = useState(proveedoresIniciales);
   if (proveedoresIniciales !== proveedoresVistos) {
@@ -185,11 +177,6 @@ export function FormularioEditarProducto({
     setErrores(resultado.errores);
     if (!resultado.valido) return;
 
-    if (campos.rubroSeleccionado === RUBRO_NUEVO && !campos.nombreRubroNuevo.trim()) {
-      setErrorGeneral("Escribí el nombre del rubro");
-      return;
-    }
-
     if (campos.proveedorSeleccionado === PROVEEDOR_NUEVO && !campos.nombreProveedorNuevo.trim()) {
       setErrorGeneral("Escribí el nombre del proveedor");
       return;
@@ -199,27 +186,9 @@ export function FormularioEditarProducto({
     const supabase = crearClienteNavegador();
 
     try {
-      let categoriaId: string | null = null;
-
-      if (campos.rubroSeleccionado === RUBRO_NUEVO) {
-        const { data: nuevoRubro, error: errorRubro } = await supabase
-          .from("categorias")
-          .insert({ nombre: campos.nombreRubroNuevo.trim() })
-          .select("id, nombre")
-          .single();
-
-        if (errorRubro || !nuevoRubro) {
-          setErrorGeneral("No se pudo crear el rubro. Probá de nuevo.");
-          return;
-        }
-
-        categoriaId = nuevoRubro.id;
-        setCategorias((anteriores) =>
-          [...anteriores, nuevoRubro as Categoria].sort((a, b) => a.nombre.localeCompare(b.nombre)),
-        );
-      } else if (campos.rubroSeleccionado) {
-        categoriaId = campos.rubroSeleccionado;
-      }
+      // El rubro no se edita desde acá (ver el comentario del
+      // encabezado) — viaja tal cual venía, nunca lo toca este guardado.
+      const categoriaId = producto.categoriaId;
 
       let proveedorId: string | null = null;
 
@@ -320,33 +289,6 @@ export function FormularioEditarProducto({
             />
             {errores.nombre && <p className="text-sm text-alerta">{errores.nombre}</p>}
           </div>
-
-          <label htmlFor={`rubro-${producto.id}`} className="flex flex-col gap-1.5 text-sm">
-            <span className="text-texto-suave">Rubro</span>
-            <select
-              id={`rubro-${producto.id}`}
-              className={clasesSelect}
-              value={campos.rubroSeleccionado}
-              onChange={(evento) => setCampos({ ...campos, rubroSeleccionado: evento.target.value })}
-            >
-              <option value="">Sin rubro</option>
-              {categorias.map((categoria) => (
-                <option key={categoria.id} value={categoria.id}>
-                  {categoria.nombre}
-                </option>
-              ))}
-              <option value={RUBRO_NUEVO}>+ Nuevo rubro…</option>
-            </select>
-          </label>
-
-          {campos.rubroSeleccionado === RUBRO_NUEVO && (
-            <Campo
-              etiqueta="Nombre del rubro nuevo"
-              id={`nombreRubroNuevo-${producto.id}`}
-              value={campos.nombreRubroNuevo}
-              onChange={(evento) => setCampos({ ...campos, nombreRubroNuevo: evento.target.value })}
-            />
-          )}
 
           <label htmlFor={`proveedor-${producto.id}`} className="flex flex-col gap-1.5 text-sm">
             <span className="text-texto-suave">Proveedor</span>

@@ -70,15 +70,14 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 
 /* Protector de pantalla de la TV del mostrador (PantallaEnVivo.tsx):
-   cuando no hay venta en curso, el logo/texto va derivando lento por
-   la pantalla en vez de quedar fijo en el mismo lugar durante horas —
-   un TV prendido todo el día con la misma imagen fija corre riesgo de
-   que esa imagen se le quede marcada. El recorrido es lento a
-   propósito (75s la vuelta completa): a simple vista no se nota que se
-   mueve, pero en un día entero pasa por muchas posiciones distintas.
-   El fondo (bg-marco de <main>) se queda fijo siempre — lo único que
-   deriva es este bloque de contenido, con margen de sobra para no
-   recortarse contra el borde.
+   cuando no hay venta en curso, el logo/texto va derivando por la
+   pantalla en vez de quedar fijo en el mismo lugar durante horas — un
+   TV prendido todo el día con la misma imagen fija corre riesgo de que
+   esa imagen se le quede marcada. 20s la vuelta completa (bajado de
+   75s a pedido del dueño: quería notarlo moverse sin tener que
+   quedarse mirando un buen rato). El fondo (bg-marco de <main>) se
+   queda fijo siempre — lo único que deriva es este bloque de
+   contenido, con margen de sobra para no recortarse contra el borde.
 
    A PROPÓSITO no se apaga con prefers-reduced-motion (ver la excepción
    más abajo, adentro de esa media query): esa preferencia protege a
@@ -86,7 +85,7 @@ input[type="number"]::-webkit-outer-spin-button {
    marea; acá nadie interactúa con la TV, es un fondo pasivo de
    mostrador. Reportado por el cliente: varios Smart TV vienen con
    "reducir movimiento" activado de fábrica a nivel sistema, y sin esta
-   excepción la regla de abajo colapsaba la vuelta de 75s a 0.01ms — la
+   excepción la regla de abajo colapsaba la vuelta a 0.01ms — la
    animación "terminaba" en un instante, y como el cuadro final vuelve
    a la posición de arranque, quedaba indistinguible de que nunca se
    hubiera movido. */
@@ -99,7 +98,7 @@ input[type="number"]::-webkit-outer-spin-button {
   100% { transform: translate(0, 0); }
 }
 .protector-pantalla {
-  animation: protector-pantalla-deriva 75s ease-in-out infinite;
+  animation: protector-pantalla-deriva 20s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -114,7 +113,7 @@ input[type="number"]::-webkit-outer-spin-button {
      arriba, para que la TV del mostrador derive igual aunque el
      sistema del TV tenga "reducir movimiento" activado. */
   .protector-pantalla {
-    animation-duration: 75s !important;
+    animation-duration: 20s !important;
     animation-iteration-count: infinite !important;
   }
 }

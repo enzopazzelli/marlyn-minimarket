@@ -178,6 +178,11 @@ export function ListaProductos({
           placeholder="Buscar por nombre, código o rubro..."
           value={busqueda}
           onChange={(evento) => setBusqueda(evento.target.value)}
+          // Pedido del dueño: al volver a este campo con una búsqueda
+          // vieja adentro, que quede todo seleccionado para poder
+          // escribir encima directo, sin borrar a mano primero — mismo
+          // criterio que ya usan los campos numéricos (Campo.tsx).
+          onFocus={(evento) => evento.currentTarget.select()}
         />
         <select
           className={clasesFiltro}
@@ -331,11 +336,7 @@ export function ListaProductos({
                               Eliminar/Editar/Ajustar, invertido respecto
                               a como estaba (Ajustar/Editar/Eliminar). */}
                           <BotonEliminarProducto producto={producto} />
-                          <FormularioEditarProducto
-                            producto={producto}
-                            categoriasIniciales={categorias}
-                            proveedoresIniciales={proveedores}
-                          />
+                          <FormularioEditarProducto producto={producto} proveedoresIniciales={proveedores} />
                           <FormularioAjusteStock producto={producto} />
                         </div>
                       )}
