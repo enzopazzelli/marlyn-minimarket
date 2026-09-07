@@ -160,6 +160,7 @@ export function FormularioCargaRapida({ productos }: { productos: Producto[] }) 
                 placeholder="Nombre o código de barras..."
                 value={busqueda}
                 onChange={(evento) => setBusqueda(evento.target.value)}
+                onFocus={(evento) => evento.currentTarget.select()}
                 autoComplete="off"
                 autoFocus
               />
