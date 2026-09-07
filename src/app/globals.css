@@ -69,6 +69,29 @@ input[type="number"]::-webkit-outer-spin-button {
   margin: 0;
 }
 
+/* Protector de pantalla de la TV del mostrador (PantallaEnVivo.tsx):
+   cuando no hay venta en curso, el logo/texto va derivando lento por
+   la pantalla en vez de quedar fijo en el mismo lugar durante horas —
+   un TV prendido todo el día con la misma imagen fija corre riesgo de
+   que esa imagen se le quede marcada. El recorrido es lento a
+   propósito (75s la vuelta completa): a simple vista no se nota que se
+   mueve, pero en un día entero pasa por muchas posiciones distintas.
+   El fondo (bg-marco de <main>) se queda fijo siempre — lo único que
+   deriva es este bloque de contenido, con margen de sobra para no
+   recortarse contra el borde. prefers-reduced-motion ya la neutraliza
+   sola, con la regla de acá abajo. */
+@keyframes protector-pantalla-deriva {
+  0%   { transform: translate(0, 0); }
+  20%  { transform: translate(4vw, -3vh); }
+  40%  { transform: translate(7vw, 2vh); }
+  60%  { transform: translate(2vw, 4vh); }
+  80%  { transform: translate(-3vw, 1vh); }
+  100% { transform: translate(0, 0); }
+}
+.protector-pantalla {
+  animation: protector-pantalla-deriva 75s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     animation-duration: 0.01ms !important;

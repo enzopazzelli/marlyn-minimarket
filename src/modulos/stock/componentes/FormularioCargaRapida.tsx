@@ -36,7 +36,6 @@ export function FormularioCargaRapida({ productos }: { productos: Producto[] }) 
   const [seleccionado, setSeleccionado] = useState<Producto | null>(null);
   const [tipo, setTipo] = useState<Tipo>("entrada");
   const [cantidad, setCantidad] = useState("");
-  const [motivo, setMotivo] = useState("");
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cargados, setCargados] = useState<ItemCargado[]>([]);
@@ -51,7 +50,6 @@ export function FormularioCargaRapida({ productos }: { productos: Producto[] }) 
     setSeleccionado(null);
     setTipo("entrada");
     setCantidad("");
-    setMotivo("");
     setError(null);
     setCargados([]);
     setStockLocal(new Map());
@@ -76,7 +74,6 @@ export function FormularioCargaRapida({ productos }: { productos: Producto[] }) 
     setBusqueda("");
     setTipo("entrada");
     setCantidad("");
-    setMotivo("");
     setError(null);
   }
 
@@ -109,11 +106,6 @@ export function FormularioCargaRapida({ productos }: { productos: Producto[] }) 
       return;
     }
 
-    if (tipo === "salida" && !motivo.trim()) {
-      setError("Contá el motivo de la salida (rotura, vencido, corrección de conteo)");
-      return;
-    }
-
     setGuardando(true);
     const supabase = crearClienteNavegador();
 
@@ -122,7 +114,6 @@ export function FormularioCargaRapida({ productos }: { productos: Producto[] }) 
         p_producto_id: seleccionado.id,
         p_cantidad: cantidadNumero,
         p_tipo: tipo,
-        p_motivo: motivo.trim() || null,
       });
 
       if (errorRpc) {
@@ -148,7 +139,6 @@ export function FormularioCargaRapida({ productos }: { productos: Producto[] }) 
       setSeleccionado(null);
       setBusqueda("");
       setCantidad("");
-      setMotivo("");
     } finally {
       setGuardando(false);
     }
@@ -237,14 +227,6 @@ export function FormularioCargaRapida({ productos }: { productos: Producto[] }) 
                 value={cantidad}
                 onChange={(evento) => setCantidad(evento.target.value)}
                 autoFocus
-              />
-
-              <Campo
-                etiqueta={tipo === "salida" ? "Motivo" : "Motivo (opcional)"}
-                id="carga-rapida-motivo"
-                placeholder={tipo === "entrada" ? "Ej: compra a proveedor" : "Ej: rotura, vencido, conteo físico"}
-                value={motivo}
-                onChange={(evento) => setMotivo(evento.target.value)}
               />
 
               {error && (

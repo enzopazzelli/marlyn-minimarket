@@ -61,11 +61,22 @@ export function PantallaEnVivo({ token }: { token: string }) {
   if (!hayCarrito) {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center gap-4 bg-marco px-8 text-center text-white">
-        <p className="font-[family-name:var(--font-display)] text-3xl">{clienteConfig.comercio.nombre}</p>
-        <p className="max-w-md text-white/70">
-          En cuanto el mostrador empiece a cobrar, acá va a aparecer cada
-          producto escaneado y el total.
-        </p>
+        {/* Protector de pantalla (complementos.protectorPantalla en
+            config/cliente.ts): el fondo de <main> queda fijo, solo este
+            bloque deriva lento (.protector-pantalla, en globals.css) —
+            contra el quemado de un TV prendido muchas horas con la
+            misma imagen fija. */}
+        <div
+          className={`flex flex-col items-center gap-4 ${
+            clienteConfig.complementos.protectorPantalla ? "protector-pantalla" : ""
+          }`}
+        >
+          <p className="font-[family-name:var(--font-display)] text-3xl">{clienteConfig.comercio.nombre}</p>
+          <p className="max-w-md text-white/70">
+            En cuanto el mostrador empiece a cobrar, acá va a aparecer cada
+            producto escaneado y el total.
+          </p>
+        </div>
       </main>
     );
   }

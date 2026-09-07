@@ -234,14 +234,24 @@ describe("registrar_ajuste_stock (M1 Stock)", () => {
     expect(error?.message).toMatch(/no hay stock suficiente/i);
   });
 
-  it("una salida sin motivo se rechaza (Fase 0 de PLAN-ROLES-AUDITORIA.md)", async () => {
+  // Reversa la de arriba: motivo obligatorio en salida se pidió en la
+  // Fase 0 de PLAN-ROLES-AUDITORIA.md, y se sacó de nuevo el
+  // 2026-09-07 (migración 20260907100000) a pedido explícito del
+  // dueño — el detalle de por qué bajó el stock ya no les importa.
+  it("una salida sin motivo ya no se rechaza", async () => {
+    const { error: errorEntrada } = await clienteDueño.rpc("registrar_ajuste_stock", {
+      p_producto_id: productoId,
+      p_cantidad: 5,
+      p_tipo: "entrada",
+    });
+    expect(errorEntrada).toBeNull();
+
     const { error } = await clienteDueño.rpc("registrar_ajuste_stock", {
       p_producto_id: productoId,
       p_cantidad: 1,
       p_tipo: "salida",
     });
 
-    expect(error).not.toBeNull();
-    expect(error?.message).toMatch(/contá el motivo/i);
+    expect(error).toBeNull();
   });
 });

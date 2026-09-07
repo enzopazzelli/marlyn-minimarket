@@ -39,6 +39,13 @@ export const clienteConfig = {
     // Pedido explícitamente desde el día 1 por el cliente, a diferencia
     // de impresión y facturación que quedan para una segunda etapa.
     pantallaCliente: true,
+    // Cuando no hay venta en curso, el logo/texto de la TV del
+    // mostrador va derivando lento por la pantalla en vez de quedar
+    // fijo — contra el quemado de un TV prendido muchas horas
+    // seguidas con la misma imagen. Apagar acá lo deja fijo como
+    // antes. Ver PantallaEnVivo.tsx y .protector-pantalla en
+    // globals.css.
+    protectorPantalla: true,
     impresionTickets: false,
     facturacionFiscal: false,
   },

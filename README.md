@@ -993,6 +993,53 @@ no se usa). Alcance pedido: import de catálogo (altas masivas a
 un `.xlsx` de 4 hojas (resumen, medios de pago, top productos, detalle
 de ventas) del día elegido.
 
+### Cuarta ronda de ajustes del cliente (2026-09-07)
+
+Cuatro pedidos de Jason (el dueño), decididos con Enzo antes de tocar
+código porque dos de ellos chocaban con algo pedido en rondas
+anteriores:
+
+**Se saca la columna "Rubro" del listado de `/stock`.** Solo la
+columna visual — el filtro "Todos los rubros" sigue funcionando igual,
+y `nombrePorCategoria` se sigue usando para que el buscador encuentre
+por nombre de rubro aunque ya no se vea en la tabla.
+
+**Se invierte el orden de las acciones por fila**: antes
+`Ajustar stock · Editar · Eliminar`, ahora
+`Eliminar · Editar · Ajustar stock` — a pedido puntual, sin otro
+motivo que preferencia de uso.
+
+**El campo "Motivo" desaparece de "Ajustar stock" y de "Carga rápida
+de stock"**, en Entrada y en Salida. Esto reversa un pedido explícito
+de una ronda anterior (Fase 0 de PLAN-ROLES-AUDITORIA.md): motivo
+obligatorio en toda salida, para poder auditar después por qué bajó el
+stock — la exigencia vivía tanto en el front como en la base
+(`registrar_ajuste_stock()`, con un `raise exception` si la salida no
+traía motivo). Sacar el campo del front sin tocar la base habría
+dejado el flujo de Salida roto: la función seguiría rechazando el
+ajuste y ya no habría dónde escribir el motivo que pedía. Se sacó
+también la exigencia de la base (migración `20260907100000...`) — la
+salida sigue quedando registrada en `movimientos_stock`, con el texto
+genérico que ya existía como fallback ("Ajuste de stock") en vez del
+detalle real (rotura/vencido/conteo). **En "Ajustar stock" también se
+sacó "Precio de venta"** (pedido aparte, mismo día): ahora el modal
+pide solo Entrada/Salida y Cantidad — cambiar el precio de venta sigue
+disponible desde "Editar".
+
+**Protector de pantalla para la TV del mostrador.** Cuando no hay
+venta en curso, el mensaje de espera ya no queda fijo: el bloque de
+texto va derivando lento (75 segundos la vuelta completa, con
+`@keyframes` en `globals.css`) dentro de un margen seguro, para que un
+TV prendido muchas horas con la misma imagen fija no corra riesgo de
+quemado. El fondo de la pantalla (`bg-marco`) se queda fijo siempre;
+lo único que se mueve es el bloque de contenido.
+`prefers-reduced-motion` ya lo neutraliza solo, con la regla global que
+ya existía. Se puede apagar sin tocar código:
+`complementos.protectorPantalla` en `config/cliente.ts` — mismo lugar
+y mismo patrón que el resto de los interruptores del proyecto (qué
+módulos están prendidos, etc.), a pedido de Enzo de dejarlo
+configurable ahí en vez de fijo.
+
 ### Tercera ronda de ajustes del cliente (2026-09-02)
 
 **"Pantalla al cliente" pasa a llamarse "Cliente"** en el menú, y con eso

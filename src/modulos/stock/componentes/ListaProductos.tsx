@@ -264,17 +264,17 @@ export function ListaProductos({
           <table className="w-full border-collapse">
             <thead>
               <tr>
-                {["Código", "Producto", "Rubro", "Precio", "Stock", "Estado", modoSeleccion ? "" : "Acciones"].map(
+                {["Código", "Producto", "Precio", "Stock", "Estado", modoSeleccion ? "" : "Acciones"].map(
                   (columna, indice) => (
                     <th
                       key={indice}
                       className={`border-b border-linea px-2.5 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-texto-suave ${
-                        columna === "Precio" || columna === "Stock" || columna === "Estado" || indice === 6
+                        columna === "Precio" || columna === "Stock" || columna === "Estado" || indice === 5
                           ? "text-right"
                           : "text-left"
                       }`}
                     >
-                      {indice === 6 && modoSeleccion ? (
+                      {indice === 5 && modoSeleccion ? (
                         <input
                           type="checkbox"
                           aria-label="Seleccionar todos los de esta página"
@@ -307,9 +307,6 @@ export function ListaProductos({
                       )}
                     </td>
                     <td className="px-2.5 py-2 text-sm font-semibold text-texto">{producto.nombre}</td>
-                    <td className="px-2.5 py-2 text-sm text-texto-suave">
-                      {producto.categoriaId ? (nombrePorCategoria.get(producto.categoriaId) ?? "—") : "—"}
-                    </td>
                     <td className="numero px-2.5 py-2 text-right text-base font-bold text-texto">
                       {platita.format(producto.precioVenta)}
                     </td>
@@ -330,13 +327,16 @@ export function ListaProductos({
                         </div>
                       ) : (
                         <div className="flex items-center justify-end gap-3">
-                          <FormularioAjusteStock producto={producto} />
+                          {/* Orden a pedido del dueño (2026-09-07):
+                              Eliminar/Editar/Ajustar, invertido respecto
+                              a como estaba (Ajustar/Editar/Eliminar). */}
+                          <BotonEliminarProducto producto={producto} />
                           <FormularioEditarProducto
                             producto={producto}
                             categoriasIniciales={categorias}
                             proveedoresIniciales={proveedores}
                           />
-                          <BotonEliminarProducto producto={producto} />
+                          <FormularioAjusteStock producto={producto} />
                         </div>
                       )}
                     </td>

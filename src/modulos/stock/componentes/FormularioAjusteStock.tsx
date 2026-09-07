@@ -3,7 +3,6 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { crearClienteNavegador } from "@/lib/supabase/cliente";
-import { useEsDueño } from "@/lib/supabase/PerfilContext";
 import { Boton } from "@/componentes/Boton";
 import { Campo } from "@/componentes/Campo";
 import { Modal } from "@/componentes/Modal";
@@ -19,22 +18,26 @@ function pasoDeStock(unidad: "unidad" | "kg" | "litro") {
 // modal con toggle Entrada/Salida en vez de pedir un número con signo
 // — el signo lo decide el toggle, nunca hay que tipear un "-" (en
 // pantallas táctiles el teclado numérico con min=0 ni lo muestra).
+//
+// Pedido del dueño (2026-09-07): solo cantidad, nada más. Antes tenía
+// motivo (obligatorio en salida) y precio de venta (solo dueño, en
+// entrada) — los dos se sacaron a pedido explícito. El motivo queda
+// igual registrado en movimientos_stock con un texto genérico
+// ("Ajuste de stock" / "Ingreso de mercadería"): eso lo resuelve
+// registrar_ajuste_stock() solo (ver migración 20260907100000), acá no
+// hace falta mandar nada. El precio de venta se sigue pudiendo tocar
+// desde "Editar" si hace falta.
 export function FormularioAjusteStock({ producto }: { producto: Producto }) {
-  const esDueño = useEsDueño();
   const router = useRouter();
   const [abierto, setAbierto] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [tipo, setTipo] = useState<Tipo>("entrada");
   const [cantidad, setCantidad] = useState("");
-  const [precioVenta, setPrecioVenta] = useState(String(producto.precioVenta));
-  const [motivo, setMotivo] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   function abrir() {
     setTipo("entrada");
     setCantidad("");
-    setPrecioVenta(String(producto.precioVenta));
-    setMotivo("");
     setError(null);
     setAbierto(true);
   }
@@ -58,24 +61,6 @@ export function FormularioAjusteStock({ producto }: { producto: Producto }) {
       return;
     }
 
-    if (tipo === "salida" && !motivo.trim()) {
-      setError("Contá el motivo de la salida (rotura, vencido, corrección de conteo)");
-      return;
-    }
-
-    // Cambiar el precio de venta acá es solo para dueño (Fase 5 de
-    // PLAN-ROLES-AUDITORIA.md) — registrar_ajuste_stock() ya lo
-    // ignora igual si no lo sos, esto evita mandar un valor que la
-    // base va a pisar de todos modos.
-    let precioNumero: number | null = null;
-    if (esDueño && tipo === "entrada") {
-      precioNumero = Number(precioVenta);
-      if (!Number.isFinite(precioNumero) || precioNumero < 0) {
-        setError("El precio de venta tiene que ser mayor o igual a cero");
-        return;
-      }
-    }
-
     setGuardando(true);
     const supabase = crearClienteNavegador();
 
@@ -84,8 +69,6 @@ export function FormularioAjusteStock({ producto }: { producto: Producto }) {
         p_producto_id: producto.id,
         p_cantidad: cantidadNumero,
         p_tipo: tipo,
-        p_precio_venta_nuevo: precioNumero,
-        p_motivo: motivo.trim() || null,
       });
 
       if (errorRpc) {
@@ -146,26 +129,6 @@ export function FormularioAjusteStock({ producto }: { producto: Producto }) {
             value={cantidad}
             onChange={(evento) => setCantidad(evento.target.value)}
             autoFocus
-          />
-
-          {esDueño && tipo === "entrada" && (
-            <Campo
-              etiqueta="Precio de venta"
-              id={`precioVentaIngreso-${producto.id}`}
-              type="number"
-              min={0}
-              step="1"
-              value={precioVenta}
-              onChange={(evento) => setPrecioVenta(evento.target.value)}
-            />
-          )}
-
-          <Campo
-            etiqueta={tipo === "salida" ? "Motivo" : "Motivo (opcional)"}
-            id={`motivo-${producto.id}`}
-            placeholder={tipo === "entrada" ? "Ej: compra a proveedor" : "Ej: rotura, vencido, conteo físico"}
-            value={motivo}
-            onChange={(evento) => setMotivo(evento.target.value)}
           />
 
           {error && (
