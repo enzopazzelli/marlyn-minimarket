@@ -78,8 +78,18 @@ input[type="number"]::-webkit-outer-spin-button {
    mueve, pero en un día entero pasa por muchas posiciones distintas.
    El fondo (bg-marco de <main>) se queda fijo siempre — lo único que
    deriva es este bloque de contenido, con margen de sobra para no
-   recortarse contra el borde. prefers-reduced-motion ya la neutraliza
-   sola, con la regla de acá abajo. */
+   recortarse contra el borde.
+
+   A PROPÓSITO no se apaga con prefers-reduced-motion (ver la excepción
+   más abajo, adentro de esa media query): esa preferencia protege a
+   alguien que está OPERANDO una interfaz de una animación que le
+   marea; acá nadie interactúa con la TV, es un fondo pasivo de
+   mostrador. Reportado por el cliente: varios Smart TV vienen con
+   "reducir movimiento" activado de fábrica a nivel sistema, y sin esta
+   excepción la regla de abajo colapsaba la vuelta de 75s a 0.01ms — la
+   animación "terminaba" en un instante, y como el cuadro final vuelve
+   a la posición de arranque, quedaba indistinguible de que nunca se
+   hubiera movido. */
 @keyframes protector-pantalla-deriva {
   0%   { transform: translate(0, 0); }
   20%  { transform: translate(4vw, -3vh); }
@@ -98,6 +108,14 @@ input[type="number"]::-webkit-outer-spin-button {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+
+  /* La excepción: mismo tiempo y repetición que la regla base de
+     arriba, para que la TV del mostrador derive igual aunque el
+     sistema del TV tenga "reducir movimiento" activado. */
+  .protector-pantalla {
+    animation-duration: 75s !important;
+    animation-iteration-count: infinite !important;
   }
 }
 

@@ -1032,13 +1032,27 @@ texto va derivando lento (75 segundos la vuelta completa, con
 `@keyframes` en `globals.css`) dentro de un margen seguro, para que un
 TV prendido muchas horas con la misma imagen fija no corra riesgo de
 quemado. El fondo de la pantalla (`bg-marco`) se queda fijo siempre;
-lo único que se mueve es el bloque de contenido.
-`prefers-reduced-motion` ya lo neutraliza solo, con la regla global que
-ya existía. Se puede apagar sin tocar código:
-`complementos.protectorPantalla` en `config/cliente.ts` — mismo lugar
-y mismo patrón que el resto de los interruptores del proyecto (qué
-módulos están prendidos, etc.), a pedido de Enzo de dejarlo
-configurable ahí en vez de fijo.
+lo único que se mueve es el bloque de contenido. Se puede apagar sin
+tocar código: `complementos.protectorPantalla` en `config/cliente.ts`
+— mismo lugar y mismo patrón que el resto de los interruptores del
+proyecto (qué módulos están prendidos, etc.), a pedido de Enzo de
+dejarlo configurable ahí en vez de fijo.
+
+**Bug encontrado en la TV real, no en desarrollo**: Jason reportó que
+dejó la pantalla en espera más de 30 segundos y no se movía nada. La
+primera versión SÍ dependía de `prefers-reduced-motion` (documentado
+acá arriba en la versión vieja de este párrafo) — varios Smart TV
+traen "reducir movimiento" activado de fábrica a nivel sistema, y la
+regla global del proyecto (`animation-duration: 0.01ms !important`
+cuando esa preferencia está activa) colapsaba la vuelta completa de
+75s a un instante: la animación "terminaba" en 0.01ms, y como el
+cuadro final del `@keyframes` es la misma posición que el inicial, no
+había forma de notar que había pasado algo. Se agregó una excepción
+puntual para `.protector-pantalla` adentro de esa misma media query,
+que le devuelve los 75s / loop infinito aunque el sistema pida reducir
+movimiento — a propósito: esa preferencia protege a alguien que está
+*operando* una interfaz, y acá nadie interactúa con la TV, es un fondo
+pasivo de mostrador.
 
 ### Tercera ronda de ajustes del cliente (2026-09-02)
 
