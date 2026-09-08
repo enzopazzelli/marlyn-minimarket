@@ -161,6 +161,7 @@ export function FormularioCargaRapida({ productos }: { productos: Producto[] }) 
                 value={busqueda}
                 onChange={(evento) => setBusqueda(evento.target.value)}
                 onFocus={(evento) => evento.currentTarget.select()}
+                onLimpiar={() => setBusqueda("")}
                 autoComplete="off"
                 autoFocus
               />

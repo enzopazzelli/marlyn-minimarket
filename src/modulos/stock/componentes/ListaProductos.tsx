@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Boton } from "@/componentes/Boton";
 import { Insignia } from "@/componentes/Insignia";
@@ -40,6 +40,7 @@ export function ListaProductos({
   const esDueño = useEsDueño();
   const router = useRouter();
   const [busqueda, setBusqueda] = useState("");
+  const inputBusquedaRef = useRef<HTMLInputElement>(null);
   const [rubroId, setRubroId] = useState("");
   const [proveedorId, setProveedorId] = useState("");
   const [estado, setEstado] = useState<FiltroEstado>("todos");
@@ -173,17 +174,40 @@ export function ListaProductos({
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2">
-        <input
-          className={`${clasesFiltro} min-w-[220px] flex-1`}
-          placeholder="Buscar por nombre, código o rubro..."
-          value={busqueda}
-          onChange={(evento) => setBusqueda(evento.target.value)}
-          // Pedido del dueño: al volver a este campo con una búsqueda
-          // vieja adentro, que quede todo seleccionado para poder
-          // escribir encima directo, sin borrar a mano primero — mismo
-          // criterio que ya usan los campos numéricos (Campo.tsx).
-          onFocus={(evento) => evento.currentTarget.select()}
-        />
+        <div className="relative min-w-[220px] flex-1">
+          <input
+            ref={inputBusquedaRef}
+            className={`${clasesFiltro} w-full ${busqueda ? "pr-8" : ""}`}
+            placeholder="Buscar por nombre, código o rubro..."
+            value={busqueda}
+            onChange={(evento) => setBusqueda(evento.target.value)}
+            // Pedido del dueño: al volver a este campo con una búsqueda
+            // vieja adentro, que quede todo seleccionado para poder
+            // escribir encima directo, sin borrar a mano primero — mismo
+            // criterio que ya usan los campos numéricos (Campo.tsx).
+            onFocus={(evento) => evento.currentTarget.select()}
+          />
+          {busqueda && (
+            <button
+              type="button"
+              onClick={() => {
+                setBusqueda("");
+                inputBusquedaRef.current?.focus();
+              }}
+              aria-label="Vaciar búsqueda"
+              // Botón "vaciar" aparte del select-on-focus de arriba:
+              // ese solo dispara si se clickea afuera y se vuelve a
+              // entrar. Pedido del dueño para poder limpiar sin ese
+              // paso extra — y más seguro que seleccionar todo solo
+              // tras una pausa al tipear (ver commit): con un buscador
+              // largo, una pausa de más de un segundo a mitad de
+              // palabra borraría lo ya escrito sin querer.
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-full p-1 text-texto-suave hover:bg-fondo hover:text-texto"
+            >
+              ✕
+            </button>
+          )}
+        </div>
         <select
           className={clasesFiltro}
           value={rubroId}
