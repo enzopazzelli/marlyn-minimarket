@@ -7,7 +7,6 @@ import { BotonExportarStock } from "@/modulos/stock/componentes/BotonExportarSto
 import { FormularioImportarExcel } from "@/modulos/stock/componentes/FormularioImportarExcel";
 import { FormularioNuevoProducto } from "@/modulos/stock/componentes/FormularioNuevoProducto";
 import { ListaProductos } from "@/modulos/stock/componentes/ListaProductos";
-import { PanelRubros } from "@/modulos/stock/componentes/PanelRubros";
 
 export default async function PaginaStock() {
   const supabase = await crearClienteServidor();
@@ -21,7 +20,6 @@ export default async function PaginaStock() {
     <>
       <BarraSuperior titulo="Stock">
         <div className="flex items-center gap-2">
-          <PanelRubros categoriasIniciales={categorias} />
           <BotonExportarStock productos={productos} categorias={categorias} proveedores={proveedores} />
           <FormularioImportarExcel categorias={categorias} proveedores={proveedores} productos={productos} />
           <FormularioNuevoProducto proveedoresIniciales={proveedores} />
