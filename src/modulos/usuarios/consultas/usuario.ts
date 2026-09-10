@@ -53,11 +53,21 @@ export function validarUsuario(valor: string): string | null {
   return null;
 }
 
+// Dos dominios "de mentira" a recortar para mostrar: el que arma esta
+// app sola (marlyn.local, arriba) y el que ya venía en uso para un par
+// de cuentas dueño (admin@marlyn.com, caja@marlyn.com) creadas directo
+// desde el dashboard de Supabase, antes/aparte del alta de colaborador
+// de acá — pedido de Jason (2026-09-11): "que no lleven el @marlyn.com".
+// Mismo caso que marlyn.local: ninguno de los dos es un correo real que
+// alguien reciba. Un correo real (ej. el del dueño con Gmail) no
+// matchea ninguno de los dos y se sigue mostrando entero.
+const DOMINIOS_INTERNOS = [DOMINIO_INTERNO, "marlyn.com"];
+
 /** Lo que se muestra en pantalla: para las cuentas internas, el usuario
  *  suelto; para los dueños con correo real, el correo entero. Sin esto
  *  la tabla de usuarios mostraría "marcos@marlyn.local", que es ruido
  *  —ese correo no existe ni se usa para nada. */
 export function usuarioParaMostrar(email: string): string {
-  const sufijo = `@${DOMINIO_INTERNO}`;
-  return email.endsWith(sufijo) ? email.slice(0, -sufijo.length) : email;
+  const sufijo = DOMINIOS_INTERNOS.map((dominio) => `@${dominio}`).find((candidato) => email.endsWith(candidato));
+  return sufijo ? email.slice(0, -sufijo.length) : email;
 }

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { crearClienteNavegador } from "@/lib/supabase/cliente";
 import { Boton } from "@/componentes/Boton";
 import { Insignia } from "@/componentes/Insignia";
+import { useEsDueño } from "@/lib/supabase/PerfilContext";
 import type { Producto } from "@/modulos/stock/tipos";
 import type { PromocionAdmin } from "../consultas/promociones";
 import { FormularioPromocion } from "./FormularioPromocion";
@@ -23,6 +24,12 @@ export function PanelPromociones({
   productos: Producto[];
 }) {
   const router = useRouter();
+  // Visible a cualquier perfil activo (pedido de Jason, 2026-09-11: que
+  // los colaboradores vean las promos) — crear/editar/pausar/borrar
+  // sigue siendo del dueño, la RLS ya lo bloquea del lado de la base;
+  // acá solo se ocultan los botones para no ofrecerle a un operador
+  // algo que le va a fallar al tocarlo (mismo criterio que Stock).
+  const esDueño = useEsDueño();
   // "Adjusting state when a prop changes" (react.dev), mismo criterio
   // que el resto de los formularios de Stock: un router.refresh() (tras
   // guardar/pausar/borrar) trae props nuevas y no hay que quedarse con
@@ -89,9 +96,11 @@ export function PanelPromociones({
             ? "Todavía no hay ninguna promoción cargada."
             : `${promociones.length} promoción${promociones.length === 1 ? "" : "es"}`}
         </p>
-        <Boton type="button" onClick={abrirAlta}>
-          + Nueva promoción
-        </Boton>
+        {esDueño && (
+          <Boton type="button" onClick={abrirAlta}>
+            + Nueva promoción
+          </Boton>
+        )}
       </div>
 
       {error && (
@@ -123,35 +132,37 @@ export function PanelPromociones({
                   </p>
                 )}
               </div>
-              <div className="flex shrink-0 items-center gap-2">
-                <Boton
-                  type="button"
-                  variante="fantasma"
-                  className="px-2.5 py-1.5 text-xs"
-                  disabled={ocupada === promocion.id}
-                  onClick={() => abrirEdicion(promocion)}
-                >
-                  Editar
-                </Boton>
-                <Boton
-                  type="button"
-                  variante="fantasma"
-                  className="px-2.5 py-1.5 text-xs"
-                  disabled={ocupada === promocion.id}
-                  onClick={() => alternarActiva(promocion)}
-                >
-                  {promocion.activa ? "Pausar" : "Reactivar"}
-                </Boton>
-                <Boton
-                  type="button"
-                  variante="peligro"
-                  className="px-2.5 py-1.5 text-xs"
-                  disabled={ocupada === promocion.id}
-                  onClick={() => eliminar(promocion)}
-                >
-                  Eliminar
-                </Boton>
-              </div>
+              {esDueño && (
+                <div className="flex shrink-0 items-center gap-2">
+                  <Boton
+                    type="button"
+                    variante="fantasma"
+                    className="px-2.5 py-1.5 text-xs"
+                    disabled={ocupada === promocion.id}
+                    onClick={() => abrirEdicion(promocion)}
+                  >
+                    Editar
+                  </Boton>
+                  <Boton
+                    type="button"
+                    variante="fantasma"
+                    className="px-2.5 py-1.5 text-xs"
+                    disabled={ocupada === promocion.id}
+                    onClick={() => alternarActiva(promocion)}
+                  >
+                    {promocion.activa ? "Pausar" : "Reactivar"}
+                  </Boton>
+                  <Boton
+                    type="button"
+                    variante="peligro"
+                    className="px-2.5 py-1.5 text-xs"
+                    disabled={ocupada === promocion.id}
+                    onClick={() => eliminar(promocion)}
+                  >
+                    Eliminar
+                  </Boton>
+                </div>
+              )}
             </div>
           ))}
         </div>

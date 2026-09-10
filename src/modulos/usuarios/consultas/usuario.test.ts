@@ -69,8 +69,16 @@ describe("validarUsuario", () => {
 });
 
 describe("usuarioParaMostrar", () => {
-  it("de una cuenta interna muestra solo el usuario", () => {
+  it("de una cuenta interna (.local) muestra solo el usuario", () => {
     expect(usuarioParaMostrar("marcos@marlyn.local")).toBe("marcos");
+  });
+
+  // admin@marlyn.com y caja@marlyn.com: cuentas dueño creadas directo
+  // desde Supabase, no vía el alta de colaborador de acá — mismo caso
+  // que .local, ninguna es un correo real (pedido de Jason, 2026-09-11).
+  it("de una cuenta admin@marlyn.com o caja@marlyn.com también muestra solo el usuario", () => {
+    expect(usuarioParaMostrar("admin@marlyn.com")).toBe("admin");
+    expect(usuarioParaMostrar("caja@marlyn.com")).toBe("caja");
   });
 
   it("de un correo real muestra el correo entero", () => {

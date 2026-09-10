@@ -32,12 +32,17 @@ Fernet + 2 Coca), arma dos combos.
 
 ## Cómo lo usa Jason
 
-`/promociones` (dueño-only, ítem "Promociones" en el menú lateral):
+`/promociones` (ítem "Promociones" en el menú lateral, visible a
+cualquier perfil activo desde el 2026-09-11 — antes era dueño-only).
+Crear/editar/pausar/borrar sigue siendo solo del dueño: `PanelPromociones.tsx`
+oculta esos botones para un colaborador (`useEsDueño()`), y la RLS de
+`promociones`/`promociones_items` los bloquea del lado de la base pase
+lo que pase en la pantalla — un colaborador solo puede mirar el listado.
 
 - **Listado**: nombre, qué productos/cantidades incluye, precio de la
   promo, estado (activa/pausada), y un aviso "necesita revisión" si
   alguno de sus productos fue eliminado de `/stock` (ver más abajo).
-  Botones: Editar, Pausar/Reactivar, Eliminar.
+  Botones (solo dueño): Editar, Pausar/Reactivar, Eliminar.
 - **Alta**: elegir tipo (esto ya no se puede cambiar después de creada
   — cambia el significado de "cantidad" en cada ítem), buscar y
   agregar producto(s) con su cantidad, cargar el precio de la promo.

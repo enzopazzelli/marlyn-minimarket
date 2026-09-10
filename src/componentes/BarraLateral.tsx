@@ -27,9 +27,11 @@ function construirGrupoAdministracion(): ItemNav[] {
     ...(clienteConfig.modulos.stock ? [{ href: "/stock", etiqueta: "Stock" }] : []),
     ...(clienteConfig.modulos.clientes ? [{ href: "/clientes", etiqueta: "Clientes" }] : []),
     ...(clienteConfig.modulos.proveedores ? [{ href: "/proveedores", etiqueta: "Proveedores" }] : []),
-    ...(clienteConfig.modulos.promociones
-      ? [{ href: "/promociones", etiqueta: "Promociones", soloDueño: true }]
-      : []),
+    // Pedido de Jason (2026-09-11): el dueño crea/edita/pausa/borra
+    // promos, el colaborador solo las ve — por eso el link ya no es
+    // soloDueño acá, y PanelPromociones.tsx es el que oculta los
+    // botones de escritura para quien no sea dueño.
+    ...(clienteConfig.modulos.promociones ? [{ href: "/promociones", etiqueta: "Promociones" }] : []),
     ...(clienteConfig.modulos.notas ? [{ href: "/notas", etiqueta: "Notas" }] : []),
     ...(clienteConfig.modulos.usuariosGranular ? [{ href: "/usuarios", etiqueta: "Usuarios", soloDueño: true }] : []),
     ...(clienteConfig.modulos.usuariosGranular
