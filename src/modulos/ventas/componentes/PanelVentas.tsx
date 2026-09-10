@@ -43,9 +43,11 @@ const clasesSelect =
 const clasesFiltro =
   "rounded-[var(--radius-base)] border border-linea bg-superficie px-3 py-1.5 text-sm text-texto outline-none focus-visible:border-acento focus-visible:ring-2 focus-visible:ring-acento/40";
 
-// "Mixto" no es un medio propio en la base (ventas_pagos.medio solo
-// admite efectivo/transferencia/qr/fiado): son dos filas de pago. Acá
-// es una opción más de UI que arma esas dos filas al confirmar.
+// "Mixto" no es un medio propio en la base (ventas_pagos.medio admite
+// efectivo/transferencia/debito/credito/fiado): son dos filas de pago,
+// efectivo + lo que se elija para el resto (antes solo transferencia,
+// ahora también débito/crédito — pedido de Jason, 2026-09-10). Acá es
+// una opción más de UI que arma esas dos filas al confirmar.
 type MedioPagoUi = MedioPago | "mixto";
 
 const CLIENTE_NUEVO = "__nuevo__";
@@ -56,6 +58,10 @@ type CarritoEnCurso = {
   medioPago: MedioPagoUi;
   pagaCon: string;
   montoMixtoEfectivo: string;
+  // Con qué se cobra la parte que no es efectivo dentro de "Mixto"
+  // (pedido de Jason, 2026-09-10: antes "Mixto" solo repartía entre
+  // efectivo y transferencia, hacía falta también con débito/crédito).
+  medioMixtoResto: Exclude<MedioPago, "fiado" | "efectivo">;
   clienteId: string;
   nombreClienteNuevo: string;
   montoRecibidoFiado: string;
@@ -84,6 +90,7 @@ function crearCarritoVacio(): CarritoEnCurso {
     medioPago: "efectivo",
     pagaCon: "",
     montoMixtoEfectivo: "",
+    medioMixtoResto: "transferencia",
     clienteId: "",
     nombreClienteNuevo: "",
     montoRecibidoFiado: "",
@@ -97,7 +104,12 @@ function cargarCarritosGuardados(): CarritoEnCurso[] {
   try {
     const guardado = window.sessionStorage.getItem(CLAVE_SESSION);
     const carritos = guardado ? (JSON.parse(guardado) as CarritoEnCurso[]) : null;
-    return carritos && carritos.length > 0 ? carritos : [crearCarritoVacio()];
+    // Un carrito guardado antes de sumar "medioMixtoResto" no lo trae —
+    // se completa con el valor que "Mixto" usaba siempre (transferencia)
+    // para no romper con un carrito en curso de antes de este cambio.
+    return carritos && carritos.length > 0
+      ? carritos.map((carrito) => ({ ...carrito, medioMixtoResto: carrito.medioMixtoResto ?? "transferencia" }))
+      : [crearCarritoVacio()];
   } catch {
     return [crearCarritoVacio()];
   }
@@ -199,10 +211,24 @@ export function PanelVentas({
   // Recargo por débito/crédito: se traslada al cliente, así que el
   // total a cobrar (y lo que se manda a registrar_venta) sube — el
   // total del carrito en sí (arriba) sigue siendo el de los productos.
+  // Aplica sobre el total entero si se paga 100% con tarjeta, o solo
+  // sobre la parte de tarjeta si es "Mixto con débito/crédito" (pedido
+  // de Jason, 2026-09-10: "así como el fiado, tanto en efectivo, tanto
+  // con crédito/débito" — la misma idea de repartir un pago que ya
+  // existía para fiado, ahora también para tarjeta).
   const esTarjeta = carritoActivo.medioPago === "debito" || carritoActivo.medioPago === "credito";
-  const recargoMonto = esTarjeta
-    ? Math.round(total * ((Number(carritoActivo.porcentajeRecargoTarjeta) || 0) / 100) * 100) / 100
-    : 0;
+  const esMixtoConTarjeta =
+    carritoActivo.medioPago === "mixto" &&
+    (carritoActivo.medioMixtoResto === "debito" || carritoActivo.medioMixtoResto === "credito");
+  const montoBaseRecargo = esTarjeta
+    ? total
+    : esMixtoConTarjeta
+      ? Math.max(0, total - (Number(carritoActivo.montoMixtoEfectivo) || 0))
+      : 0;
+  const recargoMonto =
+    montoBaseRecargo > 0
+      ? Math.round(montoBaseRecargo * ((Number(carritoActivo.porcentajeRecargoTarjeta) || 0) / 100) * 100) / 100
+      : 0;
   const totalConRecargo = total + recargoMonto;
 
   // Pantalla al cliente: la pestaña activa se emite por Realtime
@@ -388,9 +414,12 @@ export function PanelVentas({
         setError("En pago mixto, la parte en efectivo tiene que ser mayor a cero y menor al total");
         return;
       }
+      // recargoMonto ya sale calculado solo sobre esta parte (ver
+      // montoBaseRecargo más arriba) cuando el resto es débito/crédito;
+      // 0 si es transferencia, igual que siempre.
       pagos = [
         { medio: "efectivo", monto: efectivo, vuelto: 0 },
-        { medio: "transferencia", monto: total - efectivo, vuelto: 0 },
+        { medio: carritoActivo.medioMixtoResto, monto: total - efectivo + recargoMonto, vuelto: 0 },
       ];
     } else if (carritoActivo.medioPago === "fiado") {
       if (!carritoActivo.clienteId) {
@@ -427,7 +456,7 @@ export function PanelVentas({
       pagos = [{ medio: carritoActivo.medioPago, monto: total, vuelto: 0 }];
     }
 
-    if (!pagosCubrenElTotal(pagos, esTarjeta ? totalConRecargo : total)) {
+    if (!pagosCubrenElTotal(pagos, totalConRecargo)) {
       setError("Los pagos cargados no cubren el total de la venta");
       return;
     }
@@ -505,13 +534,13 @@ export function PanelVentas({
     setComprobante({
       items: itemsConPromo,
       subtotal: total,
-      total: esTarjeta ? totalConRecargo : total,
+      total: totalConRecargo,
       medioTexto: esFiadoParcial
         ? `${medioTexto[carritoActivo.medioRecibidoFiado]} + Fiado`
         : medioTexto[carritoActivo.medioPago],
       vuelto: pagos.reduce((suma, pago) => suma + pago.vuelto, 0),
       saldoFiado: pagos.find((pago) => pago.medio === "fiado" && pago.monto < total)?.monto,
-      recargoPorcentaje: esTarjeta ? Number(carritoActivo.porcentajeRecargoTarjeta) || 0 : undefined,
+      recargoPorcentaje: recargoMonto > 0 ? Number(carritoActivo.porcentajeRecargoTarjeta) || 0 : undefined,
     });
 
     // Antes esto era un router.refresh(): recargaba toda /ventas para
@@ -561,7 +590,7 @@ export function PanelVentas({
         clienteId,
         usuarioId,
         subtotal: total,
-        total: esTarjeta ? totalConRecargo : total,
+        total: totalConRecargo,
         estado: "confirmada",
         creadoEn: filaVenta.creado_en,
         medioTexto: medioTextoReal,
@@ -771,48 +800,55 @@ export function PanelVentas({
               )}
 
               {carritoActivo.medioPago === "mixto" && (
-                <div className="flex flex-col gap-1.5">
-                  <label htmlFor="montoMixto" className="text-xs text-texto-suave">
-                    Monto en efectivo (el resto va por transferencia)
-                  </label>
-                  <input
-                    id="montoMixto"
-                    type="number"
-                    min={0}
-                    step="1"
-                    value={carritoActivo.montoMixtoEfectivo}
-                    onChange={(evento) => actualizarCarritoActivo({ montoMixtoEfectivo: evento.target.value })}
-                    onFocus={(evento) => evento.currentTarget.select()}
-                    className={`${clasesFiltro} numero w-full`}
-                  />
+                <div className="flex flex-col gap-2">
+                  <div className="flex flex-col gap-1.5">
+                    <label htmlFor="montoMixto" className="text-xs text-texto-suave">
+                      Monto en efectivo (el resto va por el medio de al lado)
+                    </label>
+                    <div className="flex gap-1.5">
+                      <input
+                        id="montoMixto"
+                        type="number"
+                        min={0}
+                        step="1"
+                        value={carritoActivo.montoMixtoEfectivo}
+                        onChange={(evento) => actualizarCarritoActivo({ montoMixtoEfectivo: evento.target.value })}
+                        onFocus={(evento) => evento.currentTarget.select()}
+                        className={`${clasesFiltro} numero min-w-0 flex-1`}
+                      />
+                      <select
+                        aria-label="Medio en que se cobra el resto"
+                        className={`${clasesSelect} w-36 shrink-0 py-1.5 text-sm`}
+                        value={carritoActivo.medioMixtoResto}
+                        onChange={(evento) =>
+                          actualizarCarritoActivo({
+                            medioMixtoResto: evento.target.value as CarritoEnCurso["medioMixtoResto"],
+                          })
+                        }
+                      >
+                        <option value="transferencia">Transferencia</option>
+                        <option value="debito">Débito</option>
+                        <option value="credito">Crédito</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {esMixtoConTarjeta && (
+                    <CampoRecargoTarjeta
+                      porcentaje={carritoActivo.porcentajeRecargoTarjeta}
+                      onCambiar={(valor) => actualizarCarritoActivo({ porcentajeRecargoTarjeta: valor })}
+                      montoConRecargo={totalConRecargo}
+                    />
+                  )}
                 </div>
               )}
 
               {esTarjeta && (
-                <div className="flex flex-col gap-1.5">
-                  <label htmlFor="porcentajeRecargoTarjeta" className="text-xs text-texto-suave">
-                    % de recargo (opcional, según la tarjeta/cuotas)
-                  </label>
-                  <input
-                    id="porcentajeRecargoTarjeta"
-                    type="number"
-                    min={0}
-                    step="1"
-                    placeholder="0"
-                    value={carritoActivo.porcentajeRecargoTarjeta}
-                    onChange={(evento) => actualizarCarritoActivo({ porcentajeRecargoTarjeta: evento.target.value })}
-                    onFocus={(evento) => evento.currentTarget.select()}
-                    className={`${clasesFiltro} numero w-full`}
-                  />
-                  {recargoMonto > 0 && (
-                    <div className="flex items-center justify-between rounded-[var(--radius-base)] bg-alerta-fondo px-3 py-2">
-                      <span className="text-xs font-semibold text-alerta">Total con recargo</span>
-                      <span className="numero text-sm font-semibold text-alerta">
-                        {platita.format(totalConRecargo)}
-                      </span>
-                    </div>
-                  )}
-                </div>
+                <CampoRecargoTarjeta
+                  porcentaje={carritoActivo.porcentajeRecargoTarjeta}
+                  onCambiar={(valor) => actualizarCarritoActivo({ porcentajeRecargoTarjeta: valor })}
+                  montoConRecargo={totalConRecargo}
+                />
               )}
 
               {carritoActivo.medioPago === "fiado" && (
@@ -912,7 +948,7 @@ export function PanelVentas({
                 ? "Cobrando…"
                 : carritoActivo.medioPago === "fiado" && Number(carritoActivo.montoRecibidoFiado) > 0
                   ? `Cobrar ${platita.format(Number(carritoActivo.montoRecibidoFiado))} y fiar el resto`
-                  : `Cobrar ${platita.format(esTarjeta ? totalConRecargo : total)}`}
+                  : `Cobrar ${platita.format(totalConRecargo)}`}
             </Boton>
           </div>
         </div>
@@ -937,6 +973,46 @@ export function PanelVentas({
           </div>
         )}
       </Modal>
+    </div>
+  );
+}
+
+// Compartido entre "Débito/Crédito" puro y "Mixto con débito/crédito"
+// (2026-09-10): el mismo campo de % de recargo y la misma vista previa
+// de "Total con recargo", solo cambia qué parte del total representa
+// ese monto (todo, o solo la parte de tarjeta — ya resuelto por quien
+// llama, en `montoConRecargo`).
+function CampoRecargoTarjeta({
+  porcentaje,
+  onCambiar,
+  montoConRecargo,
+}: {
+  porcentaje: string;
+  onCambiar: (valor: string) => void;
+  montoConRecargo: number;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label htmlFor="porcentajeRecargoTarjeta" className="text-xs text-texto-suave">
+        % de recargo (opcional, según la tarjeta/cuotas)
+      </label>
+      <input
+        id="porcentajeRecargoTarjeta"
+        type="number"
+        min={0}
+        step="1"
+        placeholder="0"
+        value={porcentaje}
+        onChange={(evento) => onCambiar(evento.target.value)}
+        onFocus={(evento) => evento.currentTarget.select()}
+        className={`${clasesFiltro} numero w-full`}
+      />
+      {Number(porcentaje) > 0 && (
+        <div className="flex items-center justify-between rounded-[var(--radius-base)] bg-alerta-fondo px-3 py-2">
+          <span className="text-xs font-semibold text-alerta">Total con recargo</span>
+          <span className="numero text-sm font-semibold text-alerta">{platita.format(montoConRecargo)}</span>
+        </div>
+      )}
     </div>
   );
 }
