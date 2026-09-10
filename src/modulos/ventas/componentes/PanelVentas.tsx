@@ -160,21 +160,11 @@ export function PanelVentas({
   // participa de alguna, se haya completado o no todavía (pedido de
   // Jason, 2026-09-11: "escaneo el Fernet... que me salga una nube
   // diciendo que hay una promo" — para que el cajero pueda ofrecerle al
-  // cliente lo que le falta). Se autodescarta sola a los pocos segundos.
+  // cliente lo que le falta). Queda a la vista hasta que se cierre con
+  // la ✕ o hasta el próximo aviso — un auto-descarte por tiempo hacía
+  // que se perdiera antes de que el cajero llegara a leerlo (pedido de
+  // Enzo, 2026-09-11).
   const [avisoPromo, setAvisoPromo] = useState<string | null>(null);
-  const avisoPromoTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (avisoPromoTimeoutRef.current) clearTimeout(avisoPromoTimeoutRef.current);
-    };
-  }, []);
-
-  function mostrarAvisoPromo(mensaje: string) {
-    if (avisoPromoTimeoutRef.current) clearTimeout(avisoPromoTimeoutRef.current);
-    setAvisoPromo(mensaje);
-    avisoPromoTimeoutRef.current = setTimeout(() => setAvisoPromo(null), 6000);
-  }
 
   // Cada pestaña de venta es su propio carrito independiente: cambiar de
   // pestaña ES "guardar para después" (el pedido del cliente), y también
@@ -199,6 +189,7 @@ export function PanelVentas({
     setCarritos((anteriores) => [...anteriores, carrito]);
     setCarritoActivoId(carrito.id);
     setError(null);
+    setAvisoPromo(null);
   }
 
   function cerrarVenta(id: string) {
@@ -212,6 +203,7 @@ export function PanelVentas({
       if (id === carritoActivoId) setCarritoActivoId(restantes[0].id);
       return restantes;
     });
+    setAvisoPromo(null);
   }
 
   // Se aplican solas, sin que el cajero tenga que acordarse de nada
@@ -341,9 +333,7 @@ export function PanelVentas({
 
     const promosDelProducto = promocionesDeProducto(promociones, producto.id);
     if (promosDelProducto.length > 0) {
-      mostrarAvisoPromo(
-        promosDelProducto.map((promocion) => descripcionPromocion(promocion, productos)).join(" · "),
-      );
+      setAvisoPromo(promosDelProducto.map((promocion) => descripcionPromocion(promocion, productos)).join(" · "));
     }
   }
 
@@ -655,7 +645,13 @@ export function PanelVentas({
                 : "border-linea bg-superficie text-texto-suave hover:text-texto"
             }`}
           >
-            <button type="button" onClick={() => setCarritoActivoId(carrito.id)}>
+            <button
+              type="button"
+              onClick={() => {
+                setCarritoActivoId(carrito.id);
+                setAvisoPromo(null);
+              }}
+            >
               Venta {indice + 1}
               {carrito.items.length > 0 && ` (${carrito.items.length})`}
             </button>
@@ -690,6 +686,18 @@ export function PanelVentas({
                 autoComplete="off"
                 value={busqueda}
                 onChange={(evento) => setBusqueda(evento.target.value)}
+                onKeyDown={(evento) => {
+                  // Pedido de Enzo (2026-09-11): al escanear, el Enter ya
+                  // deja el campo listo para el próximo código
+                  // (alEnviarBusqueda hace setBusqueda("")) — tipeando a
+                  // mano no hay un gesto así. Flecha abajo selecciona todo
+                  // lo tipeado para poder escribir el siguiente producto
+                  // encima, sin ir a buscar el cursor o borrar a mano.
+                  if (evento.key === "ArrowDown") {
+                    evento.preventDefault();
+                    evento.currentTarget.select();
+                  }
+                }}
                 placeholder="Escaneá, buscá por nombre o código..."
                 className="flex-1 rounded-[var(--radius-base)] border border-white/20 bg-marco-suave px-3 py-3 text-base text-white placeholder:text-white/40 outline-none"
               />
@@ -698,13 +706,19 @@ export function PanelVentas({
           </form>
 
           {avisoPromo && (
-            <div className="flex items-start justify-between gap-2 rounded-[var(--radius-base)] border border-acento/40 bg-acento/10 px-3 py-2 text-sm font-medium text-texto">
+            // bg-ok (no --acento): ese token está reservado para
+            // totales/pantalla al cliente/CTA principal (ver tema.css) —
+            // este aviso reusa el mismo verde que ya significa "buena
+            // noticia de promo" en el badge de la línea del carrito y en
+            // "Ahorrás $X" (mismo criterio, más fuerte por ser un aviso
+            // nuevo que pide más atención).
+            <div className="flex items-start justify-between gap-3 rounded-[var(--radius-base)] bg-ok px-4 py-3 text-base font-semibold text-white">
               <span>🏷️ {avisoPromo}</span>
               <button
                 type="button"
                 aria-label="Cerrar aviso de promoción"
                 onClick={() => setAvisoPromo(null)}
-                className="shrink-0 text-texto-suave hover:text-texto"
+                className="shrink-0 text-white/70 hover:text-white"
               >
                 ✕
               </button>
@@ -755,7 +769,10 @@ export function PanelVentas({
                 <button
                   type="button"
                   className="text-xs text-texto-suave underline"
-                  onClick={() => actualizarCarritoActivo({ items: [] })}
+                  onClick={() => {
+                    actualizarCarritoActivo({ items: [] });
+                    setAvisoPromo(null);
+                  }}
                 >
                   Vaciar
                 </button>
