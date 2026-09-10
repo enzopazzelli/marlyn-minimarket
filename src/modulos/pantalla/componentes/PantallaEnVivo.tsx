@@ -57,6 +57,8 @@ export function PantallaEnVivo({ token }: { token: string }) {
   }
 
   const hayCarrito = valido && carrito && carrito.items.length > 0;
+  const ahorroPromociones =
+    carrito?.items.reduce((acumulado, item) => acumulado + (item.promoAplicada?.ahorro ?? 0), 0) ?? 0;
 
   if (!hayCarrito) {
     return (
@@ -89,23 +91,34 @@ export function PantallaEnVivo({ token }: { token: string }) {
       <div className="flex-1 overflow-y-auto py-6">
         <ul className="flex flex-col gap-3">
           {carrito.items.map((item) => (
-            <li
-              key={item.productoId}
-              className={`flex items-baseline justify-between gap-4 ${tamañoTextoItem(item.nombre)}`}
-            >
-              <span>
-                <span className="numero text-white/60">{item.cantidad} ×</span> {item.nombre}
-              </span>
-              <span className="numero shrink-0 font-semibold">
-                {platita.format(item.cantidad * item.precioUnitario)}
-              </span>
+            <li key={item.productoId} className={tamañoTextoItem(item.nombre)}>
+              <div className="flex items-baseline justify-between gap-4">
+                <span>
+                  <span className="numero text-white/60">{item.cantidad} ×</span> {item.nombre}
+                </span>
+                <span className="numero shrink-0 font-semibold">
+                  {platita.format(item.subtotal ?? item.cantidad * item.precioUnitario)}
+                </span>
+              </div>
+              {item.promoAplicada && (
+                <p className="numero text-sm font-medium text-acento">
+                  🏷️ {item.promoAplicada.nombre} · ahorrás {platita.format(item.promoAplicada.ahorro)}
+                </p>
+              )}
             </li>
           ))}
         </ul>
       </div>
-      <div className="flex items-baseline justify-between border-t border-white/20 pt-6">
-        <span className="font-[family-name:var(--font-display)] text-2xl text-white/80">Total</span>
-        <span className="numero text-6xl font-semibold text-acento">{platita.format(carrito.total)}</span>
+      <div className="border-t border-white/20 pt-6">
+        {ahorroPromociones > 0 && (
+          <p className="numero mb-1 text-right text-lg font-semibold text-acento">
+            Ahorrás {platita.format(ahorroPromociones)} con esta compra
+          </p>
+        )}
+        <div className="flex items-baseline justify-between">
+          <span className="font-[family-name:var(--font-display)] text-2xl text-white/80">Total</span>
+          <span className="numero text-6xl font-semibold text-acento">{platita.format(carrito.total)}</span>
+        </div>
       </div>
     </main>
   );

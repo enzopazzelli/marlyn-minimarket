@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import type { Producto } from "@/modulos/stock/tipos";
+import type { ItemCarritoConPromo } from "@/modulos/promociones/tipos";
 import { calcularSubtotalItem } from "../consultas/calculos";
-import type { ItemCarrito } from "../tipos";
 
 const platita = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" });
 
@@ -35,7 +35,7 @@ export function FilaCarritoItem({
   onCambiarCantidadExacta,
   onQuitar,
 }: {
-  item: ItemCarrito;
+  item: ItemCarritoConPromo;
   producto: Producto | undefined;
   onCambiarPaso: (delta: number) => void;
   // subtotalExacto: al vender por monto ($1500 de jamón a $18000/kg =
@@ -102,8 +102,21 @@ export function FilaCarritoItem({
             {platita.format(item.precioUnitario)} {esPeso ? ETIQUETA_GRANDE[unidad] : "c/u"}
           </p>
         </div>
-        <p className="numero text-sm font-semibold text-texto">{platita.format(calcularSubtotalItem(item))}</p>
+        <div className="text-right">
+          {item.promoAplicada && (
+            <p className="numero text-xs text-texto-suave line-through">
+              {platita.format(item.cantidad * item.precioUnitario)}
+            </p>
+          )}
+          <p className="numero text-sm font-semibold text-texto">{platita.format(calcularSubtotalItem(item))}</p>
+        </div>
       </div>
+
+      {item.promoAplicada && (
+        <p className="mt-1 text-xs font-medium text-ok">
+          🏷️ {item.promoAplicada.nombre} · ahorrás {platita.format(item.promoAplicada.ahorro)}
+        </p>
+      )}
 
       {!esPeso ? (
         <div className="mt-1.5 flex items-center justify-end gap-1.5">

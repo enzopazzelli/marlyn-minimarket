@@ -28,10 +28,13 @@ export const clienteConfig = {
     // M9 Multiusuario: alta de operadores con menos acceso que el
     // dueño, más la pantalla de Auditoría — ver PLAN-ROLES-AUDITORIA.md.
     usuariosGranular: true,
+    // Descuento por cantidad ("3 Alka x $100") y combos de productos
+    // distintos ("Fernet + Coca a precio fijo"), a pedido de Jason
+    // (2026-09-10, confirmado con el cliente) — ver PLAN-PROMOCIONES.md.
+    promociones: true,
     // Fase 2, fuera del alcance de esta entrega:
     panel: false,
     compras: false,
-    promociones: false,
   },
 
   // Se cotizan aparte del software base (sección 2, "Complementos").

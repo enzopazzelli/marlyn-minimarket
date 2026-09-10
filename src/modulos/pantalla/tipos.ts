@@ -9,6 +9,11 @@ export type ItemCarritoPantalla = {
   nombre: string;
   cantidad: number;
   precioUnitario: number;
+  // Ausente si la línea es cantidad × precioUnitario tal cual; presente
+  // si hay una promo aplicada (o, mismo mecanismo, una venta por peso a
+  // monto tipeado) — ver ItemCarritoConPromo/aplicarPromociones.
+  subtotal?: number;
+  promoAplicada?: { nombre: string; ahorro: number };
 };
 
 export type CarritoPantalla = {

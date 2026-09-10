@@ -17,6 +17,8 @@ import {
   pagosCubrenElTotal,
 } from "../consultas/calculos";
 import type { Cliente } from "@/modulos/clientes/tipos";
+import { aplicarPromociones } from "@/modulos/promociones/consultas/aplicarPromociones";
+import type { Promocion } from "@/modulos/promociones/tipos";
 import {
   coincideCodigoExacto,
   contieneCodigo,
@@ -107,6 +109,7 @@ export function PanelVentas({
   turnoCajaId,
   usuarioId,
   tokenPantalla,
+  promociones,
   onVentaConfirmada,
 }: {
   productos: Producto[];
@@ -114,6 +117,7 @@ export function PanelVentas({
   turnoCajaId: string;
   usuarioId: string;
   tokenPantalla: string;
+  promociones: Promocion[];
   onVentaConfirmada: (venta: VentaResumen, items: { productoId: string; cantidad: number }[]) => void;
 }) {
   // "Adjusting state when a prop changes" (react.dev) — mismo patrón que
@@ -178,7 +182,19 @@ export function PanelVentas({
     });
   }
 
-  const total = useMemo(() => calcularTotalCarrito(carritoActivo.items), [carritoActivo.items]);
+  // Se aplican solas, sin que el cajero tenga que acordarse de nada
+  // (pedido de Jason, 2026-09-10 — ver PLAN-PROMOCIONES.md): esta es la
+  // única lista que ve precios/subtotales de promo, el carrito en sí
+  // (carritoActivo.items) sigue siendo lo que el cajero tipeó tal cual.
+  const itemsConPromo = useMemo(
+    () => aplicarPromociones(carritoActivo.items, promociones),
+    [carritoActivo.items, promociones],
+  );
+  const total = useMemo(() => calcularTotalCarrito(itemsConPromo), [itemsConPromo]);
+  const ahorroPromociones = useMemo(
+    () => itemsConPromo.reduce((acumulado, item) => acumulado + (item.promoAplicada?.ahorro ?? 0), 0),
+    [itemsConPromo],
+  );
 
   // Recargo por débito/crédito: se traslada al cliente, así que el
   // total a cobrar (y lo que se manda a registrar_venta) sube — el
@@ -215,12 +231,24 @@ export function PanelVentas({
     canalPantallaRef.current.send({
       type: "broadcast",
       event: CANAL_EVENTO_CARRITO,
-      payload: { items: carritoActivo.items, total },
+      // itemsConPromo (no carritoActivo.items): la TV tiene que ver el
+      // mismo precio con promo y el mismo aviso que ve el cajero.
+      payload: {
+        items: itemsConPromo.map((item) => ({
+          productoId: item.productoId,
+          nombre: item.nombre,
+          cantidad: item.cantidad,
+          precioUnitario: item.precioUnitario,
+          subtotal: calcularSubtotalItem(item),
+          promoAplicada: item.promoAplicada,
+        })),
+        total,
+      },
     });
     // Se manda con cada cambio del carrito activo: agregar/sacar
     // productos y cambiar de pestaña caen acá solos, porque
     // carritoActivo ya deriva de cuál pestaña está seleccionada.
-  }, [canalPantallaListo, carritoActivo.items, total]);
+  }, [canalPantallaListo, itemsConPromo, total]);
 
   function agregarProducto(producto: Producto) {
     setError(null);
@@ -446,7 +474,7 @@ export function PanelVentas({
     const { data: filasVenta, error: errorRpc } = await supabase.rpc("registrar_venta", {
       p_turno_caja_id: turnoCajaId,
       p_cliente_id: clienteId,
-      p_items: carritoActivo.items.map((item) => ({
+      p_items: itemsConPromo.map((item) => ({
         producto_id: item.productoId,
         cantidad: item.cantidad,
         precio_unitario: item.precioUnitario,
@@ -475,7 +503,7 @@ export function PanelVentas({
     // fiado" de más abajo dejan claro que se cobró una parte y en qué.
     const esFiadoParcial = carritoActivo.medioPago === "fiado" && pagos.length > 1;
     setComprobante({
-      items: carritoActivo.items,
+      items: itemsConPromo,
       subtotal: total,
       total: esTarjeta ? totalConRecargo : total,
       medioTexto: esFiadoParcial
@@ -660,7 +688,7 @@ export function PanelVentas({
                   Escaneá el primer producto para empezar.
                 </p>
               ) : (
-                carritoActivo.items.map((item) => (
+                itemsConPromo.map((item) => (
                   <FilaCarritoItem
                     key={item.productoId}
                     item={item}
@@ -674,6 +702,12 @@ export function PanelVentas({
                 ))
               )}
             </div>
+            {ahorroPromociones > 0 && (
+              <p className="flex items-center justify-between bg-ok-fondo px-4 py-1.5 text-xs font-semibold text-ok">
+                <span>🏷️ Ahorrás con esta compra</span>
+                <span className="numero">{platita.format(ahorroPromociones)}</span>
+              </p>
+            )}
             <div className="flex items-baseline justify-between bg-marco px-4 py-3">
               <span className="font-[family-name:var(--font-numero)] text-xs tracking-wider text-white/60">
                 TOTAL

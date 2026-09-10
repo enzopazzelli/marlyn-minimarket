@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { Cliente } from "@/modulos/clientes/tipos";
 import type { Producto } from "@/modulos/stock/tipos";
+import type { Promocion } from "@/modulos/promociones/tipos";
 import type { VentaResumen } from "../consultas/ventas";
 import { ListaVentasDelTurno } from "./ListaVentasDelTurno";
 import { PanelVentas } from "./PanelVentas";
@@ -19,6 +20,7 @@ export function SeccionVentas({
   usuarioId,
   tokenPantalla,
   ventasIniciales,
+  promociones,
 }: {
   productosIniciales: Producto[];
   clientes: Cliente[];
@@ -26,6 +28,7 @@ export function SeccionVentas({
   usuarioId: string;
   tokenPantalla: string;
   ventasIniciales: VentaResumen[];
+  promociones: Promocion[];
 }) {
   // "Adjusting state when a prop changes" (react.dev) — mismo patrón
   // que ya usa PanelVentas para clientes. BotonAnularVenta sigue
@@ -65,6 +68,7 @@ export function SeccionVentas({
         turnoCajaId={turnoCajaId}
         usuarioId={usuarioId}
         tokenPantalla={tokenPantalla}
+        promociones={promociones}
         onVentaConfirmada={alConfirmarVenta}
       />
       <ListaVentasDelTurno ventas={ventas} />

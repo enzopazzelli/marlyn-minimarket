@@ -6,6 +6,7 @@ import { crearClienteServidor } from "@/lib/supabase/servidor";
 import { buscarTurnoAbierto } from "@/modulos/caja/consultas/caja";
 import { listarClientes } from "@/modulos/clientes/consultas/clientes";
 import { listarProductos } from "@/modulos/stock/consultas/productos";
+import { listarPromociones, paraAplicarEnVenta } from "@/modulos/promociones/consultas/promociones";
 import { listarVentasDelTurno } from "@/modulos/ventas/consultas/ventas";
 import { SeccionVentas } from "@/modulos/ventas/componentes/SeccionVentas";
 
@@ -54,11 +55,12 @@ async function PanelVentasConectado({
   // El token es del comercio, no de quien está vendiendo (pedido del
   // dueño: la pantalla tiene que recibir la venta la haga el dueño o
   // un colaborador) — mismo valor para cualquiera que esté logueado.
-  const [productos, clientes, ventas, configuracion] = await Promise.all([
+  const [productos, clientes, ventas, configuracion, promociones] = await Promise.all([
     listarProductos(supabase),
     listarClientes(supabase),
     listarVentasDelTurno(supabase, turnoCajaId),
     supabase.from("configuracion_comercio").select("token_pantalla").single(),
+    listarPromociones(supabase),
   ]);
 
   return (
@@ -69,6 +71,7 @@ async function PanelVentasConectado({
       usuarioId={usuarioId}
       tokenPantalla={configuracion.data?.token_pantalla ?? ""}
       ventasIniciales={ventas}
+      promociones={paraAplicarEnVenta(promociones)}
     />
   );
 }

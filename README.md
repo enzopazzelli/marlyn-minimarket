@@ -993,6 +993,17 @@ no se usa). Alcance pedido: import de catálogo (altas masivas a
 un `.xlsx` de 4 hojas (resumen, medios de pago, top productos, detalle
 de ventas) del día elegido.
 
+### Módulo de promociones (2026-09-10)
+
+Pedido de Jason, confirmado antes de construirlo (módulo nuevo, se
+cobra aparte de lo ya cotizado — ver `mmm_cotizacion_cliente` en
+memoria): descuento por cantidad de un mismo producto ("3 Alka x
+$100") y combos de productos distintos a precio fijo ("Fernet + Coca").
+Se aplican solas al armar el carrito en `/ventas` (sin que el cajero
+tenga que acordarse de nada) y avisan tanto en el carrito como en la
+pantalla del cliente. Documentación completa (modelo de datos,
+algoritmo, decisiones de diseño) en `PROMOCIONES.md`.
+
 ### Cuarta ronda de ajustes del cliente (2026-09-07)
 
 Cuatro pedidos de Jason (el dueño), decididos con Enzo antes de tocar
