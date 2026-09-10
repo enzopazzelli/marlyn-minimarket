@@ -13,9 +13,13 @@ import { Modal } from "@/componentes/Modal";
 import { useEsDueño } from "@/lib/supabase/PerfilContext";
 import { validarProducto, type ErroresProducto } from "../consultas/validacion";
 import { calcularGananciaDesdePrecioVenta, calcularPrecioVentaDesdeGanancia } from "../consultas/precios";
-import type { Categoria, Proveedor } from "../tipos";
+import type { Proveedor } from "../tipos";
 
-const RUBRO_NUEVO = "__nuevo__";
+// Sin campo de rubro (pedido del dueño, 2026-09-10, extendiendo el
+// mismo pedido de FormularioEditarProducto.tsx del 2026-09-08): un
+// producto nuevo se crea sin rubro asignado. Se sigue pudiendo asignar
+// por el import de Excel; para editarlo caso por caso queda la opción
+// de tocar la base directamente hasta que haga falta una UI para eso.
 const PROVEEDOR_NUEVO = "__nuevo__";
 const IVA_PORCENTAJE = clienteConfig.reglasNegocio.ivaPorcentaje;
 
@@ -48,8 +52,6 @@ function bloquearEnterComoSubmit(evento: KeyboardEvent<HTMLFormElement>) {
 function estadoInicial() {
   return {
     nombre: "",
-    rubroSeleccionado: "",
-    nombreRubroNuevo: "",
     proveedorSeleccionado: "",
     nombreProveedorNuevo: "",
     codigoBarras: "",
@@ -65,28 +67,15 @@ function estadoInicial() {
 }
 
 export function FormularioNuevoProducto({
-  categoriasIniciales,
   proveedoresIniciales,
 }: {
-  categoriasIniciales: Categoria[];
   proveedoresIniciales: Proveedor[];
 }) {
   const esDueño = useEsDueño();
   const router = useRouter();
   // "Adjusting state when a prop changes" (react.dev): setState durante
-  // el render, no en un efecto. useState(categoriasIniciales) por sí
-  // solo únicamente toma el valor inicial; si el rubro se
-  // crea/renombra/borra desde PanelRubros (otro componente), un
-  // router.refresh() trae un `categoriasIniciales` nuevo por props, y
-  // sin este chequeo el <select> de acá seguiría mostrando la lista
-  // vieja hasta que este formulario cree un rubro por su cuenta. Mismo
-  // criterio para proveedores, ahora editados/borrados desde /proveedores.
-  const [categoriasVistas, setCategoriasVistas] = useState(categoriasIniciales);
-  const [categorias, setCategorias] = useState(categoriasIniciales);
-  if (categoriasIniciales !== categoriasVistas) {
-    setCategoriasVistas(categoriasIniciales);
-    setCategorias(categoriasIniciales);
-  }
+  // el render, no en un efecto. Mismo criterio para proveedores, ahora
+  // editados/borrados desde /proveedores.
   const [proveedoresVistos, setProveedoresVistos] = useState(proveedoresIniciales);
   const [proveedores, setProveedores] = useState(proveedoresIniciales);
   if (proveedoresIniciales !== proveedoresVistos) {
@@ -184,11 +173,6 @@ export function FormularioNuevoProducto({
     setErrores(resultado.errores);
     if (!resultado.valido) return;
 
-    if (campos.rubroSeleccionado === RUBRO_NUEVO && !campos.nombreRubroNuevo.trim()) {
-      setErrorGeneral("Escribí el nombre del rubro");
-      return;
-    }
-
     if (campos.proveedorSeleccionado === PROVEEDOR_NUEVO && !campos.nombreProveedorNuevo.trim()) {
       setErrorGeneral("Escribí el nombre del proveedor");
       return;
@@ -198,28 +182,6 @@ export function FormularioNuevoProducto({
     const supabase = crearClienteNavegador();
 
     try {
-      let categoriaId: string | null = null;
-
-      if (campos.rubroSeleccionado === RUBRO_NUEVO) {
-        const { data: nuevoRubro, error: errorRubro } = await supabase
-          .from("categorias")
-          .insert({ nombre: campos.nombreRubroNuevo.trim() })
-          .select("id, nombre")
-          .single();
-
-        if (errorRubro || !nuevoRubro) {
-          setErrorGeneral("No se pudo crear el rubro. Probá de nuevo.");
-          return;
-        }
-
-        categoriaId = nuevoRubro.id;
-        setCategorias((anteriores) =>
-          [...anteriores, nuevoRubro as Categoria].sort((a, b) => a.nombre.localeCompare(b.nombre)),
-        );
-      } else if (campos.rubroSeleccionado) {
-        categoriaId = campos.rubroSeleccionado;
-      }
-
       let proveedorId: string | null = null;
 
       if (campos.proveedorSeleccionado === PROVEEDOR_NUEVO) {
@@ -252,7 +214,7 @@ export function FormularioNuevoProducto({
         .from("productos")
         .insert({
         nombre: datos.nombre.trim(),
-        categoria_id: categoriaId,
+        categoria_id: null,
         proveedor_id: proveedorId,
         codigo_barras: campos.codigoBarras.trim() || null,
         precio_costo: datos.precioCosto,
@@ -324,33 +286,6 @@ export function FormularioNuevoProducto({
             />
             {errores.nombre && <p className="text-sm text-alerta">{errores.nombre}</p>}
           </div>
-
-          <label htmlFor="rubro" className="flex flex-col gap-1.5 text-sm">
-            <span className="text-texto-suave">Rubro</span>
-            <select
-              id="rubro"
-              className={clasesSelect}
-              value={campos.rubroSeleccionado}
-              onChange={(evento) => setCampos({ ...campos, rubroSeleccionado: evento.target.value })}
-            >
-              <option value="">Sin rubro</option>
-              {categorias.map((categoria) => (
-                <option key={categoria.id} value={categoria.id}>
-                  {categoria.nombre}
-                </option>
-              ))}
-              <option value={RUBRO_NUEVO}>+ Nuevo rubro…</option>
-            </select>
-          </label>
-
-          {campos.rubroSeleccionado === RUBRO_NUEVO && (
-            <Campo
-              etiqueta="Nombre del rubro nuevo"
-              id="nombreRubroNuevo"
-              value={campos.nombreRubroNuevo}
-              onChange={(evento) => setCampos({ ...campos, nombreRubroNuevo: evento.target.value })}
-            />
-          )}
 
           <label htmlFor="proveedor" className="flex flex-col gap-1.5 text-sm">
             <span className="text-texto-suave">Proveedor</span>

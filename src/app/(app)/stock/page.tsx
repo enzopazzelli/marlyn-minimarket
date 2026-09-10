@@ -24,7 +24,7 @@ export default async function PaginaStock() {
           <PanelRubros categoriasIniciales={categorias} />
           <BotonExportarStock productos={productos} categorias={categorias} proveedores={proveedores} />
           <FormularioImportarExcel categorias={categorias} proveedores={proveedores} productos={productos} />
-          <FormularioNuevoProducto categoriasIniciales={categorias} proveedoresIniciales={proveedores} />
+          <FormularioNuevoProducto proveedoresIniciales={proveedores} />
         </div>
       </BarraSuperior>
       <main className="flex-1 p-4 md:p-6">
