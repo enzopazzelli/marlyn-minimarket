@@ -78,25 +78,26 @@ describe("aplicarPromociones — descuento por cantidad", () => {
 });
 
 describe("aplicarPromociones — combo de productos distintos", () => {
-  it("reparte el precio del combo proporcional al precio normal de cada uno", () => {
+  it("reparte el precio del combo proporcional al precio normal de cada uno, redondeado a peso entero", () => {
     const items = [itemUnidad("fernet", 1, 18000), itemUnidad("coca", 1, 2500)];
     const [fernet, coca] = aplicarPromociones(items, [COMBO_FERNET_COCA]);
 
-    expect(fernet.subtotal).toBeCloseTo(16682.93, 2);
-    expect(coca.subtotal).toBeCloseTo(2317.07, 2);
-    // Los dos subtotales tienen que sumar exacto el precio del combo,
-    // centavo a centavo — es lo que efectivamente se cobra.
-    expect(redondear2(fernet.subtotal! + coca.subtotal!)).toBe(19000);
+    expect(fernet.subtotal).toBe(16683);
+    expect(coca.subtotal).toBe(2317);
+    // Los dos subtotales tienen que sumar exacto el precio del combo —
+    // es lo que efectivamente se cobra, sin importar cómo cae el
+    // redondeo de cada línea (el último ítem se lleva el resto).
+    expect(fernet.subtotal! + coca.subtotal!).toBe(19000);
 
-    expect(fernet.promoAplicada?.ahorro).toBeCloseTo(1317.07, 2);
-    expect(coca.promoAplicada?.ahorro).toBeCloseTo(182.93, 2);
+    expect(fernet.promoAplicada?.ahorro).toBe(1317);
+    expect(coca.promoAplicada?.ahorro).toBe(183);
   });
 
   it("arma varios combos si el carrito tiene para más de uno", () => {
     const items = [itemUnidad("fernet", 2, 18000), itemUnidad("coca", 2, 2500)];
     const [fernet, coca] = aplicarPromociones(items, [COMBO_FERNET_COCA]);
 
-    expect(redondear2(fernet.subtotal! + coca.subtotal!)).toBe(38000); // 2 × $19.000
+    expect(fernet.subtotal! + coca.subtotal!).toBe(38000); // 2 × $19.000
   });
 
   it("deja el sobrante de un producto a precio normal si falta el otro para un segundo combo", () => {
@@ -104,9 +105,9 @@ describe("aplicarPromociones — combo de productos distintos", () => {
     const [fernet, coca] = aplicarPromociones(items, [COMBO_FERNET_COCA]);
 
     // 1 combo (limitado por el Fernet) + 2 Coca sueltas a precio normal.
-    expect(fernet.subtotal).toBeCloseTo(16682.93, 2);
-    expect(coca.subtotal).toBeCloseTo(2317.07 + 2 * 2500, 2);
-    expect(coca.promoAplicada?.ahorro).toBeCloseTo(182.93, 2);
+    expect(fernet.subtotal).toBe(16683);
+    expect(coca.subtotal).toBe(2317 + 2 * 2500);
+    expect(coca.promoAplicada?.ahorro).toBe(183);
   });
 
   it("no dispara si falta alguno de los productos del combo", () => {
@@ -139,7 +140,3 @@ describe("aplicarPromociones — combo de productos distintos", () => {
     expect(alka.promoAplicada?.nombre).toContain("3x100");
   });
 });
-
-function redondear2(monto: number): number {
-  return Math.round(monto * 100) / 100;
-}

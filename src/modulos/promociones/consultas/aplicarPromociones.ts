@@ -4,8 +4,16 @@ import type { ItemCarritoConPromo, Promocion } from "../tipos";
 /** Funciones puras: sin Supabase ni navegador (prompt-base sección 7,
  *  punto 2), mismo criterio que ventas/consultas/calculos.ts. */
 
-function redondearMonto(monto: number): number {
-  return Math.round(monto * 100) / 100;
+// A diferencia de calcularSubtotalItem() (que redondea a centavos, como
+// el resto de /ventas), acá se redondea a peso entero — pedido de
+// Jason (2026-09-11): el reparto proporcional de un combo entre sus
+// productos cae naturalmente en centavos ($16.682,93), y en un
+// minimarket donde todos los precios son en pesos redondos eso se ve
+// raro. Ver el "último ítem se lleva el resto" más abajo: con esto la
+// suma de las líneas de un combo sigue cerrando exacto contra
+// precio_promocional, ítem por ítem redondeado.
+function redondearAPeso(monto: number): number {
+  return Math.round(monto);
 }
 
 /** Detecta qué promos activas encajan con el carrito y devuelve una
@@ -71,15 +79,26 @@ export function aplicarPromociones(items: ItemCarrito[], promociones: Promocion[
     }
     if (normalTotalPorInstancia <= 0) continue;
 
-    for (const pi of promocion.items) {
-      const normal = normalPorInstancia.get(pi.productoId)!;
-      const proporcion = normal / normalTotalPorInstancia;
-      const montoAsignado = proporcion * promocion.precioPromocional * veces;
-      const normalTotal = normal * veces;
+    // Cada ítem redondea a peso entero, salvo el último: ese se lleva
+    // lo que sobra del total exacto de la promo (no su propio
+    // redondeo), para que la suma de las líneas cierre siempre exacto
+    // contra precio_promocional × veces, sin importar cómo caigan los
+    // redondeos de los demás.
+    const montoTotalPromo = promocion.precioPromocional * veces;
+    let montoAsignadoAcumulado = 0;
 
+    promocion.items.forEach((pi, indice) => {
+      const normal = normalPorInstancia.get(pi.productoId)!;
+      const esUltimo = indice === promocion.items.length - 1;
+      const montoAsignado = esUltimo
+        ? redondearAPeso(montoTotalPromo - montoAsignadoAcumulado)
+        : redondearAPeso((normal / normalTotalPorInstancia) * montoTotalPromo);
+      montoAsignadoAcumulado += montoAsignado;
+
+      const normalTotal = normal * veces;
       registrarPromo(pi.productoId, montoAsignado, normalTotal - montoAsignado, promocion.nombre);
       restante.set(pi.productoId, (restante.get(pi.productoId) ?? 0) - pi.cantidad * veces);
-    }
+    });
   }
 
   for (const promocion of activas.filter((p) => p.tipo === "cantidad")) {
@@ -107,8 +126,8 @@ export function aplicarPromociones(items: ItemCarrito[], promociones: Promocion[
     if (montoPromo === undefined) return item;
 
     const cantidadSobrante = restante.get(item.productoId) ?? 0;
-    const subtotalFinal = redondearMonto(montoPromo + cantidadSobrante * item.precioUnitario);
-    const ahorro = Math.max(0, redondearMonto(ahorroPorProducto.get(item.productoId) ?? 0));
+    const subtotalFinal = redondearAPeso(montoPromo + cantidadSobrante * item.precioUnitario);
+    const ahorro = Math.max(0, redondearAPeso(ahorroPorProducto.get(item.productoId) ?? 0));
 
     const resultado: ItemCarritoConPromo = {
       ...item,

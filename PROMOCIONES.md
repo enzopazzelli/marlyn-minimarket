@@ -132,6 +132,37 @@ Reglas, en orden:
    producto, es un compromiso razonable — si en algún momento hace
    falta precisión ahí, habría que sumar una tabla de detalle de
    promos aplicadas por venta.
+4. **El reparto redondea a peso entero, no a centavos** (pedido de
+   Jason, 2026-09-11: el reparto proporcional cae naturalmente en
+   centavos — $16.682,93 — y en un minimarket donde todo se maneja en
+   pesos redondos eso se ve raro). Para que la suma de las líneas siga
+   cerrando exacto contra `precio_promocional × veces` sin importar
+   cómo caiga el redondeo, el *último* ítem del combo no redondea su
+   propia proporción: se lleva lo que sobra del total exacto una vez
+   redondeados los demás. `redondearAPeso()` en `aplicarPromociones.ts`
+   — a propósito distinto de `calcularSubtotalItem()` (que redondea a
+   centavos, como el resto de `/ventas`), porque acá el redondeo es
+   sobre el precio ya fijo de la promo, no sobre un cálculo cantidad ×
+   precio unitario.
+
+## El aviso ("nube") al escanear, aunque la promo no esté completa
+
+Pedido de Jason (audio, 2026-09-11): *"escaneo el Fernet... que me
+salga una nube diciendo que hay una promo, llevando esto o llevando lo
+otro"* — quiere que el cajero se entere de la promo apenas escanea uno
+de los productos involucrados, para poder ofrecerle al cliente lo que
+le falta, no solo cuando la promo ya se disparó.
+
+En `PanelVentas.tsx`, cada vez que `agregarProducto()` agrega o suma
+una unidad, se busca con `promocionesDeProducto()`
+(`descripcionPromocion.ts`) si ese producto participa de alguna promo
+activa — **sin filtrar si ya se completó o no** — y se muestra un
+cartel breve ("🏷️ Fernet + Coca a $19.000") arriba del buscador,
+autodescartable a los 6 segundos o con la ✕. Es deliberadamente
+distinto del aviso de "ya se aplicó" en la línea del carrito
+(`FilaCarritoItem`): este es una sugerencia para el cajero, no aparece
+en la pantalla del cliente (`PantallaEnVivo`) — mostrarle a un cliente
+una promo que todavía no ganó podría confundir más que ayudar.
 
 ## "Necesita revisión": un producto eliminado de una promo
 
@@ -154,9 +185,13 @@ no importa en la práctica.
   exacto, sobrante a precio normal, promo pausada, línea con subtotal
   manual (no se toca), combo simple, combo repetido (2 veces), combo +
   sobrante de un producto, combo faltando un producto (no dispara),
-  combo + cantidad sobre el mismo producto (orden de aplicación).
+  combo + cantidad sobre el mismo producto (orden de aplicación) — con
+  los montos ya en peso entero, no en centavos.
 - `promociones.test.ts` (4 casos): `paraAplicarEnVenta` filtra pausadas
   y "necesita revisión", no manda datos de más al carrito.
+- `descripcionPromocion.test.ts` (6 casos): la frase del aviso para
+  cantidad y combo (con nombres de producto reales), y qué promos
+  encuentra `promocionesDeProducto()` para un producto dado.
 - `rls.test.ts`: contra el Supabase hosteado real (no corre en CI, ver
   README). Cubre: sin sesión no lee ni escribe, el operador lee pero no
   escribe, las validaciones de `guardar_promocion` (tipo/cantidad de

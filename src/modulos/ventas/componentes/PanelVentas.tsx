@@ -18,6 +18,7 @@ import {
 } from "../consultas/calculos";
 import type { Cliente } from "@/modulos/clientes/tipos";
 import { aplicarPromociones } from "@/modulos/promociones/consultas/aplicarPromociones";
+import { descripcionPromocion, promocionesDeProducto } from "@/modulos/promociones/consultas/descripcionPromocion";
 import type { Promocion } from "@/modulos/promociones/tipos";
 import {
   coincideCodigoExacto,
@@ -155,6 +156,25 @@ export function PanelVentas({
   const [error, setError] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
   const [comprobante, setComprobante] = useState<Comprobante | null>(null);
+  // "Nube" que avisa de una promo al escanear/agregar un producto que
+  // participa de alguna, se haya completado o no todavía (pedido de
+  // Jason, 2026-09-11: "escaneo el Fernet... que me salga una nube
+  // diciendo que hay una promo" — para que el cajero pueda ofrecerle al
+  // cliente lo que le falta). Se autodescarta sola a los pocos segundos.
+  const [avisoPromo, setAvisoPromo] = useState<string | null>(null);
+  const avisoPromoTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (avisoPromoTimeoutRef.current) clearTimeout(avisoPromoTimeoutRef.current);
+    };
+  }, []);
+
+  function mostrarAvisoPromo(mensaje: string) {
+    if (avisoPromoTimeoutRef.current) clearTimeout(avisoPromoTimeoutRef.current);
+    setAvisoPromo(mensaje);
+    avisoPromoTimeoutRef.current = setTimeout(() => setAvisoPromo(null), 6000);
+  }
 
   // Cada pestaña de venta es su propio carrito independiente: cambiar de
   // pestaña ES "guardar para después" (el pedido del cliente), y también
@@ -318,6 +338,13 @@ export function PanelVentas({
         ];
 
     actualizarCarritoActivo({ items });
+
+    const promosDelProducto = promocionesDeProducto(promociones, producto.id);
+    if (promosDelProducto.length > 0) {
+      mostrarAvisoPromo(
+        promosDelProducto.map((promocion) => descripcionPromocion(promocion, productos)).join(" · "),
+      );
+    }
   }
 
   function cambiarCantidad(productoId: string, delta: number) {
@@ -669,6 +696,20 @@ export function PanelVentas({
               <Boton type="submit">Agregar</Boton>
             </div>
           </form>
+
+          {avisoPromo && (
+            <div className="flex items-start justify-between gap-2 rounded-[var(--radius-base)] border border-acento/40 bg-acento/10 px-3 py-2 text-sm font-medium text-texto">
+              <span>🏷️ {avisoPromo}</span>
+              <button
+                type="button"
+                aria-label="Cerrar aviso de promoción"
+                onClick={() => setAvisoPromo(null)}
+                className="shrink-0 text-texto-suave hover:text-texto"
+              >
+                ✕
+              </button>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {productosFiltrados.length === 0 ? (
