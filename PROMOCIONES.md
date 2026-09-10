@@ -161,13 +161,33 @@ le falta, no solo cuando la promo ya se disparó.
 En `PanelVentas.tsx`, cada vez que `agregarProducto()` agrega o suma
 una unidad, se busca con `promocionesDeProducto()`
 (`descripcionPromocion.ts`) si ese producto participa de alguna promo
-activa — **sin filtrar si ya se completó o no** — y se muestra un
-cartel breve ("🏷️ Fernet + Coca a $19.000") arriba del buscador,
-autodescartable a los 6 segundos o con la ✕. Es deliberadamente
-distinto del aviso de "ya se aplicó" en la línea del carrito
-(`FilaCarritoItem`): este es una sugerencia para el cajero, no aparece
-en la pantalla del cliente (`PantallaEnVivo`) — mostrarle a un cliente
-una promo que todavía no ganó podría confundir más que ayudar.
+activa — **sin filtrar si ya se completó o no** — y se agrega su id a
+una lista de avisos pendientes (se acumulan, no se reemplazan: escanear
+Fernet y después Alka deja las dos nubes visibles a la vez, cada una
+con su propia ✕). Cada nube se recalcula en cada render contra el
+carrito actual (no queda "congelada" con el texto de cuando apareció),
+por lista: nombre/precio de la promo (siempre) y qué productos todavía
+faltan (`productosFaltantesParaCompletar()`). Quedan a la vista hasta
+que se cierran con la ✕, se completan (ver abajo), o se cambia de
+pestaña de venta / se vacía el carrito / se empieza una venta nueva —
+un auto-descarte por tiempo se sacó a pedido de Enzo (se perdía antes
+de que el cajero llegara a leerlo). Es deliberadamente distinto del
+aviso de "ya se aplicó" en la línea del carrito (`FilaCarritoItem`):
+este es una sugerencia para el cajero, no aparece en la pantalla del
+cliente (`PantallaEnVivo`) — mostrarle a un cliente una promo que
+todavía no ganó podría confundir más que ayudar.
+
+**Botón "Agregar a la venta"** (pedido de Jason, 2026-09-11: *"con un
+link o algún botón, se agreguen los productos de la promo al
+carrito"*): visible solo si a la promo le falta algo con el carrito
+actual (`faltantes.length > 0` — si ya está completa, la nube queda
+solo como confirmación, sin botón). Al tocarlo, `completarPromocion()`
+agrega de una vez lo que falta de cada producto de la promo, todo o
+nada: si el stock de alguno no alcanza, no agrega ninguno (completar
+la mitad de un combo suma costo sin destrabar el descuento) y avisa
+cuánto queda. Reusa `productosFaltantesParaCompletar()` (mismo cálculo
+que decide si mostrar el botón), así que lo que promete el botón es
+exactamente lo que hace.
 
 ## "Necesita revisión": un producto eliminado de una promo
 
@@ -197,6 +217,9 @@ no importa en la práctica.
 - `descripcionPromocion.test.ts` (6 casos): la frase del aviso para
   cantidad y combo (con nombres de producto reales), y qué promos
   encuentra `promocionesDeProducto()` para un producto dado.
+- `productosFaltantes.test.ts` (5 casos): cuánto falta de un producto
+  para el umbral de una promo "cantidad", qué falta de un combo con
+  algunos productos ya en el carrito, vacío cuando ya está completa.
 - `rls.test.ts`: contra el Supabase hosteado real (no corre en CI, ver
   README). Cubre: sin sesión no lee ni escribe, el operador lee pero no
   escribe, las validaciones de `guardar_promocion` (tipo/cantidad de

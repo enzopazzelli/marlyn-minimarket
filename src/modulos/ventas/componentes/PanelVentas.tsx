@@ -19,6 +19,7 @@ import {
 import type { Cliente } from "@/modulos/clientes/tipos";
 import { aplicarPromociones } from "@/modulos/promociones/consultas/aplicarPromociones";
 import { descripcionPromocion, promocionesDeProducto } from "@/modulos/promociones/consultas/descripcionPromocion";
+import { productosFaltantesParaCompletar } from "@/modulos/promociones/consultas/productosFaltantes";
 import type { Promocion } from "@/modulos/promociones/tipos";
 import {
   coincideCodigoExacto,
@@ -156,15 +157,18 @@ export function PanelVentas({
   const [error, setError] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
   const [comprobante, setComprobante] = useState<Comprobante | null>(null);
-  // "Nube" que avisa de una promo al escanear/agregar un producto que
+  // "Nubes" que avisan de una promo al escanear/agregar un producto que
   // participa de alguna, se haya completado o no todavía (pedido de
   // Jason, 2026-09-11: "escaneo el Fernet... que me salga una nube
   // diciendo que hay una promo" — para que el cajero pueda ofrecerle al
-  // cliente lo que le falta). Queda a la vista hasta que se cierre con
-  // la ✕ o hasta el próximo aviso — un auto-descarte por tiempo hacía
-  // que se perdiera antes de que el cajero llegara a leerlo (pedido de
-  // Enzo, 2026-09-11).
-  const [avisoPromo, setAvisoPromo] = useState<string | null>(null);
+  // cliente lo que le falta). Se guardan por id de promo (no el texto ya
+  // armado): así se pueden acumular varias a la vez sin duplicar la
+  // misma, y el botón "Agregar a la venta" de cada una sabe recalcular
+  // en cada render qué falta según el carrito actual. Quedan a la vista
+  // hasta que se cierren con la ✕, se completen, o se cambie de venta —
+  // un auto-descarte por tiempo hacía que se perdieran antes de que el
+  // cajero llegara a leerlas (pedido de Enzo, 2026-09-11).
+  const [avisoPromoIds, setAvisoPromoIds] = useState<string[]>([]);
 
   // Cada pestaña de venta es su propio carrito independiente: cambiar de
   // pestaña ES "guardar para después" (el pedido del cliente), y también
@@ -184,12 +188,66 @@ export function PanelVentas({
     );
   }
 
+  const avisosPromo = useMemo(
+    () =>
+      avisoPromoIds
+        .map((id) => promociones.find((promocion) => promocion.id === id))
+        .filter((promocion): promocion is Promocion => !!promocion)
+        .map((promocion) => ({
+          promocion,
+          descripcion: descripcionPromocion(promocion, productos),
+          faltantes: productosFaltantesParaCompletar(carritoActivo.items, promocion),
+        })),
+    [avisoPromoIds, promociones, productos, carritoActivo.items],
+  );
+
+  // Agrega lo que le falta a la promo (respetando el stock disponible)
+  // en un solo gesto — pedido de Jason, 2026-09-11: "con un botón, se
+  // agreguen los productos de la promo al carrito". Todo o nada: si no
+  // alcanza el stock de alguno de los productos, no agrega ninguno —
+  // completar la mitad de un combo no destraba nada, solo suma costo.
+  function completarPromocion(promocion: Promocion) {
+    setError(null);
+    const faltantes = productosFaltantesParaCompletar(carritoActivo.items, promocion);
+    if (faltantes.length === 0) return;
+
+    const items = [...carritoActivo.items];
+    for (const { productoId, cantidad } of faltantes) {
+      const producto = productos.find((p) => p.id === productoId);
+      if (!producto) continue;
+
+      const cantidadActual = items.find((item) => item.productoId === productoId)?.cantidad ?? 0;
+      const disponible = producto.stockActual - cantidadActual;
+      if (disponible < cantidad) {
+        setError(
+          `Solo quedan ${producto.stockActual - cantidadActual} ${ETIQUETA_UNIDAD[producto.unidad]} de ${producto.nombre} — no alcanza para completar la promo`,
+        );
+        return;
+      }
+
+      const indice = items.findIndex((item) => item.productoId === productoId);
+      if (indice >= 0) {
+        items[indice] = { ...items[indice], cantidad: items[indice].cantidad + cantidad };
+      } else {
+        items.push({
+          productoId,
+          nombre: producto.nombre,
+          cantidad,
+          precioUnitario: producto.precioVenta,
+        });
+      }
+    }
+
+    actualizarCarritoActivo({ items });
+    setAvisoPromoIds((anteriores) => anteriores.filter((id) => id !== promocion.id));
+  }
+
   function nuevaVenta() {
     const carrito = crearCarritoVacio();
     setCarritos((anteriores) => [...anteriores, carrito]);
     setCarritoActivoId(carrito.id);
     setError(null);
-    setAvisoPromo(null);
+    setAvisoPromoIds([]);
   }
 
   function cerrarVenta(id: string) {
@@ -203,7 +261,7 @@ export function PanelVentas({
       if (id === carritoActivoId) setCarritoActivoId(restantes[0].id);
       return restantes;
     });
-    setAvisoPromo(null);
+    setAvisoPromoIds([]);
   }
 
   // Se aplican solas, sin que el cajero tenga que acordarse de nada
@@ -333,7 +391,10 @@ export function PanelVentas({
 
     const promosDelProducto = promocionesDeProducto(promociones, producto.id);
     if (promosDelProducto.length > 0) {
-      setAvisoPromo(promosDelProducto.map((promocion) => descripcionPromocion(promocion, productos)).join(" · "));
+      setAvisoPromoIds((anteriores) => {
+        const nuevos = promosDelProducto.map((promocion) => promocion.id).filter((id) => !anteriores.includes(id));
+        return nuevos.length > 0 ? [...anteriores, ...nuevos] : anteriores;
+      });
     }
   }
 
@@ -649,7 +710,7 @@ export function PanelVentas({
               type="button"
               onClick={() => {
                 setCarritoActivoId(carrito.id);
-                setAvisoPromo(null);
+                setAvisoPromoIds([]);
               }}
             >
               Venta {indice + 1}
@@ -705,23 +766,45 @@ export function PanelVentas({
             </div>
           </form>
 
-          {avisoPromo && (
+          {avisosPromo.length > 0 && (
             // bg-ok (no --acento): ese token está reservado para
             // totales/pantalla al cliente/CTA principal (ver tema.css) —
             // este aviso reusa el mismo verde que ya significa "buena
             // noticia de promo" en el badge de la línea del carrito y en
             // "Ahorrás $X" (mismo criterio, más fuerte por ser un aviso
             // nuevo que pide más atención).
-            <div className="flex items-start justify-between gap-3 rounded-[var(--radius-base)] bg-ok px-4 py-3 text-base font-semibold text-white">
-              <span>🏷️ {avisoPromo}</span>
-              <button
-                type="button"
-                aria-label="Cerrar aviso de promoción"
-                onClick={() => setAvisoPromo(null)}
-                className="shrink-0 text-white/70 hover:text-white"
-              >
-                ✕
-              </button>
+            <div className="flex flex-col gap-2">
+              {avisosPromo.map(({ promocion, descripcion, faltantes }) => (
+                <div
+                  key={promocion.id}
+                  className="flex items-start justify-between gap-3 rounded-[var(--radius-base)] bg-ok px-4 py-3 text-base font-semibold text-white"
+                >
+                  <span>🏷️ {descripcion}</span>
+                  <div className="flex shrink-0 items-center gap-3">
+                    {/* Pedido de Jason, 2026-09-11: agregar de un toque
+                        lo que le falta a la promo. No se muestra si ya
+                        está completa (nada que agregar) — el aviso queda
+                        como confirmación de que la promo va a aplicar. */}
+                    {faltantes.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => completarPromocion(promocion)}
+                        className="rounded-[var(--radius-base)] bg-white px-3 py-1.5 text-sm font-semibold text-ok hover:brightness-95"
+                      >
+                        Agregar a la venta
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      aria-label="Cerrar aviso de promoción"
+                      onClick={() => setAvisoPromoIds((anteriores) => anteriores.filter((id) => id !== promocion.id))}
+                      className="text-white/70 hover:text-white"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
 
@@ -771,7 +854,7 @@ export function PanelVentas({
                   className="text-xs text-texto-suave underline"
                   onClick={() => {
                     actualizarCarritoActivo({ items: [] });
-                    setAvisoPromo(null);
+                    setAvisoPromoIds([]);
                   }}
                 >
                   Vaciar
