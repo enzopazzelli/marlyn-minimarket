@@ -154,6 +154,18 @@ export function PanelVentas({
   // tipear un código exacto y Enter) agrega directo, igual que antes;
   // tipear un nombre sigue filtrando la grilla de abajo en vivo.
   const [busqueda, setBusqueda] = useState("");
+  const inputBusquedaRef = useRef<HTMLInputElement>(null);
+
+  // Mismo pedido que en Stock (2026-09-11), ahora también acá: a los 2
+  // segundos sin tipear, se selecciona todo para escribir encima directo.
+  useEffect(() => {
+    if (!busqueda) return;
+    const temporizador = setTimeout(() => {
+      inputBusquedaRef.current?.select();
+    }, 2000);
+    return () => clearTimeout(temporizador);
+  }, [busqueda]);
+
   const [error, setError] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
   const [comprobante, setComprobante] = useState<Comprobante | null>(null);
@@ -743,6 +755,7 @@ export function PanelVentas({
           <form onSubmit={alEnviarBusqueda} className="rounded-[var(--radius-base)] bg-marco p-4">
             <div className="flex gap-2">
               <input
+                ref={inputBusquedaRef}
                 autoFocus
                 autoComplete="off"
                 value={busqueda}
