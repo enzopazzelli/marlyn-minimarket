@@ -45,17 +45,16 @@ export function ListaProductos({
   const [estado, setEstado] = useState<FiltroEstado>("todos");
 
   // Pedido explícito de Jason (2026-09-11), con el riesgo ya charlado y
-  // aceptado: a los 3 segundos sin tipear, se selecciona todo para
+  // aceptado: a los 2 segundos sin tipear, se selecciona todo para
   // poder escribir encima sin ir a buscar el botón "✕" ni clickear
-  // afuera y volver a entrar. 3s (no 1s, lo que se había rechazado
-  // antes) para que una pausa normal a mitad de palabra no alcance a
-  // dispararlo. Conviven los tres mecanismos: este timer, el
-  // select-on-focus de abajo y el botón "✕".
+  // afuera y volver a entrar (bajado de 3s a pedido de Jason, mismo día).
+  // Conviven los tres mecanismos: este timer, el select-on-focus de
+  // abajo y el botón "✕".
   useEffect(() => {
     if (!busqueda) return;
     const temporizador = setTimeout(() => {
       inputBusquedaRef.current?.select();
-    }, 3000);
+    }, 2000);
     return () => clearTimeout(temporizador);
   }, [busqueda]);
 
@@ -209,7 +208,7 @@ export function ListaProductos({
               }}
               aria-label="Vaciar búsqueda"
               // Botón "vaciar" aparte del select-on-focus y del timer de
-              // arriba: para limpiar sin esperar los 3s ni tener que
+              // arriba: para limpiar sin esperar los 2s ni tener que
               // clickear afuera y volver a entrar.
               className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-full p-1 text-texto-suave hover:bg-fondo hover:text-texto"
             >
