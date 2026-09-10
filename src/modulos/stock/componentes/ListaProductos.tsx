@@ -41,7 +41,6 @@ export function ListaProductos({
   const router = useRouter();
   const [busqueda, setBusqueda] = useState("");
   const inputBusquedaRef = useRef<HTMLInputElement>(null);
-  const [rubroId, setRubroId] = useState("");
   const [proveedorId, setProveedorId] = useState("");
   const [estado, setEstado] = useState<FiltroEstado>("todos");
 
@@ -76,15 +75,14 @@ export function ListaProductos({
         contieneCodigo(producto, termino) ||
         rubro.toLowerCase().includes(termino);
 
-      const coincideRubro = !rubroId || producto.categoriaId === rubroId;
       const coincideProveedor = !proveedorId || producto.proveedorId === proveedorId;
 
       const reponer = producto.stockActual <= producto.stockMinimo;
       const coincideEstado = estado === "todos" || (estado === "reponer" ? reponer : !reponer);
 
-      return coincideTermino && coincideRubro && coincideProveedor && coincideEstado;
+      return coincideTermino && coincideProveedor && coincideEstado;
     });
-  }, [productosActivos, busqueda, rubroId, proveedorId, estado, nombrePorCategoria]);
+  }, [productosActivos, busqueda, proveedorId, estado, nombrePorCategoria]);
 
   // Con el catálogo real (~2991 productos) renderizar `filtrados` entero
   // como filas de tabla es pesado apenas se entra sin buscar nada
@@ -92,7 +90,7 @@ export function ListaProductos({
   // (mismo patrón que PanelListaSimple.tsx): al cambiar cualquier
   // filtro hay que volver a la página 1, no quedarse en una que puede
   // ni existir ya para el resultado nuevo.
-  const claveFiltro = `${busqueda}|${rubroId}|${proveedorId}|${estado}`;
+  const claveFiltro = `${busqueda}|${proveedorId}|${estado}`;
   const [claveFiltroVista, setClaveFiltroVista] = useState(claveFiltro);
   const [pagina, setPagina] = useState(0);
   if (claveFiltro !== claveFiltroVista) {
@@ -208,18 +206,6 @@ export function ListaProductos({
             </button>
           )}
         </div>
-        <select
-          className={clasesFiltro}
-          value={rubroId}
-          onChange={(evento) => setRubroId(evento.target.value)}
-        >
-          <option value="">Todos los rubros</option>
-          {categorias.map((categoria) => (
-            <option key={categoria.id} value={categoria.id}>
-              {categoria.nombre}
-            </option>
-          ))}
-        </select>
         <select
           className={clasesFiltro}
           value={proveedorId}
