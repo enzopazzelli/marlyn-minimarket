@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Boton } from "@/componentes/Boton";
 import { Insignia } from "@/componentes/Insignia";
@@ -43,6 +43,21 @@ export function ListaProductos({
   const inputBusquedaRef = useRef<HTMLInputElement>(null);
   const [proveedorId, setProveedorId] = useState("");
   const [estado, setEstado] = useState<FiltroEstado>("todos");
+
+  // Pedido explícito de Jason (2026-09-11), con el riesgo ya charlado y
+  // aceptado: a los 3 segundos sin tipear, se selecciona todo para
+  // poder escribir encima sin ir a buscar el botón "✕" ni clickear
+  // afuera y volver a entrar. 3s (no 1s, lo que se había rechazado
+  // antes) para que una pausa normal a mitad de palabra no alcance a
+  // dispararlo. Conviven los tres mecanismos: este timer, el
+  // select-on-focus de abajo y el botón "✕".
+  useEffect(() => {
+    if (!busqueda) return;
+    const temporizador = setTimeout(() => {
+      inputBusquedaRef.current?.select();
+    }, 3000);
+    return () => clearTimeout(temporizador);
+  }, [busqueda]);
 
   // "Eliminado" (activo = false) deja de ser parte del catálogo activo
   // — no se lista acá ni se puede vender, pero la fila sigue en la
@@ -193,13 +208,9 @@ export function ListaProductos({
                 inputBusquedaRef.current?.focus();
               }}
               aria-label="Vaciar búsqueda"
-              // Botón "vaciar" aparte del select-on-focus de arriba:
-              // ese solo dispara si se clickea afuera y se vuelve a
-              // entrar. Pedido del dueño para poder limpiar sin ese
-              // paso extra — y más seguro que seleccionar todo solo
-              // tras una pausa al tipear (ver commit): con un buscador
-              // largo, una pausa de más de un segundo a mitad de
-              // palabra borraría lo ya escrito sin querer.
+              // Botón "vaciar" aparte del select-on-focus y del timer de
+              // arriba: para limpiar sin esperar los 3s ni tener que
+              // clickear afuera y volver a entrar.
               className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-full p-1 text-texto-suave hover:bg-fondo hover:text-texto"
             >
               ✕
