@@ -220,11 +220,19 @@ export function PanelVentas({
   const esMixtoConTarjeta =
     carritoActivo.medioPago === "mixto" &&
     (carritoActivo.medioMixtoResto === "debito" || carritoActivo.medioMixtoResto === "credito");
+  // Fiado parcial pagado con tarjeta (2026-09-10, mismo pedido que
+  // "Mixto con tarjeta"): el recargo va solo sobre lo que efectivamente
+  // se cobra ahora con la tarjeta, no sobre lo que queda fiado.
+  const esFiadoConTarjeta =
+    carritoActivo.medioPago === "fiado" &&
+    (carritoActivo.medioRecibidoFiado === "debito" || carritoActivo.medioRecibidoFiado === "credito");
   const montoBaseRecargo = esTarjeta
     ? total
     : esMixtoConTarjeta
       ? Math.max(0, total - (Number(carritoActivo.montoMixtoEfectivo) || 0))
-      : 0;
+      : esFiadoConTarjeta
+        ? Number(carritoActivo.montoRecibidoFiado) || 0
+        : 0;
   const recargoMonto =
     montoBaseRecargo > 0
       ? Math.round(montoBaseRecargo * ((Number(carritoActivo.porcentajeRecargoTarjeta) || 0) / 100) * 100) / 100
@@ -431,22 +439,23 @@ export function PanelVentas({
         return;
       }
       // No siempre se fía el total: "¿Cobrás algo ahora?" es opcional,
-      // en el medio que se elija (efectivo/transferencia) — lo que
-      // no se cobra ahí va fiado. Vacío o 0 es exactamente el
-      // comportamiento de siempre (todo fiado).
+      // en el medio que se elija — lo que no se cobra ahí va fiado.
+      // Vacío o 0 es exactamente el comportamiento de siempre (todo
+      // fiado). Si esa parte es débito/crédito, el recargo (si hay) se
+      // suma solo a lo que se cobra ahora — lo fiado queda igual.
       const montoRecibido = Number(carritoActivo.montoRecibidoFiado) || 0;
       if (montoRecibido < 0) {
         setError("El monto recibido no puede ser negativo");
         return;
       }
       if (montoRecibido >= total) {
-        setError("Si cobrás todo, elegí Efectivo/Transferencia en vez de Fiado");
+        setError("Si cobrás todo, elegí ese medio directamente en vez de Fiado");
         return;
       }
       pagos =
         montoRecibido > 0
           ? [
-              { medio: carritoActivo.medioRecibidoFiado, monto: montoRecibido, vuelto: 0 },
+              { medio: carritoActivo.medioRecibidoFiado, monto: montoRecibido + recargoMonto, vuelto: 0 },
               { medio: "fiado", monto: total - montoRecibido, vuelto: 0 },
             ]
           : [{ medio: "fiado", monto: total, vuelto: 0 }];
@@ -915,8 +924,19 @@ export function PanelVentas({
                       >
                         <option value="efectivo">Efectivo</option>
                         <option value="transferencia">Transferencia</option>
+                        <option value="debito">Débito</option>
+                        <option value="credito">Crédito</option>
                       </select>
                     </div>
+
+                    {esFiadoConTarjeta && (
+                      <CampoRecargoTarjeta
+                        porcentaje={carritoActivo.porcentajeRecargoTarjeta}
+                        onCambiar={(valor) => actualizarCarritoActivo({ porcentajeRecargoTarjeta: valor })}
+                        montoConRecargo={totalConRecargo}
+                      />
+                    )}
+
                     {Number(carritoActivo.montoRecibidoFiado) > 0 &&
                       Number(carritoActivo.montoRecibidoFiado) < total && (
                         <div className="flex items-center justify-between rounded-[var(--radius-base)] bg-alerta-fondo px-3 py-2">
@@ -947,7 +967,7 @@ export function PanelVentas({
               {guardando
                 ? "Cobrando…"
                 : carritoActivo.medioPago === "fiado" && Number(carritoActivo.montoRecibidoFiado) > 0
-                  ? `Cobrar ${platita.format(Number(carritoActivo.montoRecibidoFiado))} y fiar el resto`
+                  ? `Cobrar ${platita.format((Number(carritoActivo.montoRecibidoFiado) || 0) + recargoMonto)} y fiar el resto`
                   : `Cobrar ${platita.format(totalConRecargo)}`}
             </Boton>
           </div>
