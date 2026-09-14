@@ -17,27 +17,32 @@ const platitaEtiqueta = new Intl.NumberFormat("es-AR", {
   maximumFractionDigits: 0,
 });
 
-// 2 columnas x 5 filas en A4 (10 por hoja) sobre papel/adhesivo liso,
-// para cortar después — decidido con Enzo, 2026-08-15: no depende de
-// ninguna hoja pre-troquelada puntual. Las medidas salen de repartir
-// el área imprimible de A4 (210x297mm menos el margen de @page
-// etiquetas-a4 en globals.css, 3mm por lado desde 2026-09-14 a pedido
-// de Jason — antes 10mm, dejaba un borde grande sin usar) en 2x5
-// parejo: (210-6)/2 = 102mm de ancho, (297-6)/5 = 58,2mm de alto.
-const POR_HOJA = 10;
-const ANCHO_ETIQUETA = "102mm";
-const ALTO_ETIQUETA = "58mm";
+// 3 columnas x 7 filas en A4 (21 por hoja, antes 2x5=10) sobre
+// papel/adhesivo liso, para cortar después — pedido de Jason,
+// 2026-09-14, con una foto de referencia de una hoja así de densa
+// ("para aprovechar el máximo"). El 2x5 original se había decidido con
+// Enzo, 2026-08-15, sin depender de ninguna hoja pre-troquelada
+// puntual; esa parte sigue igual, solo cambió la cantidad de filas y
+// columnas. Las medidas salen de repartir el área imprimible de A4
+// (210x297mm menos el margen de @page etiquetas-a4 en globals.css,
+// 3mm por lado) en 3x7 parejo: (210-6)/3 = 68mm de ancho,
+// (297-6)/7 = 41,57mm de alto (redondeado para abajo a 41mm, mismo
+// criterio que el redondeo del ancho/alto anterior — deja un margen
+// chico de sobra en vez de pasarse).
+const POR_HOJA = 21;
+const ANCHO_ETIQUETA = "68mm";
+const ALTO_ETIQUETA = "41mm";
 
 function Etiqueta({ producto, saltoDePagina }: { producto: Producto; saltoDePagina: boolean }) {
   return (
     <div
       style={{ width: ANCHO_ETIQUETA, height: ALTO_ETIQUETA }}
-      className={`flex flex-col items-center justify-center gap-2 border border-dashed border-linea p-3 text-center [break-inside:avoid] ${
+      className={`flex flex-col items-center justify-center gap-1 border border-dashed border-linea p-2 text-center [break-inside:avoid] ${
         saltoDePagina ? "[break-after:page]" : ""
       }`}
     >
-      <p className="text-xl font-semibold uppercase leading-tight text-texto">{producto.nombre}</p>
-      <p className="numero text-5xl font-bold leading-none text-texto">
+      <p className="text-xs font-semibold uppercase leading-tight text-texto">{producto.nombre}</p>
+      <p className="numero text-3xl font-bold leading-none text-texto">
         {platitaEtiqueta.format(producto.precioVenta)}
       </p>
     </div>
