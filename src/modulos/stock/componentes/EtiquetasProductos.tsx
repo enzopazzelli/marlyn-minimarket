@@ -19,12 +19,14 @@ const platitaEtiqueta = new Intl.NumberFormat("es-AR", {
 
 // 2 columnas x 5 filas en A4 (10 por hoja) sobre papel/adhesivo liso,
 // para cortar después — decidido con Enzo, 2026-08-15: no depende de
-// ninguna hoja pre-troquelada puntual. Las medidas (95mm x 55mm) salen
-// de repartir el área imprimible de A4 (210x297mm menos 10mm de margen
-// por lado, @page etiquetas-a4 en globals.css) en 2x5 parejo.
+// ninguna hoja pre-troquelada puntual. Las medidas salen de repartir
+// el área imprimible de A4 (210x297mm menos el margen de @page
+// etiquetas-a4 en globals.css, 3mm por lado desde 2026-09-14 a pedido
+// de Jason — antes 10mm, dejaba un borde grande sin usar) en 2x5
+// parejo: (210-6)/2 = 102mm de ancho, (297-6)/5 = 58,2mm de alto.
 const POR_HOJA = 10;
-const ANCHO_ETIQUETA = "95mm";
-const ALTO_ETIQUETA = "55mm";
+const ANCHO_ETIQUETA = "102mm";
+const ALTO_ETIQUETA = "58mm";
 
 function Etiqueta({ producto, saltoDePagina }: { producto: Producto; saltoDePagina: boolean }) {
   return (

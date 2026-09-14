@@ -142,9 +142,16 @@ input[type="number"]::-webkit-outer-spin-button {
     margin: 0;
   }
 
+  /* 3mm (antes 10mm, bajado a pedido de Jason: "que ocupen toda la
+     página" — el margen viejo dejaba un borde grande alrededor de la
+     hoja). Es prácticamente el mínimo que la mayoría de las
+     impresoras hogareñas/de oficina imprime sin recortar el borde; el
+     tamaño de cada etiqueta en EtiquetasProductos.tsx está calculado
+     contra este valor, así que si se vuelve a cambiar acá hay que
+     recalcular ANCHO_ETIQUETA/ALTO_ETIQUETA ahí también. */
   @page etiquetas-a4 {
     size: A4;
-    margin: 10mm;
+    margin: 3mm;
   }
 
   .capa-impresion {
