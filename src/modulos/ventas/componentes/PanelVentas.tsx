@@ -876,9 +876,14 @@ export function PanelVentas({
           </div>
         </div>
 
-        <div className="flex flex-col gap-3">
+        {/* Pedido de Jason (2026-09-17): con max-h-[60vh] de arriba, la
+            tarjeta de "Venta en curso" empujaba "Cómo paga" demasiado
+            abajo — se compacta el padding vertical de header/total y
+            de cada fila (FilaCarritoItem.tsx) sin tocar ningún tamaño
+            de letra, para que entren más filas en menos alto. */}
+        <div className="flex flex-col gap-2">
           <div className="overflow-hidden rounded-[var(--radius-base)] border border-linea bg-superficie">
-            <div className="flex items-center justify-between border-b border-linea px-4 py-3">
+            <div className="flex items-center justify-between border-b border-linea px-4 py-2">
               <h3 className="font-[family-name:var(--font-display)] text-sm font-semibold text-texto">
                 Venta en curso
               </h3>
@@ -925,7 +930,7 @@ export function PanelVentas({
                 <span className="numero">{platita.format(ahorroPromociones)}</span>
               </p>
             )}
-            <div className="flex items-baseline justify-between bg-marco px-4 py-3">
+            <div className="flex items-baseline justify-between bg-marco px-4 py-2">
               <span className="font-[family-name:var(--font-numero)] text-xs tracking-wider text-white/60">
                 TOTAL
               </span>

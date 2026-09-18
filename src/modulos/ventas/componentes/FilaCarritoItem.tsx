@@ -94,7 +94,7 @@ export function FilaCarritoItem({
   }
 
   return (
-    <div className="border-b border-linea px-4 py-2.5 last:border-b-0">
+    <div className="border-b border-linea px-4 py-1.5 last:border-b-0">
       <div className="flex items-start justify-between gap-2">
         <div>
           <p className="text-sm font-semibold text-texto">{item.nombre}</p>
@@ -113,13 +113,13 @@ export function FilaCarritoItem({
       </div>
 
       {item.promoAplicada && (
-        <p className="mt-1 text-xs font-medium text-ok">
+        <p className="mt-0.5 text-xs font-medium text-ok">
           🏷️ {item.promoAplicada.nombre} · ahorrás {platita.format(item.promoAplicada.ahorro)}
         </p>
       )}
 
       {!esPeso ? (
-        <div className="mt-1.5 flex items-center justify-end gap-1.5">
+        <div className="mt-1 flex items-center justify-end gap-1.5">
           <button
             type="button"
             aria-label="Quitar una unidad"
@@ -139,7 +139,7 @@ export function FilaCarritoItem({
           </button>
         </div>
       ) : (
-        <div className="mt-1.5 flex items-center justify-end gap-2">
+        <div className="mt-1 flex items-center justify-end gap-2">
           <button
             type="button"
             onClick={onQuitar}
