@@ -194,6 +194,27 @@ export function PanelVentas({
 
   const carritoActivo = carritos.find((carrito) => carrito.id === carritoActivoId) ?? carritos[0];
 
+  // Pedido de Jason (2026-09-17): al cargar un producto que ya no
+  // entra en el área visible, se seguía viendo el más viejo (scrolleado
+  // arriba de todo) — quiere ver el que recién agregó. Se sigue el
+  // largo de la lista (no cada cambio del carrito: cambiar una
+  // cantidad con +/- no tiene que saltar la vista) y se compara contra
+  // el mismo carrito (no dispara al cambiar de pestaña de venta).
+  const listaCarritoRef = useRef<HTMLDivElement>(null);
+  const carritoAnteriorRef = useRef({ id: carritoActivo.id, cantidad: carritoActivo.items.length });
+
+  useEffect(() => {
+    const anterior = carritoAnteriorRef.current;
+    const mismoCarrito = anterior.id === carritoActivo.id;
+    const creció = carritoActivo.items.length > anterior.cantidad;
+
+    if (mismoCarrito && creció && listaCarritoRef.current) {
+      listaCarritoRef.current.scrollTop = listaCarritoRef.current.scrollHeight;
+    }
+
+    carritoAnteriorRef.current = { id: carritoActivo.id, cantidad: carritoActivo.items.length };
+  }, [carritoActivo.id, carritoActivo.items.length]);
+
   function actualizarCarritoActivo(cambios: Partial<CarritoEnCurso>) {
     setCarritos((anteriores) =>
       anteriores.map((carrito) => (carrito.id === carritoActivoId ? { ...carrito, ...cambios } : carrito)),
@@ -874,7 +895,11 @@ export function PanelVentas({
                 </button>
               )}
             </div>
-            <div className="max-h-72 overflow-y-auto">
+            {/* Pedido de Jason (2026-09-17): que se vean más productos
+                cargados sin scrollear — antes max-h-72 (288px, ~5
+                filas), ahora relativo a la pantalla en vez de un valor
+                fijo chico. */}
+            <div ref={listaCarritoRef} className="max-h-[60vh] overflow-y-auto">
               {carritoActivo.items.length === 0 ? (
                 <p className="px-4 py-8 text-center text-sm text-texto-suave">
                   Escaneá el primer producto para empezar.

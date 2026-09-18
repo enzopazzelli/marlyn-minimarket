@@ -19,7 +19,7 @@ export default async function PaginaVentas() {
 
   return (
     <>
-      <BarraSuperior titulo="Ventas">
+      <BarraSuperior titulo="Ventas" centrarInfo>
         <ChipCaja abierta={!!turno} />
       </BarraSuperior>
       <main className="flex-1 p-4 md:p-6">
