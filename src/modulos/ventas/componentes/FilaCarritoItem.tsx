@@ -157,6 +157,15 @@ export function FilaCarritoItem({
             value={textoMonto}
             onChange={(evento) => alCambiarMonto(evento.target.value)}
             onFocus={(evento) => evento.currentTarget.select()}
+            // Reportado por Jason (2026-09-18): el navegador deja
+            // arrastrar el texto seleccionado de un <input> a otro —
+            // estos dos campos están pegados uno al lado del otro, así
+            // que un clic-arrastre sin querer (dedo en la pantalla
+            // táctil, o el mouse) tira el valor de "gramos" adentro de
+            // "pesos" o viceversa, pisando el monto sin que el cajero
+            // lo note. No hay drag-and-drop querido entre estos dos
+            // campos, así que se bloquea de raíz.
+            onDragStart={(evento) => evento.preventDefault()}
             className="numero w-20 rounded border border-linea px-2 py-1 text-right text-sm outline-none focus-visible:border-acento"
           />
           <span className="text-xs text-texto-suave">o</span>
@@ -169,6 +178,7 @@ export function FilaCarritoItem({
             value={texto}
             onChange={(evento) => alCambiarTexto(evento.target.value)}
             onFocus={(evento) => evento.currentTarget.select()}
+            onDragStart={(evento) => evento.preventDefault()}
             className="numero w-20 rounded border border-linea px-2 py-1 text-right text-sm outline-none focus-visible:border-acento"
           />
           <span className="numero text-xs text-texto-suave">{ETIQUETA_CHICA[unidad]}</span>
