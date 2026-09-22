@@ -131,14 +131,39 @@ input[type="number"]::-webkit-outer-spin-button {
   display: none;
 }
 
+/* Un nodo con display:none mide 0×0: html-to-image devuelve una imagen
+   vacía (la descarga en PNG bajaba un archivo de 0 bytes que ningún
+   visor abría) y no hay alto real para armar la página del ticket.
+   AccionesTicket.tsx pone esta clase solo mientras captura o mide, y
+   la capa se dibuja fuera de la pantalla en vez de quedar oculta. */
+.capa-impresion.fuera-de-pantalla {
+  display: block;
+  position: fixed;
+  top: 0;
+  left: -10000px;
+}
+
+/* Fuera de @media print a propósito: la descarga en PNG/PDF captura
+   esta misma copia en pantalla, y tiene que salir igual que el papel. */
+#ticket-imprimible {
+  background: var(--ticket-papel);
+}
+#ticket-imprimible,
+#ticket-imprimible * {
+  color: var(--ticket-tinta);
+  border-color: var(--ticket-tinta);
+}
+
 /* El tamaño de página de cada trabajo se resuelve con "named pages"
-   (CSS Paged Media): la página por default es el ticket (térmica de
-   80mm — cambiar ese valor si el comercio usa una de 58mm), y
-   `page: etiquetas-a4` en #etiquetas-imprimibles hace que esas páginas
-   usen la definición de @page etiquetas-a4 en cambio. */
+   (CSS Paged Media). El del ticket no está acá: depende del rollo
+   elegido y del largo de la venta, así que AccionesTicket.tsx lo
+   inyecta justo antes de imprimir (ver reglaPaginaTicket() en
+   lib/rolloTicket.ts). Este `margin: 0` queda de respaldo si se
+   imprime con Ctrl+P en vez del botón. `page: etiquetas-a4` en
+   #etiquetas-imprimibles hace que esas páginas usen la definición de
+   @page etiquetas-a4 en cambio. */
 @media print {
   @page {
-    size: 80mm auto;
     margin: 0;
   }
 
@@ -160,10 +185,6 @@ input[type="number"]::-webkit-outer-spin-button {
 
   body > :not(.capa-impresion) {
     display: none !important;
-  }
-
-  #ticket-imprimible {
-    width: 80mm;
   }
 
   #etiquetas-imprimibles {

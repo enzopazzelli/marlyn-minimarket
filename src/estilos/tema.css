@@ -41,6 +41,14 @@
   --grafico-3: #1baf7a; /* medio de pago 3 */
   --grafico-4: #eda100; /* medio de pago 4 */
 
+  /* --- Ticket en papel térmico (NO se cambian por cliente) ---
+   * La térmica solo quema puntos negros: un gris sale punteado o casi
+   * no sale, y un fondo de color (si se imprime con "gráficos de
+   * fondo") sale como trama. La copia que se imprime/descarga del
+   * ticket va solo con estos dos. */
+  --ticket-papel: #ffffff;
+  --ticket-tinta: #000000;
+
   /* --- Forma --- */
   --r: 10px; /* radio base, único en todo el sistema */
 }

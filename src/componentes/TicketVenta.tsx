@@ -1,3 +1,6 @@
+"use client";
+
+import { medidasRollo, useAnchoRollo } from "@/lib/rolloTicket";
 import { CapaImpresion } from "./CapaImpresion";
 
 const platita = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" });
@@ -99,16 +102,29 @@ function contenidoTicket({
 // del Modal, y aislar justo esa para imprimir requeriría el viejo truco
 // de position:fixed que no pagina bien contenido largo (encontrado con
 // las etiquetas de góndola).
+//
+// Las dos copias tienen el ancho del rollo elegido (58 u 80 mm, ver
+// lib/rolloTicket.ts): así la que se ve en el modal ya corta los
+// renglones igual que el papel, y el cajero ve cómo va a salir antes de
+// imprimir. La de impresión va en negro sobre blanco (#ticket-imprimible
+// en globals.css), la del modal conserva los colores de la app.
 export function TicketVenta(props: PropsTicket) {
+  const { anchoMm, margenMm } = medidasRollo(useAnchoRollo());
+  const estiloPapel = { width: `${anchoMm}mm`, paddingInline: `${margenMm}mm` };
+
   return (
     <>
-      <div className="rounded-[var(--radius-base)] bg-fondo p-4 font-[family-name:var(--font-numero)] text-xs leading-relaxed">
+      <div
+        style={estiloPapel}
+        className="mx-auto rounded-[var(--radius-base)] bg-fondo py-4 font-[family-name:var(--font-numero)] text-xs leading-relaxed"
+      >
         {contenidoTicket(props)}
       </div>
       <CapaImpresion id="capa-impresion-ticket">
         <div
           id="ticket-imprimible"
-          className="bg-fondo p-4 font-[family-name:var(--font-numero)] text-xs leading-relaxed"
+          style={estiloPapel}
+          className="py-4 font-[family-name:var(--font-numero)] text-xs leading-relaxed"
         >
           {contenidoTicket(props)}
         </div>
