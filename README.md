@@ -2,7 +2,7 @@
 
 Sistema de gestión comercial a medida para Mini Market Marlyn (minimarket
 / despensa, un solo local). Construido siguiendo
-`prompt-base-sistemas-gestion.md` del repo de metodología propia:
+`../_metodo/prompt-base-web.md` y `../_metodo/reglas.md`, el método propio:
 Next.js (App Router) + Supabase (Postgres, Auth, RLS), un módulo por
 carpeta, tokens de diseño en un único archivo, y seis reglas de
 seguridad no negociables repasadas en cada función/vista nueva.

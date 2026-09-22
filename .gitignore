@@ -46,3 +46,12 @@ backup_pre_wipe_*.json
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# planes de trabajo internos (no para el repo del cliente)
+PLAN-*.md
+traspaso-marlyn.html
+
+# configuración local de agentes y respaldos temporales
+# (llegaron al promover esta carpeta a la raíz de proyectos/, 2026-09-21)
+.claude/
+_backups_temp/
