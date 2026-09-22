@@ -575,29 +575,13 @@ para el PNG (`toPng` de `html-to-image`) en vez de redibujar el ticket
 con la API de dibujo de `jsPDF`: la página del PDF queda del tamaño
 exacto de esa imagen, sin manejar mm/DPI a mano, y no hay dos layouts
 del comprobante para mantener sincronizados.
-**Rollo de 58 u 80 mm** (pedido de Enzo, 2026-09-22, para la térmica
-de Jason — IT03, ESC/POS por USB, acepta los dos anchos): un engranaje
-junto a Imprimir/Descargar elige el ancho del rollo. Se guarda en
-`localStorage` de esa PC (`src/lib/rolloTicket.ts`), no en la base: el
-rollo es de la impresora enchufada a esa máquina; sin nada guardado
-vale 80 mm. Con el rollo cambian el ancho de las dos copias del ticket
-(la del modal también, para ver cómo cortan los renglones) y el margen
-lateral (lo que queda fuera del cabezal: 72 mm imprimibles en 80, 48 en
-58). Al tocar "Imprimir" se mide el alto del ticket y se inyecta un
-`@page { size: <rollo>mm <alto>mm }` que se saca al terminar — antes
-había `size: 80mm auto`, que es CSS inválido y Chrome lo descartaba
-entero (imprimía en hoja Carta, verificado con Chrome headless). La
-copia que se imprime/descarga va en negro sobre blanco
-(`--ticket-papel`/`--ticket-tinta` en `tema.css`): la térmica no
-imprime grises. **Fix de la descarga**: desde que el ticket pasó a
-`CapaImpresion` (2026-08-15), el PNG bajaba como un archivo de 0 bytes
-("formato no compatible" en Fotos) y el PDF fallaba — la copia que se
-capturaba está con `display:none` en pantalla, mide 0×0, y
-`html-to-image` devuelve `data:,`. Ahora, mientras dura la captura o la
-medición, la capa se dibuja fuera de la pantalla
-(`.capa-impresion.fuera-de-pantalla`). Queda por probar en la impresora
-real: que el driver corte al final del ticket y no alimente papel de
-más.
+**Rollo de 58 u 80 mm** (2026-09-22, térmica IT03 de Jason): el
+engranaje junto a Imprimir/Descargar elige el ancho, guardado en
+`localStorage` de esa PC (`src/lib/rolloTicket.ts`, 80 mm por defecto).
+Define el ancho del ticket y, al imprimir, un `@page` con el alto
+medido. La copia impresa va en negro sobre blanco. La descarga dibuja
+la capa fuera de pantalla mientras captura (oculta medía 0×0 y bajaba
+un PNG vacío). Falta probar el corte del papel en la impresora real.
 
 **Proveedores, módulo propio**: `/proveedores` tiene ficha (nombre,
 contacto, teléfono), buscador, y por proveedor "Editar" y "Productos y
